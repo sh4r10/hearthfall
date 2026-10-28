@@ -1,20 +1,18 @@
-// The map views (warmth and air) and when the player gets them. Each view
+// The map views (only warmth for now) and when the player gets them. Each view
 // answers one question the player has to decide on, its legend says what the
 // colours mean and what they mean for the colony right now, and a view only
 // shows up in the toolbar once its question starts to matter.
 
 import type { Overlay } from './world-view';
 import {
-  Building, COLONIST_STRIDE, DARK_BELOW, DAY_TICKS, Element, HEARTH_BURN_TICKS, STAT_MAX, SUFFOCATE_BELOW_MG, type Frame,
+  Building, COLONIST_STRIDE, DARK_BELOW, DAY_TICKS, Element, HEARTH_BURN_TICKS, type Frame,
 } from './protocol';
-import { STALE_BELOW_MG } from './overlay-shader';
 import { icon } from './icons';
 
 export interface MapView { overlay: Exclude<Overlay, 'none'>; key: string; label: string; icon: string; tip: string }
 
 export const MAP_VIEWS: MapView[] = [
   { overlay: 'warmth', key: 'W', label: 'Warmth', icon: 'heat', tip: 'Where survivors stay warm, where Shades can reach, and how far the fire will reach tonight.' },
-  { overlay: 'air', key: 'O', label: 'Air', icon: 'oxygen', tip: 'Where the air is going stale. Fires and breathing use it up, and smoke sinks into low rooms.' },
 ];
 
 const swatch = (cls: string, text: string) => `<li><i class="swatch ${cls}"></i><span>${text}</span></li>`;
@@ -26,10 +24,6 @@ const LEGENDS: Record<MapView['overlay'], (night: boolean) => string> = {
     swatch('dark', '<b>Dark.</b> Survivors freeze, and Shades hunt at night.') +
     (night ? '' : swatch('shrink', '<b>Goes cold tonight.</b> The fire reaches less far after dark.')) +
     swatch('coal', '<b>Coal.</b> Dig it to keep the fire going.'),
-  air: () =>
-    swatch('fresh', '<b>Fresh air.</b>') +
-    swatch('stale', '<b>Stale.</b> Something is using it up faster than it spreads.') +
-    swatch('bad', '<b>Unbreathable.</b> Survivors suffocate and fires go out.'),
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -81,16 +75,6 @@ export class MapViews {
     el.dataset.tip = on ? `${el.dataset.baseTip}<em>${reason}</em>` : el.dataset.baseTip;
   }
 
-  private reveal(o: MapView['overlay'], tool?: string) {
-    this.open.add(o);
-    for (const el of [document.querySelector(`[data-overlay="${o}"]`), tool && document.querySelector(`[data-tool="${tool}"]`)]) {
-      if (!(el instanceof HTMLElement)) continue;
-      el.hidden = false;
-      el.classList.add('reveal');
-      el.addEventListener('animationend', () => el.classList.remove('reveal'), { once: true });
-    }
-  }
-
   private progress(frame: Frame) {
     // The first evening, point at the warmth view while the night ahead will leave someone or something in the cold.
     const into = frame.tick % DAY_TICKS;
@@ -101,19 +85,6 @@ export class MapViews {
     if (losing && !this.warnedNight && !this.acknowledged.has('warmth')) {
       this.warnedNight = true;
       this.notice('Night is coming, and the fire reaches less far in the dark. Press <b>W</b> to see where it will stay warm.', 'moon', 'info');
-    }
-
-    // Air only matters once something is using it up: give the view (and the diffuser) then.
-    if (!this.open.has('air') && this.airTrouble(frame)) {
-      this.reveal('air', 'diffuser');
-      this.notice('The air near the fire is going stale. The <b>Air</b> view (O) and the <b>Oxygen</b> diffuser are now open.', 'oxygen', 'warn');
-    }
-    // After that, the Air button pulses only while a survivor is close to suffocating:
-    // losing breath, or in air at twice the suffocation level or less.
-    if (this.open.has('air')) {
-      const short = this.inStaleAir(frame, SUFFOCATE_BELOW_MG * 2, true);
-      if (!short.length) this.acknowledged.delete('air'); // trouble over: the next bout nudges again
-      this.nudge('air', short.length ? `${list(short)} ${short.length === 1 ? 'is' : 'are'} running short of air.` : '');
     }
   }
 
@@ -129,28 +100,6 @@ export class MapViews {
       if (f.buildings[c] === Building.Bed && f.firelight[c] >= DARK_BELOW && f.nightFirelight[c] < DARK_BELOW) n++;
     }
     return n;
-  }
-
-  /** Living survivors in air below `below` mg (or, with `breathless`, already losing breath). */
-  private inStaleAir(f: Frame, below = STALE_BELOW_MG, breathless = false) {
-    const short: string[] = [];
-    for (let k = 0, i = 0; i < f.colonists.length; i += COLONIST_STRIDE, k++) {
-      if (f.colonists[i + 3] === 5) continue;
-      const thin = f.oxygen[f.colonists[i + 1] * f.width + f.colonists[i]] < below;
-      if (thin || (breathless && f.colonists[i + 4] < STAT_MAX * 0.9)) short.push(this.names[k % this.names.length]);
-    }
-    return short;
-  }
-
-  /** Someone short of breath, or stale air where the colony lives. */
-  private airTrouble(frame: Frame) {
-    for (let i = 0; i < frame.colonists.length; i += COLONIST_STRIDE) {
-      if (frame.colonists[i + 3] !== 5 && frame.colonists[i + 4] < STAT_MAX * 0.9) return true;
-    }
-    for (let c = 0; c < frame.elements.length; c++) {
-      if (frame.elements[c] === Element.Floor && frame.light[c] >= DARK_BELOW && frame.oxygen[c] < STALE_BELOW_MG) return true;
-    }
-    return false;
   }
 
   /** One warning when a fire is about to run dry with nothing in the stockpile to refill it. */
@@ -184,7 +133,7 @@ export class MapViews {
         `<ul>${LEGENDS[view.overlay](frame.night)}</ul><p class="verdict"></p>`;
     }
     this.legend.hidden = false;
-    const [text, tone] = overlay === 'warmth' ? this.warmthVerdict(frame) : this.airVerdict(frame);
+    const [text, tone] = this.warmthVerdict(frame);
     const p = this.legend.querySelector('.verdict')!;
     if (p.innerHTML !== text) p.innerHTML = text;
     p.className = `verdict ${tone}`;
@@ -217,18 +166,5 @@ export class MapViews {
     if (atRisk.length) lines.push(`${atRisk.join(', and ')} where it goes cold.`);
     if (cold.length) lines.push(`<b>${list(cold)}</b> ${cold.length === 1 ? 'is' : 'are'} in the cold now.`);
     return [lines.join(' '), cold.length || atRisk.length ? 'warn' : ''];
-  }
-
-  /** What the air map means right now: who can't breathe, and whether a fire is choking. */
-  private airVerdict(f: Frame): [string, string] {
-    const short = this.inStaleAir(f);
-    let choking = 0;
-    for (let c = 0; c < f.buildings.length; c++) if (f.buildings[c] === Building.Hearth && f.oxygen[c] < STALE_BELOW_MG) choking++;
-    const lines: string[] = [];
-    if (short.length) lines.push(`<b>${list(short)}</b> ${short.length === 1 ? 'is' : 'are'} in stale air.`);
-    if (choking) lines.push(`${choking === 1 ? 'A fire is' : `${choking} fires are`} running short of air.`);
-    if (!lines.length) return ['Everyone can breathe. Watch sealed rooms with a fire in them.', ''];
-    lines.push('Dig an opening to fresh caves, or build an <b>Oxygen</b> diffuser.');
-    return [lines.join(' '), 'warn'];
   }
 }

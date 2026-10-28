@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'ladder' | 'hearth' | 'mushroom' | 'diffuser' | 'lamp' | 'bed';
+export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'bed';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -27,8 +27,6 @@ export interface Frame {
   /** Where hearth light will reach tonight if the fires stay fed. */
   nightFirelight: Uint8Array;
   hearthFuel: Int32Array;
-  oxygen: Int32Array;
-  co2: Int32Array;
   temperature: Int32Array;
   /** Flat, COLONIST_STRIDE each; see WebSim::colonists in crates/sim-wasm. */
   colonists: Int32Array;
@@ -42,7 +40,7 @@ export interface Frame {
 
 export type FromWorker = Frame;
 
-export const COLONIST_STRIDE = 14;
+export const COLONIST_STRIDE = 13;
 export const JOB_STRIDE = 6;
 export const EVENT_STRIDE = 3;
 export const SHADE_STRIDE = 3;
@@ -55,8 +53,8 @@ export const EVENT_ARRIVAL = 4;
 /** Shade states, matching sim::SHADE_*. */
 export const SHADE_DRIFTING = 0;
 export const SHADE_ATTACKING = 1;
-/** Colonist.cause, the 14th colonist field. */
-export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'suffocated', 3: 'was taken by a Shade' };
+/** Colonist.cause, the 13th colonist field; must match sim::CAUSE_*. */
+export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'was taken by a Shade' };
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
@@ -64,15 +62,10 @@ export const DAY_TICKS = 1200;
 export const MUSHROOM_TICKS = 400;
 /** Light below this counts as dark; must match DARK_BELOW in crates/sim/src/lib.rs. */
 export const DARK_BELOW = 40;
-/** Oxygen (mg) below which survivors suffocate and hearths go out; must match SUFFOCATE_BELOW_MG and HEARTH_MIN_OXYGEN_MG. */
-export const SUFFOCATE_BELOW_MG = 300;
-export const HEARTH_MIN_OXYGEN_MG = 150;
-/** Oxygen a fresh cave cell starts with; must match START_OXYGEN_MG. */
-export const START_OXYGEN_MG = 2400;
 
-// Mirror the enums in crates/sim/src/world.rs.
+// Mirror the enums in crates/sim/src/world.rs. Building 1 was the oxygen diffuser; the number stays unused.
 export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
-export const Building = { None: 0, OxygenDiffuser: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
+export const Building = { None: 0, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
 export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down'] as const;
@@ -85,7 +78,6 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.Ladder]: [0, 1],
   [Building.MushroomBed]: [0, 2],
   [Building.Bed]: [0, 3],
-  [Building.OxygenDiffuser]: [2, 6],
 };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
 /** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */

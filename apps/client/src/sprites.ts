@@ -92,15 +92,6 @@ if (has('mushroom-bed')) registerModel('mushroom-bed', () => {
   return g;
 });
 
-if (has('diffuser')) registerModel('diffuser', () => {
-  const g = new THREE.Group();
-  const m = card('diffuser', 320 * PX);
-  m.position.y = -0.02;
-  m.renderOrder = 3;
-  g.add(m);
-  return g;
-});
-
 /** The cot's height, and where its mattress top is, for laying sleepers on it. */
 const BED_HEIGHT = 1.05 / 3;
 export const BED_TOP = BED_HEIGHT * 0.41 - 0.02;

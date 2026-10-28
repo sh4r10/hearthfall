@@ -1,7 +1,7 @@
 //! Survivors: their needs, moods and what they decide to do each tick.
 
 use crate::nav::UNREACHED;
-use crate::{Building, Sim, BREATH_MG, EVENT_DEATH, SHADE_DRAIN, SUFFOCATE_BELOW_MG};
+use crate::{Building, Sim, EVENT_DEATH, SHADE_DRAIN};
 
 /// Every need runs from 0 (empty) to this.
 pub const STAT_MAX: i32 = 10_000;
@@ -9,8 +9,7 @@ pub const STAT_MAX: i32 = 10_000;
 /// Values of [`Colonist::cause`]: why they died.
 pub const CAUSE_ALIVE: u8 = 0;
 pub const CAUSE_FROZE: u8 = 1;
-pub const CAUSE_SUFFOCATED: u8 = 2;
-pub const CAUSE_TAKEN: u8 = 3;
+pub const CAUSE_TAKEN: u8 = 2;
 
 /// Warmth lost per tick in lamp light: not warm, but not the biting dark either.
 pub const LIT_COLD_DRAIN: i32 = 5;
@@ -48,7 +47,6 @@ pub struct Colonist {
     pub y: u32,
     pub role: Role,
     pub activity: Activity,
-    pub breath: i32,
     /// Drops in the dark, recovers near a hearth.
     pub warmth: i32,
     /// Drains while awake, refilled by sleep.
@@ -75,10 +73,6 @@ pub struct Colonist {
 pub const HEADING_NONE: u8 = 0;
 /// Going to the fire to warm up.
 pub const HEADING_WARM: u8 = 1;
-/// Stepping back out of stale air to breathe.
-pub const HEADING_AIR: u8 = 2;
-/// Below this breath a survivor leaves stale air for somewhere they can breathe.
-pub const BREATHLESS_BELOW: i32 = STAT_MAX / 2;
 /// Below this warmth a survivor drops what they are doing and goes to the fire.
 pub const COLD_BELOW: i32 = STAT_MAX * 4 / 10;
 /// A survivor warming up by the fire takes no work until this warm again.
@@ -91,7 +85,6 @@ impl Colonist {
             y,
             role,
             activity: Activity::Idle,
-            breath: STAT_MAX,
             warmth: STAT_MAX,
             energy: STAT_MAX * 8 / 10,
             fullness: STAT_MAX * 7 / 10,
@@ -119,7 +112,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32] {
             eat(&v.to_le_bytes());
         }
     }
@@ -149,13 +142,8 @@ impl Sim {
         let warm = self.is_warm(i);
         let night = self.is_night();
         let attacked = self.under_attack(c);
-        let inhaled = self.oxygen[i].min(BREATH_MG);
-        self.oxygen[i] -= inhaled;
-        self.co2[i] += inhaled;
-        let low_air = self.oxygen[i] < SUFFOCATE_BELOW_MG;
 
         let col = &mut self.colonists[c];
-        col.breath = if low_air { col.breath - 60 } else { col.breath + 150 }.min(STAT_MAX);
         let starving = col.fullness == 0;
         let starve = if starving { 10 } else { 0 };
         col.warmth = if warm {
@@ -188,16 +176,8 @@ impl Sim {
         let comfort = (col.warmth + col.fullness + col.energy + col.sleep_quality) / 4 - if dark { 2_500 } else { 0 };
         col.mood += (comfort.clamp(0, STAT_MAX) - col.mood) / 200;
 
-        if col.breath <= 0 || col.warmth <= 0 {
-            // Running out of air takes precedence if both give out at once.
-            col.cause = if col.breath <= 0 {
-                CAUSE_SUFFOCATED
-            } else if attacked {
-                CAUSE_TAKEN
-            } else {
-                CAUSE_FROZE
-            };
-            col.breath = col.breath.max(0);
+        if col.warmth <= 0 {
+            col.cause = if attacked { CAUSE_TAKEN } else { CAUSE_FROZE };
             col.warmth = col.warmth.max(0);
             col.activity = Activity::Dead;
             col.path.clear();
@@ -302,14 +282,6 @@ impl Sim {
         let col = &self.colonists[c];
         let here = self.idx(col.x, col.y);
         // Needs come before errands.
-        if col.breath < BREATHLESS_BELOW && self.oxygen[here] < SUFFOCATE_BELOW_MG {
-            // Can't breathe here: back out to fresh air, whatever the job.
-            self.release_job(c);
-            if self.seek_air(c) {
-                return;
-            }
-        }
-        let col = &self.colonists[c];
         if col.warmth < COLD_BELOW && !self.is_warm(here) {
             // Too cold to carry on: back to the fire, whatever the job.
             self.release_job(c);
@@ -362,8 +334,8 @@ impl Sim {
                     return;
                 }
                 self.colonists[c].timer += 1;
-                // Someone still thawing out by the fire, or catching their breath, stays put.
-                let thawing = (self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here)) || self.colonists[c].breath < STAT_MAX * 9 / 10;
+                // Someone still thawing out by the fire stays put.
+                let thawing = self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here);
                 if !thawing && self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
                     return;
                 }
@@ -616,31 +588,6 @@ impl Sim {
         let col = &mut self.colonists[c];
         col.path = path;
         col.heading = heading;
-        col.timer = 0;
-        col.activity = Activity::Walking;
-        true
-    }
-
-    /// Head for the nearest cell with enough air to breathe. Returns false if
-    /// there is none in reach.
-    fn seek_air(&mut self, c: usize) -> bool {
-        let col = &self.colonists[c];
-        let field = self.field_from(col.x, col.y);
-        let mut best: Option<usize> = None;
-        for i in 0..self.oxygen.len() {
-            let d = field.dist[i];
-            if d != UNREACHED && d <= BED_REACH && self.oxygen[i] >= SUFFOCATE_BELOW_MG * 2 && best.map_or(true, |b| d < field.dist[b]) {
-                let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
-                if self.supported(x, y) {
-                    best = Some(i);
-                }
-            }
-        }
-        let Some(to) = best else { return false };
-        let path = self.path_to(&field, to);
-        let col = &mut self.colonists[c];
-        col.path = path;
-        col.heading = HEADING_AIR;
         col.timer = 0;
         col.activity = Activity::Walking;
         true

@@ -111,26 +111,6 @@ registerModel('ladder', () => {
   return g;
 });
 
-registerModel('diffuser', () => {
-  const g = new THREE.Group();
-  const metal = mat('#4c7f86', { metalness: 0.4, roughness: 0.5 });
-  g.add(mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.6, 8), metal, 0, 0.3, 0));
-  g.add(mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.06, 8), mat('#2f4f54'), 0, 0.05, 0));
-  g.add(mesh(new THREE.SphereGeometry(0.18, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), metal, 0, 0.6, 0));
-  const gauge = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8), mat('#d8f1ee', { emissive: '#28c4c0', emissiveIntensity: 0.6 }), 0.15, 0.36, 0.22);
-  gauge.rotation.x = Math.PI / 2;
-  g.add(gauge);
-  const bubbles = new THREE.Group();
-  bubbles.name = 'bubbles';
-  for (let i = 0; i < 4; i++) {
-    const b = mesh(new THREE.IcosahedronGeometry(0.05 + rand(i) * 0.03, 0), mat('#c9f2ee', { emissive: '#7fe0d8', emissiveIntensity: 0.5, transparent: true, opacity: 0.8 }), (rand(i + 4) - 0.5) * 0.3, 0.8, 0);
-    b.castShadow = false;
-    bubbles.add(b);
-  }
-  g.add(bubbles);
-  return g;
-});
-
 registerModel('mushroom-bed', () => {
   const g = new THREE.Group();
   g.add(mesh(new THREE.BoxGeometry(0.92, 0.2, 0.5), mat('#5a4030'), 0, 0.1, 0));
