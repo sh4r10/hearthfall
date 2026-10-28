@@ -21,7 +21,3 @@ export function artTexture(name: string, fallback: () => THREE.Texture, opts: { 
   return tex;
 }
 
-/** A painted terrain texture if one exists, for the terrain shader. */
-export function terrainArt(name: string): THREE.Texture | null {
-  return artUrl(name) ? artTexture(name, () => new THREE.Texture(), { repeat: true }) : null;
-}

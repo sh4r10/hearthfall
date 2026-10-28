@@ -1,6 +1,6 @@
 # Art prompts: batch 1
 
-The first batch of AI prompts for Hearthfall, enough to replace every placeholder in the current demo. See [art-brief.md](art-brief.md) for the full style guide.
+The first batch of AI image prompts for Hearthfall. The in-game world is now low-poly 3D built in code (see [art-brief.md](art-brief.md)), so these are kept for the story intro, UI icons, marketing art and sprite experiments.
 
 ## How to use these
 

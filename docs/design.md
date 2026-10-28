@@ -59,4 +59,4 @@ On the first run, a guided tutorial on a fixed map covers the basics only: mark 
 
 ## Look
 
-Side-on 2D, as in Oxygen Not Included, with smooth organic terrain shapes rather than visible tiles **(built)**. Firelight and darkness carry the mood. The current art is placeholder and drawn in code. Final art needs real sprites (commissioned, an asset pack, or AI-generated and cleaned up).
+Side-on, as in Oxygen Not Included, but in low-poly 3D built in code, in the style of Keepfall: faceted rock, chunky flat-shaded models, firelight casting real shadows, and bloom **(built)**. Firelight and darkness carry the mood. Every model comes from one registry, so better hand-made models or sprites can replace any piece later without touching the game. Details in [art-brief.md](art-brief.md).

@@ -11,5 +11,5 @@ A side-on browser colony-survival game. Read these before changing gameplay, art
 
 - `crates/sim` is the deterministic simulation. Integer maths only, all randomness through the seeded `Rng`, fixed iteration order. Anything that changes state must be included in `state_hash`. Run `cargo test -p sim` after changes.
 - `crates/sim-wasm` exposes the sim to the browser. Keep the flat array layouts in sync with `apps/client/src/protocol.ts` (`COLONIST_STRIDE`, `JOB_STRIDE`, enums).
-- `apps/client` renders with Three.js. The simulation never depends on the renderer.
+- `apps/client` renders with Three.js. The simulation never depends on the renderer. World models are low-poly, built in code, and all come from the registry in `apps/client/src/models.ts`, so they can be swapped for hand-made models or sprites by name.
 - `pnpm --filter client build:single` builds the one-file demo in `apps/client/dist/hearthfall.html`.

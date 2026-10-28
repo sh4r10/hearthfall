@@ -1,23 +1,27 @@
 # Hearthfall art brief
 
-For an artist, or as a guide for generating and cleaning up art with an AI image tool. Read [design.md](design.md) first for the world and the game.
+How Hearthfall looks, for anyone adding a model, effect or piece of UI. Read [design.md](design.md) first for the world and the game.
+
+**Approach (decided 2026-10-28):** everything in the world is low-poly 3D built in code from simple shapes (boxes, cylinders, cones, icosahedra), flat shaded, lit by real firelight with shadows and a bloom pass, and seen side-on. There are no image files. Every model comes from one registry in `apps/client/src/models.ts`, so any piece can later be replaced by a hand-made model (glTF) or a sprite by registering a new factory under the same name. The renderer is `apps/client/src/world-view.ts`.
 
 ## The feel
 
-A frozen world, survived underground by firelight. The caves are cold, blue-grey and heavy. Every warm colour in the frame comes from fire, and the people huddled near it. The mood is close and worn but not grim: the survivors are scrappy and a little funny, like Oxygen Not Included's duplicants, and the world is hand-painted rather than realistic.
+A frozen world, survived underground by firelight. The caves are cold, blue-grey and heavy. Every warm colour in the frame comes from fire, and the people huddled near it. The mood is close and worn but not grim: the survivors are scrappy and a little funny, like Oxygen Not Included's duplicants, and the world is chunky and toy-like rather than realistic.
 
 Reference points:
-- **Oxygen Not Included:** side-on cutaway, painted terrain with soft organic edges, chunky readable buildings, characters built from parts.
-- **Don't Starve:** scratchy dark outlines and a muted, slightly desaturated palette.
+- **Keepfall (keepfall.oshh.dk):** code-built low-poly models, flat shading, emissive glows, real shadows, bloom.
+- **Oxygen Not Included:** side-on cutaway, chunky readable buildings, characters built from parts.
 - **Darkest Dungeon (lighting only):** firelight against deep darkness.
 
 ## Rules
 
-- **View:** strictly side-on, no perspective. The light source for painted shading is upper left.
-- **Outlines:** dark warm brown (`#1a120c`), never pure black. About 3 px at the base tile size, a little uneven, as if inked by hand.
-- **Shading:** two or three painted tones per material, soft edges, a little texture. No gradients that look digital, no photo textures.
-- **Silhouettes first:** every building and creature must read at 48 px from its outline alone.
-- **Grid:** one cell is 64 × 64 px at 1x. Deliver at 2x (128 px per cell). Buildings snap to whole cells.
+- **View:** side-on, with a perspective camera (35° field of view) a little above the play plane, looking slightly down.
+- **Units:** one grid cell is 1 × 1 world unit. Models stand on y = 0, face +x, and are centred on x = 0 and z = 0. The play plane is z = 0; the camera looks from +z.
+- **Shapes:** few polygons, `flatShading: true`, roughness around 0.85. Use the shared `mat()` helper so materials are cached and colours stay on the palette. Lumpy natural shapes come from `lumpGeometry()`.
+- **Light:** warm light only comes from fire (point lights with shadows, emissive flames and embers). Everything else gets a faint cold fill. The sim's light field darkens whatever the fire does not reach, so the picture always matches the rules.
+- **Glow:** anything that should bloom (fire, embers, glowing fungus, gauges) uses an emissive colour with intensity above 1.
+- **Silhouettes first:** every building and creature must read at the default zoom (about 18 cells tall on screen) from its shape alone.
+- **Animation:** in code. Models expose named parts (for example `flame`, `bubbles`, `legL`) that the renderer moves.
 
 ## Palette
 
@@ -35,22 +39,21 @@ Reference points:
 
 ## Survivors
 
-- Proportions about 2.5 heads tall: big head, short body, stubby limbs, as in ONI.
+- Proportions about 2.5 heads tall: big head, short body, stubby limbs, as in ONI. About 1.3 cells tall in the world.
 - Winter layers: hooded coats with fur trim, scarves, mittens, patched trousers, heavy boots. Each person is recognisable by their hood, scarf colour and one accessory (goggles, a beanie, a bandage).
-- **Built from parts** for puppet animation, as ONI does: head, hood (back and front), eyes (open, closed, worried), mouth (several shapes), torso, upper arm, lower arm, hand, upper leg, lower leg, foot. Each part goes on its own transparent layer.
-- **Animations:** idle (breathing and shivering variants), walk, climb ladder, dig, build, carry, eat, sleep (lying down), cold (hugging self), dying, and a celebrate gesture.
-- A 128 px tall version is about one cell wide and two cells tall.
+- **Built from parts** for puppet animation. The `survivor` model has pivots named `legL`, `legR` (hips), `armF`, `armB` (shoulders), `head`, and a `tool` (a pick in the front hand). Coat and scarf colours come from the variant number.
+- **Animations:** done now: idle breathing, shivering and hugging self when cold, walk, work (swinging the pick), eat, sleep and dead (lying down). Still to do: climb ladder, build, carry, celebrate.
 
 ## Terrain
 
-ONI-style terrain is drawn as a material texture plus an edge treatment, so the grid never shows:
-- For each material (rock, dirt, coal, ice, sand, and later deep rock and crystal): one **seamless 512 × 512 fill texture**, and one **edge strip**, a 128 px tall seamless horizontal band showing the material's lip with its outline, which the game bends around every edge.
-- **Back wall:** a seamless 1024 × 1024 painted cave wall, darker and lower contrast than the terrain.
-- **Water:** a fill colour plus a surface strip with a highlight.
+- **Solid cells** are large, overlapping, randomly turned low-poly lumps (one per cell, scaled about 1.4), so the rock reads as one faceted mass and the grid never shows. Lumps facing open space are lighter and cast shadows, and are nudged back so floors stay clear.
+- **Details:** stalactites under ceilings, pebbles on floors, gold specks on coal, and rare glowing cave fungus.
+- **Back wall:** a gently bumped low-poly plane behind the caves, warm brown where the cave is open and near-black behind rock.
+- **Water:** translucent blue blocks, darkened by the light field like everything else.
 
 ## Buildings (first set)
 
-Each is a single transparent PNG at 2x, plus an "off" or "broken" state where noted.
+Each is a registered model. Planned buildings are listed with their footprint; the first four already exist.
 
 | Building | Size in cells | Notes |
 |---|---|---|
@@ -83,9 +86,9 @@ Each is a single transparent PNG at 2x, plus an "off" or "broken" state where no
 
 ## Effects and UI
 
-- Fire: flame loop, embers, smoke puff. Breath mist in the cold. Frost creeping in at the screen edges when a survivor is freezing.
+- Fire: flickering flame cones, rising embers, a point light that flickers with them. To do: smoke puff. Breath mist in the cold. Frost creeping in at the screen edges when a survivor is freezing.
 - Dig debris burst for each material. Gas wisps for carbon dioxide.
-- Icons, 64 px, in the same inked style: dig, cancel, every building, every need (warmth, breath, energy, food, mood, sleep), every role, and coal, food and survivors.
+- Icons, 64 px (UI only, see [ui-guide.md](ui-guide.md)): dig, cancel, every building, every need (warmth, breath, energy, food, mood, sleep), every role, and coal, food and survivors.
 
 ## Story intro
 
@@ -97,7 +100,11 @@ Five or six wide illustrations, 1920 × 1080, painted, with parallax layers sepa
 5. The first hearth lit underground, faces lit warm against blue dark.
 6. Title card: "Hearthfall".
 
-## AI generation tips
+## Swapping in better art later
+
+Register a new factory under the same name in `models.ts`, for example one that loads a glTF made in Blender, or one that returns a sprite. Keep the units and named parts above and nothing else changes. [art-prompts.md](art-prompts.md) has AI image prompts, now only for the story intro, UI icons and marketing art, or for sprite experiments.
+
+### AI generation tips
 
 - Generate **one asset at a time** on a plain background, then remove the background and clean the outline by hand.
 - Keep a fixed style block at the start of every prompt, for example: *"2D hand-painted game asset, side view, Oxygen Not Included and Don't Starve style, warm dark-brown ink outlines, muted desaturated colours, soft painted shading lit from upper left, plain flat background"*.
@@ -106,4 +113,4 @@ Five or six wide illustrations, 1920 × 1080, painted, with parallax layers sepa
 
 ## Delivery
 
-PNG with transparency, at 2x. One folder per category (`terrain/`, `buildings/`, `characters/`, `creatures/`, `fx/`, `ui/`, `story/`). Layered source files (PSD or Krita) for characters and creatures.
+Code models: in `apps/client/src/models.ts`. Images (story, icons): PNG with transparency in `apps/client/art/`. Hand-made 3D models: glTF (`.glb`), one per registry name.
