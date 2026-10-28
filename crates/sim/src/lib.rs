@@ -6,6 +6,7 @@
 //! replay verification rely on.
 
 mod colonist;
+mod haul;
 mod jobs;
 mod nav;
 mod orders;
@@ -16,7 +17,8 @@ mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
 pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
-pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
+pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
+pub use haul::{Item, CARRY_MAX};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -33,6 +35,8 @@ pub const START_COAL: i32 = 24;
 /// Enough stone for a couple of ladders and a bed before the first rock is cut.
 pub const START_STONE: i32 = 12;
 pub const START_FOOD: i32 = 20;
+/// The starting stockpile stands this many cells left of the first hearth.
+pub const START_STOCKPILE_LEFT: u32 = 6;
 /// How far hearth light reaches through open cells, by day and by night.
 pub const LIGHT_RADIUS_DAY: i32 = 13;
 pub const LIGHT_RADIUS_NIGHT: i32 = 8;
@@ -94,6 +98,9 @@ pub struct Sim {
     pub hearth_fuel: Vec<i32>,
     /// Priority each hearth's refuel errands get, indexed by cell.
     pub refuel_priority: Vec<u8>,
+    /// What lies loose on each cell (an [`Item`] number, 0 for nothing) and how much.
+    pub pile_item: Vec<u8>,
+    pub pile_amount: Vec<i32>,
     pub temperature: Vec<i32>,
     /// Light level per cell, 0..=255. Derived from hearths and lamps each tick.
     pub light: Vec<u8>,
@@ -132,6 +139,8 @@ impl Sim {
         let start = (cy * width + cx) as usize;
         buildings[start] = Building::Hearth;
         hearth_fuel[start] = HEARTH_CAPACITY;
+        // A stockpile in the start cave, so the first dug coal has somewhere to go.
+        buildings[start - START_STOCKPILE_LEFT as usize] = Building::Stockpile;
         let mut sim = Sim {
             width,
             height,
@@ -140,6 +149,8 @@ impl Sim {
             buildings,
             hearth_fuel,
             refuel_priority: vec![DEFAULT_PRIORITY; n],
+            pile_item: vec![0; n],
+            pile_amount: vec![0; n],
             temperature: vec![START_TEMP_CK; n],
             light: vec![0; n],
             firelight: vec![0; n],
@@ -303,7 +314,8 @@ impl Sim {
         for i in 0..self.elements.len() {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
             eat(&self.hearth_fuel[i].to_le_bytes());
-            eat(&[self.refuel_priority[i]]);
+            eat(&[self.refuel_priority[i], self.pile_item[i]]);
+            eat(&self.pile_amount[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());
         }
         for c in &self.colonists {

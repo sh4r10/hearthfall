@@ -95,7 +95,8 @@ fn frozen_colonists_leave_cairns_and_death_events() {
         assert_eq!(c.cause, sim::CAUSE_FROZE);
         // The cold hearth stays put; anywhere else gets a cairn.
         let i = sim.idx(c.x, c.y);
-        let expected = if i == centre { Building::Hearth } else { Building::Cairn };
+        // A cairn never goes on or beside another building, such as the starting stockpile.
+        let expected = if i == centre { Building::Hearth } else if sim.room_for(c.x, c.y, Building::Cairn) || sim.buildings[i] == Building::Cairn { Building::Cairn } else { sim.buildings[i] };
         assert_eq!(sim.buildings[i], expected, "colonist {k} at {},{}", c.x, c.y);
         let deaths: Vec<_> = sim.events.iter().filter(|e| e.colonist == k as u32).collect();
         assert_eq!(deaths.len(), 1);
@@ -110,13 +111,17 @@ fn a_survivor_walks_over_and_digs_a_marked_cell() {
     let mut sim = sealed_room(1, 40, (5, 10, 30, 20));
     let target = sim.idx(31, 20);
     sim.elements[target] = Element::Coal;
+    // Somewhere to carry the coal to.
+    let store = sim.idx(10, 20);
+    sim.buildings[store] = Building::Stockpile;
     let coal = sim.coal;
     sim.step(&[Command::Dig { x: 31, y: 20 }]);
     assert_eq!(sim.jobs.len(), 1);
-    for _ in 0..600 {
+    for _ in 0..1200 {
         sim.step(&[]);
     }
     assert_eq!(sim.elements[target], Element::Floor, "jobs left: {:?}", sim.jobs);
+    // Dug coal lands as a pile and only counts once someone hauls it in.
     assert_eq!(sim.coal, coal + sim::COAL_PER_CELL);
     assert!(sim.jobs.is_empty());
 }

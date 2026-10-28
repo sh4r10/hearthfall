@@ -1,6 +1,8 @@
 //! Survivors: their needs, moods and what they decide to do each tick.
 
 use crate::nav::UNREACHED;
+use crate::haul::Item;
+use crate::jobs::JobKind;
 use crate::{Building, Sim, EVENT_DEATH, SHADE_DRAIN};
 
 /// Every need runs from 0 (empty) to this.
@@ -22,11 +24,13 @@ pub enum Role {
     Digger = 0,
     Builder = 1,
     Firekeeper = 2,
+    /// Carries dug coal and stone to the stockpile.
+    Hauler = 3,
 }
 
 impl Role {
     pub fn from_u8(v: u8) -> Option<Role> {
-        [Role::Digger, Role::Builder, Role::Firekeeper].get(v as usize).copied()
+        [Role::Digger, Role::Builder, Role::Firekeeper, Role::Hauler].get(v as usize).copied()
     }
 }
 
@@ -66,6 +70,8 @@ pub struct Colonist {
     pub cause: u8,
     /// What the current walk is for when it is not a job: one of the `HEADING_` values.
     pub heading: u8,
+    /// Goods on the way to a stockpile.
+    pub carrying: Option<(Item, i32)>,
     timer: u32,
 }
 
@@ -95,6 +101,7 @@ impl Colonist {
             bed: None,
             cause: CAUSE_ALIVE,
             heading: HEADING_NONE,
+            carrying: None,
             timer: 0,
         }
     }
@@ -112,7 +119,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32, self.carrying.map_or(0, |(i, _)| i as i32), self.carrying.map_or(0, |(_, n)| n)] {
             eat(&v.to_le_bytes());
         }
     }
@@ -177,6 +184,8 @@ impl Sim {
         col.mood += (comfort.clamp(0, STAT_MAX) - col.mood) / 200;
 
         if col.warmth <= 0 {
+            self.drop_load(c);
+            let col = &mut self.colonists[c];
             col.cause = if attacked { CAUSE_TAKEN } else { CAUSE_FROZE };
             col.warmth = col.warmth.max(0);
             col.activity = Activity::Dead;
@@ -202,7 +211,9 @@ impl Sim {
         }
     }
 
+    /// Let go of the errand, and set down anything being carried: a need comes first.
     fn release_job(&mut self, c: usize) {
+        self.drop_load(c);
         if let Some(id) = self.colonists[c].job {
             if let Some(job) = self.jobs.iter_mut().find(|j| j.id == id) {
                 job.claimed_by = None;
@@ -320,6 +331,9 @@ impl Sim {
             self.release_job(c);
         }
 
+        if self.colonists[c].carrying.is_some() {
+            return self.deliver(c);
+        }
         match self.colonists[c].job {
             Some(id) => self.pursue_job(c, id),
             None => {
@@ -357,9 +371,11 @@ impl Sim {
         let col = &self.colonists[c];
         let role_taken = |role| self.colonists.iter().any(|o| o.alive() && o.role == role);
         let field = self.field_from(col.x, col.y);
+        // Fetching goods is only worth it with a stockpile to take them to.
+        let can_store = (0..self.buildings.len()).any(|i| self.buildings[i] == Building::Stockpile && field.dist[i] != UNREACHED);
         let mut best: Option<(u8, i32, usize, usize)> = None; // (priority, score, job index, stand cell)
         for (k, job) in self.jobs.iter().enumerate() {
-            if job.claimed_by.is_some() || !self.job_doable(job) {
+            if job.claimed_by.is_some() || !self.job_doable(job) || (job.kind == JobKind::Haul && !can_store) {
                 continue;
             }
             // Leave work to the right specialist for a while, if there is one.
@@ -455,12 +471,16 @@ impl Sim {
             let job = self.jobs.remove(k);
             self.finish_job(&job);
             self.colonists[c].drop_job();
+            if job.kind == JobKind::Haul {
+                let i = self.idx(job.x, job.y);
+                self.pick_up(c, i);
+            }
         }
     }
 
     /// Take the next step along the survivor's path once it is due. Returns
     /// false if that step is no longer possible.
-    fn step_along(&mut self, c: usize) -> bool {
+    pub(crate) fn step_along(&mut self, c: usize) -> bool {
         let col = &mut self.colonists[c];
         let Some(&(nx, ny)) = col.path.first() else { return true };
         col.activity = Activity::Walking;

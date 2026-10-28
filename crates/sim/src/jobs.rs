@@ -1,6 +1,7 @@
 //! Errands the player marks (dig, build) or the colony raises itself (refuel).
 //! Survivors claim them, walk to them and work them off.
 
+use crate::haul::Item;
 use crate::{Building, Element, Role, Sim};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,6 +12,8 @@ pub enum JobKind {
     Refuel,
     /// Take a building down and put part of its cost back in the stockpile.
     Deconstruct,
+    /// Pick up a pile of dug goods and carry it to a stockpile.
+    Haul,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,6 +61,7 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::Ladder => (0, 1),
         Building::MushroomBed => (0, 2),
         Building::Bed => (0, 3),
+        Building::Stockpile => (0, 2),
         Building::None | Building::Cairn => (0, 0),
     }
 }
@@ -81,7 +85,7 @@ pub fn removable(b: Building) -> bool {
 /// so they never draw over each other.
 pub fn reach(b: Building) -> u32 {
     match b {
-        Building::Hearth | Building::MushroomBed => 1,
+        Building::Hearth | Building::MushroomBed | Building::Stockpile => 1,
         _ => 0,
     }
 }
@@ -93,6 +97,7 @@ impl JobKind {
             JobKind::Build(_) => Role::Builder,
             JobKind::Refuel => Role::Firekeeper,
             JobKind::Deconstruct => Role::Builder,
+            JobKind::Haul => Role::Hauler,
         }
     }
 
@@ -102,13 +107,15 @@ impl JobKind {
             JobKind::Build(_) => 1,
             JobKind::Refuel => 2,
             JobKind::Deconstruct => 3,
+            JobKind::Haul => 4,
         }
     }
 }
 
 impl Sim {
     pub(crate) fn add_job(&mut self, x: u32, y: u32, kind: JobKind) {
-        if self.jobs.iter().any(|j| j.x == x && j.y == y) {
+        // A haul shares its cell with any order: a pile lying there blocks nothing.
+        if self.jobs.iter().any(|j| j.x == x && j.y == y && (j.kind == JobKind::Haul) == (kind == JobKind::Haul)) {
             return;
         }
         let id = self.next_job_id;
@@ -118,7 +125,7 @@ impl Sim {
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && j.kind != JobKind::Refuel) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -247,6 +254,7 @@ impl Sim {
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
             JobKind::Deconstruct => removable(self.buildings[i]),
+            JobKind::Haul => self.haul_doable(i),
         }
     }
 
@@ -264,6 +272,8 @@ impl Sim {
                 Building::Hearth => 75,
                 _ => 40,
             },
+            // Scooping up a pile; the walk to the stockpile comes after.
+            JobKind::Haul => 15,
         }
     }
 
@@ -271,13 +281,17 @@ impl Sim {
         let i = self.idx(job.x, job.y);
         match job.kind {
             JobKind::Dig => {
-                match self.elements[i] {
-                    Element::Coal => self.coal += COAL_PER_CELL,
-                    Element::Rock => self.stone += STONE_PER_CELL,
-                    Element::Dirt => self.stone += STONE_PER_DIRT,
-                    _ => {}
-                }
+                // What the cell was cut into lands on the floor for a hauler.
+                let dropped = match self.elements[i] {
+                    Element::Coal => Some((Item::Coal, COAL_PER_CELL)),
+                    Element::Rock => Some((Item::Stone, STONE_PER_CELL)),
+                    Element::Dirt => Some((Item::Stone, STONE_PER_DIRT)),
+                    _ => None,
+                };
                 self.elements[i] = Element::Floor;
+                if let Some((item, amount)) = dropped {
+                    self.drop_pile(i, item, amount);
+                }
             }
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);
@@ -294,12 +308,15 @@ impl Sim {
                 self.hearth_fuel[i] += amount;
             }
             JobKind::Deconstruct => self.take_down(i),
+            // The colonist picks the pile up; see `Sim::pick_up`.
+            JobKind::Haul => {}
         }
     }
 
     /// Raise refuel errands for hungry hearths and drop jobs that no longer apply.
     pub(crate) fn maintain_jobs(&mut self) {
         self.collapse_unsupported();
+        self.raise_haul_jobs();
         if self.coal > 0 {
             for i in 0..self.buildings.len() {
                 if self.buildings[i] == Building::Hearth && self.hearth_fuel[i] < REFUEL_BELOW {
@@ -317,6 +334,7 @@ impl Sim {
                 JobKind::Build(b) => self.buildings[self.idx(job.x, job.y)] != Building::None || !self.fits(job.x, job.y, b),
                 JobKind::Refuel => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
                 JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
+                JobKind::Haul => self.pile_amount[self.idx(job.x, job.y)] <= 0,
             };
             if stale {
                 let job = self.jobs.remove(k);

@@ -35,6 +35,10 @@ COPY = {
     "cairn": "buildings/grave.png",
     "bed": "buildings/bed-empty.png",
     "lamp": "buildings/lamp-on.png",
+    "stockpile": "buildings/stockpile-empty.png",
+    "stockpile-half": "buildings/stockpile-half.png",
+    "stockpile-full": "buildings/stockpile-full.png",
+    "pile-coal": "items/coal-chunk.png",
 }
 # Props cut to their painted area, for markers and icons in the world.
 CROP = {"pickaxe": "props/pickaxe.png"}

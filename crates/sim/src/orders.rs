@@ -19,6 +19,8 @@ pub const BLOCK_NO_STONE: u8 = 3;
 pub const BLOCK_UNDER_BUILDING: u8 = 4;
 /// Doable and in reach, but nobody has picked it up for a long while.
 pub const BLOCK_NO_HANDS: u8 = 5;
+/// A pile with no stockpile to carry it to.
+pub const BLOCK_NO_STOCKPILE: u8 = 6;
 /// How long a doable order may sit unclaimed before it counts as stuck.
 pub const NO_HANDS_TICKS: u64 = 300;
 
@@ -56,6 +58,9 @@ impl Sim {
                         }
                     }
                     JobKind::Refuel if self.coal <= 0 => return BLOCK_NO_COAL,
+                    JobKind::Haul if !self.has_stockpile() => return BLOCK_NO_STOCKPILE,
+                    // Out in the dark at night it waits for dawn, as it should.
+                    JobKind::Haul if !self.haul_doable(self.idx(job.x, job.y)) => return BLOCK_NONE,
                     _ => {}
                 }
                 let stand = (-1..=1).any(|dy| {
