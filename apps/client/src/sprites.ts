@@ -128,6 +128,17 @@ if (has('cairn')) registerModel('cairn', () => {
   return g;
 });
 
+// The dig marker is the painted pickaxe, centred on the cell and lit like a
+// marker rather than by the cave, so orders stay readable in the dark.
+if (has('pickaxe')) registerModel('dig-marker', () => {
+  const g = new THREE.Group();
+  const m = card('pickaxe', 0.62, { lit: false });
+  m.position.y = -0.31;
+  m.renderOrder = 6;
+  g.add(m);
+  return g;
+});
+
 /**
  * A card showing one frame of a strip of `frames` equal frames side by side,
  * `height` tall. `userData.frame(n)` shows frame n (wrapping), and
