@@ -1,0 +1,8 @@
+{
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nUse case stylized-concept. Reference image: Shade drift design sheet. Produce the SAME smoky creature, same colours, same tiny pale eyes and thin arms, crisp flat smoke wisps with no blur. Animation recoil, THREE matching frames in one horizontal row, generously separated, transparent background. Frame1 shrinking from light, Frame2 raising one long arm across eyes and leaning back, Frame3 hunched retreat with arm still over eyes. Same body scale every frame; no floor or ground shadow. Smoke body charcoal #2e2c31 with one flat shadow; eyes #e4f1fb. No costume, no mouth, no detailed texture.",
+  "path": "/var/home/shariq/.codex/generated_images/01a18442-66c9-7ca3-b43e-a03e11e38168/exec-eb6b09ec-cc37-4574-902c-9347940bf1a4.png",
+  "tries": 1,
+  "references": [
+    "creature-shade-drift generated sheet"
+  ]
+}

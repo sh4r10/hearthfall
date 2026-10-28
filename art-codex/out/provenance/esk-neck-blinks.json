@@ -1,0 +1,10 @@
+{
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nEdit target Esk head parts sheet. The same character as the reference, same proportions, same colours. Change ONLY the eyes in FRONT and right-facing PROFILE to short closed curved dark-brown lines. Keep brows, face, cheeks, mouth, hair, hood, goggles, fur ruff and long rust-red neck stub EXACTLY unchanged, same outline and same placement. Back head unchanged. Exactly same three heads in one horizontal row. True transparent background. No other edits.",
+  "path": "/var/home/shariq/.codex/generated_images/01a18442-66c9-7ca3-b43e-a03e11e38168/exec-e396fef9-dbce-4d84-8c79-d902e6b37f48.png",
+  "tries": 1,
+  "references": [
+    "art-codex/out/characters/esk/turnaround.png",
+    "esk-neck-fix generated heads"
+  ],
+  "notes": "Transferred only eye rectangles from registered edit, identical pixels elsewhere."
+}

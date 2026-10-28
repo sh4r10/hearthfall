@@ -1,0 +1,9 @@
+{
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nEdit target: Mara turnaround reference. Produce only three separated head parts in one horizontal row, front, right-facing profile, back. The same character as the reference, same proportions, same colours. Preserve her ochre striped earflap beanie, auburn three-segment braid, medium brown skin, soot cheek and teal scarf. Each head MUST include a broad solid teal collar/neck stub continuing below the chin and scarf, enough to reach y188 when hat top is y54 in a 320px rig frame. Neck stub approximately 40px wide at final size; NO transparent gap between chin and collar. No torso, arms or legs. Transparent background.",
+  "path": "/var/home/shariq/.codex/generated_images/01a18441-035d-7800-8f37-4d30fb9a9057/exec-419bf60f-f070-44fb-bfc5-96e45194131f.png",
+  "tries": 1,
+  "references": [
+    "art-codex/out/characters/mara/turnaround.png"
+  ],
+  "notes": "Three replacement head parts registered at y54. Broad teal collar base reaches y188; braid tip reaches y203. Gap resolved without changing rig."
+}

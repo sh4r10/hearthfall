@@ -1,0 +1,6 @@
+{
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nEdit target: three heads from reference. Change ONLY eyes to short closed curves on front and profile. Same layout, exact same outline position colours scarf neck braid and hat, and back head unchanged. Transparent background. The same character as the reference, same proportions, same colours.",
+  "path": "/var/home/shariq/.codex/generated_images/01a18442-66c9-7ca3-b43e-a03e11e38168/exec-4edd8910-5d69-447b-836b-9edc7a7c579f.png",
+  "tries": 1,
+  "notes": "Only eye rectangles transferred; every pixel outside eyes retained from replacement head."
+}
