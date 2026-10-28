@@ -1,0 +1,4 @@
+tools/__pycache__/
+out/*-source.png
+out/*-review.png
+out/check-progress.md
