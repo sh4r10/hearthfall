@@ -10,6 +10,7 @@ import { glowTexture } from './textures';
 import { artUrl } from './art';
 import { terrainMaterial } from './terrain-shader';
 import './sprites';
+import type { SurvivorAnim } from './sprites';
 
 export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
 
@@ -88,7 +89,13 @@ interface Survivor {
   pos: THREE.Vector3;
   facing: number;
   activity: number;
+  /** The grid cell they stand in. */
+  cell: number;
+  /** The kind of job they hold (index into JOB_NAMES), or -1. */
+  job: number;
   warmth: number;
+  /** Moving more up or down than sideways: on a ladder. */
+  climbing: boolean;
   /** Seconds since they last moved on screen, so the walking pose outlasts a brief pause between steps. */
   still: number;
   stride: number;
@@ -283,7 +290,7 @@ export class WorldView {
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, warmth: STAT_MAX, still: 10, stride: 0, dead: 0, index: i });
+      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i });
     }
 
     const first = frame.buildings.indexOf(Building.Hearth);
@@ -791,6 +798,8 @@ export class WorldView {
       s.target.y -= 0.5;
       if (first) s.pos.copy(s.target);
       s.activity = activity;
+      s.job = frame.colonists[o + 12];
+      s.cell = y * this.width + x;
       s.warmth = warmth;
     });
     this.updateShades(frame);
@@ -873,6 +882,7 @@ export class WorldView {
     s.pos.x += (dx / dist) * step;
     s.pos.y += (dy / dist) * step;
     if (Math.abs(dx) > 0.05) s.facing = Math.sign(dx);
+    s.climbing = Math.abs(dy) > Math.abs(dx);
     s.still = 0;
     s.stride += step;
     return true;
@@ -901,6 +911,7 @@ export class WorldView {
       }
       s.sleeper.visible = true;
       s.sleeper.position.copy(s.pos);
+      if (s.sleeper.userData.flat && this.lastBuildings?.[s.cell] === Building.Bed) s.sleeper.position.y += 0.3; // on the cot, not under it
       s.sleeper.rotation.y = s.facing > 0 ? 0 : Math.PI;
       const blanket = s.sleeper.getObjectByName('blanket');
       if (blanket) blanket.scale.y = 1 + Math.sin(t * 1.6 + s.index) * 0.05;
@@ -910,6 +921,16 @@ export class WorldView {
     // Dead: 0.7 s collapse on the standing model, then the body.
     s.dead += dt;
     const k = Math.min(s.dead / 0.7, 1);
+    const play = model.userData.play as ((anim: SurvivorAnim, frame: number) => void) | undefined;
+    if (k < 1 && play) {
+      // Painted collapse: four frames, then the body.
+      model.visible = true;
+      model.position.copy(s.pos);
+      model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
+      model.scale.set(1, 1, 1);
+      play('collapse', k * 4);
+      return true;
+    }
     if (k < 1) {
       model.visible = true;
       model.position.copy(s.pos);
@@ -939,6 +960,20 @@ export class WorldView {
     const moving = this.glide(s, dt);
     if (this.restingOrDead(s, dt, t)) return;
     model.position.copy(s.pos);
+    const play = model.userData.play as ((anim: SurvivorAnim, frame: number) => void) | undefined;
+    if (play) {
+      // Painted animation strips. Walking frames follow distance covered, so feet don't slide.
+      model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
+      model.scale.set(1, 1, 1);
+      const cold = 1 - s.warmth / STAT_MAX;
+      if (moving && s.climbing) play('climb', s.stride * 4);
+      else if (moving) play(s.job === 2 ? 'carry' : 'walk', (s.stride / 1.2) * 6 + i);
+      else if (s.activity === 2) play(s.job === 0 ? 'dig' : 'build', t * (s.job === 0 ? 6 : 7) + i);
+      else if (s.activity === 4) play('eat', t * 2.5 + i);
+      else if (cold > 0.4) play('cold', t * 14 + i);
+      else play('idle', t * 2.5 + i * 1.3);
+      return;
+    }
     const front = model.getObjectByName('front')!, side = model.getObjectByName('side')!;
     const walking = moving;
     side.visible = walking || s.activity === 2;

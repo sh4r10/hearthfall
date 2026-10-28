@@ -24,6 +24,8 @@ export const terrainFragment = /* glsl */ `
   // Optional painted textures; the matching flag is 1.0 when one is loaded.
   uniform sampler2D uRockTex, uDirtTex, uCoalTex, uWallTex;
   uniform vec4 uHasArt;      // rock, dirt, coal, back wall
+  uniform sampler2D uWaterTex;
+  uniform float uHasWaterArt;
   uniform float uTime;
   varying vec2 vUv;
 
@@ -107,7 +109,10 @@ export const terrainFragment = /* glsl */ `
     vec3 shallowColor = vec3(0.22, 0.52, 0.62), deepColor = vec3(0.05, 0.16, 0.26);
     vec3 waterColor = mix(shallowColor, deepColor, smoothstep(0.0, 6.0, depth));
     waterColor *= 0.9 + 0.2 * fbm(cell * 2.0 + vec2(uTime * 0.15, -uTime * 0.1)); // caustic shimmer
-    waterColor = mix(waterColor, texture2D(uWallTex, cell / 8.0).rgb * vec3(0.5, 0.8, 1.0), 0.12 * uHasArt.w);
+    waterColor = mix(waterColor, texture2D(uWallTex, cell / 8.0).rgb * vec3(0.5, 0.8, 1.0), 0.12 * uHasArt.w * (1.0 - uHasWaterArt));
+    // Painted water drifts slowly and darkens with depth like the plain colour.
+    vec3 paintedWater = texture2D(uWaterTex, cell / 4.0 + vec2(uTime * 0.025, uTime * 0.01)).rgb;
+    waterColor = mix(waterColor, paintedWater * mix(1.0, 0.35, smoothstep(0.0, 6.0, depth)), 0.85 * uHasWaterArt);
     vec3 open = mix(wall, waterColor, water * 0.9);
     open += surface * vec3(0.28, 0.4, 0.42) * (0.7 + 0.3 * sin(cell.x * 3.0 + uTime * 2.2));
 
@@ -141,12 +146,14 @@ export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTextur
 function paintedTextures() {
   const blank = new THREE.Texture();
   const art = (name: string) => (artUrl(name) ? artTexture(name, () => blank, { repeat: true }) : null);
-  const [rock, dirt, coal, wall] = ['rock', 'dirt', 'coal', 'backwall'].map(art);
+  const [rock, dirt, coal, wall, water] = ['rock', 'dirt', 'coal', 'backwall', 'water'].map(art);
   return {
     uRockTex: { value: rock ?? blank },
     uDirtTex: { value: dirt ?? blank },
     uCoalTex: { value: coal ?? blank },
     uWallTex: { value: wall ?? blank },
     uHasArt: { value: new THREE.Vector4(rock ? 1 : 0, dirt ? 1 : 0, coal ? 1 : 0, wall ? 1 : 0) },
+    uWaterTex: { value: water ?? blank },
+    uHasWaterArt: { value: water ? 1 : 0 },
   };
 }

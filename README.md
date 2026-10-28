@@ -8,7 +8,7 @@ A side-on browser colony-survival game. The sun has dimmed, the surface has froz
 |---|---|
 | `crates/sim` | Deterministic simulation core in Rust (map generation, gas and water with gravity, heat, hearth light, colonists). Integer-only maths and a seeded RNG, so the same seed and commands always produce the same state hash. Not tied to any renderer, so it can also run on the server or in Godot via GDExtension. |
 | `crates/sim-wasm` | wasm-bindgen wrapper that exposes the sim to the browser. |
-| `apps/client` | TypeScript + Three.js client: side-on, painted sprites and a terrain shader in a 3D scene, with a low-poly fallback (`src/models.ts` registry). Art is processed by `scripts/process-art.py` into `apps/client/art/`. The sim runs in a Web Worker at a fixed 10 ticks per second; the renderer interpolates between ticks. `pnpm --filter client build:single` packs it into one HTML file. |
+| `apps/client` | TypeScript + Three.js client: side-on, painted sprites and a terrain shader in a 3D scene, with a low-poly fallback (`src/models.ts` registry). Art is made by Codex on the `art/codex` branch and brought into `apps/client/art/` by `scripts/import-codex-art.py`. The sim runs in a Web Worker at a fixed 10 ticks per second; the renderer interpolates between ticks. `pnpm --filter client build:single` packs it into one HTML file. |
 
 ## Running it
 

@@ -1,6 +1,8 @@
 # Art prompts: batch 1
 
-AI image prompts for Hearthfall. Batch 1 is done and in the game (cleaned up by `scripts/process-art.py`). Batch 2 fills the gaps. See [art-brief.md](art-brief.md) for the full style guide.
+**Superseded (2026-10-28):** art is now made by Codex to the brief in `art-codex/` on the `art/codex` branch. Kept for the history of the first batch.
+
+AI image prompts for Hearthfall. Batch 1 was done and in the game. Batch 2 fills the gaps. See [art-brief.md](art-brief.md) for the full style guide.
 
 ## How to use these
 
