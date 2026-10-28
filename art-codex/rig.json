@@ -1,0 +1,52 @@
+{
+  "about": "The shared survivor rig. Every survivor part is painted on a full 320x320 frame canvas, already in place for the neutral pose, so stacking the parts in layer order rebuilds the whole character. Pivots are in pixels on that canvas, origin top-left, y down. Feet stand on the ground line. The compositor rotates each part about its pivot and carries children with their parent.",
+  "frame": { "width": 320, "height": 320, "ground_y": 304, "centre_x": 160, "standing_height_px": 250, "px_per_cell": 192 },
+  "views": {
+    "side": {
+      "facing": "right (+x)",
+      "layers_back_to_front": ["arm-back", "leg-back", "leg-front", "scarf", "torso", "head", "tool", "arm-front"],
+      "parts": {
+        "leg-back":  { "parent": "root",      "pivot": [154, 254] },
+        "leg-front": { "parent": "root",      "pivot": [168, 254] },
+        "torso":     { "parent": "root",      "pivot": [160, 254] },
+        "scarf":     { "parent": "torso",     "pivot": [150, 176] },
+        "head":      { "parent": "torso",     "pivot": [162, 168] },
+        "arm-back":  { "parent": "torso",     "pivot": [152, 186] },
+        "arm-front": { "parent": "torso",     "pivot": [170, 186] },
+        "tool":      { "parent": "arm-front", "pivot": [172, 238] }
+      },
+      "alternates": { "head": ["head-blink"] }
+    },
+    "front": {
+      "facing": "the viewer",
+      "layers_back_to_front": ["leg-left", "leg-right", "torso", "arm-left", "arm-right", "head"],
+      "parts": {
+        "leg-left":  { "parent": "root",  "pivot": [148, 256] },
+        "leg-right": { "parent": "root",  "pivot": [172, 256] },
+        "torso":     { "parent": "root",  "pivot": [160, 256] },
+        "head":      { "parent": "torso", "pivot": [160, 168] },
+        "arm-left":  { "parent": "torso", "pivot": [128, 188] },
+        "arm-right": { "parent": "torso", "pivot": [192, 188] }
+      },
+      "alternates": { "head": ["head-blink"] }
+    },
+    "back": {
+      "facing": "away from the viewer (climbing a ladder)",
+      "layers_back_to_front": ["leg-left", "leg-right", "torso", "arm-left", "arm-right", "head"],
+      "parts": {
+        "leg-left":  { "parent": "root",  "pivot": [148, 256] },
+        "leg-right": { "parent": "root",  "pivot": [172, 256] },
+        "torso":     { "parent": "root",  "pivot": [160, 256] },
+        "head":      { "parent": "torso", "pivot": [160, 168] },
+        "arm-left":  { "parent": "torso", "pivot": [128, 188] },
+        "arm-right": { "parent": "torso", "pivot": [192, 188] }
+      }
+    }
+  },
+  "neutral_pose": {
+    "side": "Standing relaxed, facing right. Arms hang straight down with the mittens at hip level (front mitten centre near x=172, y=238). Legs straight, feet flat on y=304, front boot toe pointing right. Head level, looking right.",
+    "front": "Standing relaxed, facing the viewer. Arms hang down a little away from the body, mittens near (122,238) and (198,238). Feet slightly apart on y=304.",
+    "back": "The front pose seen from behind: hood, back of the coat, boot heels."
+  },
+  "tool_grip": "Tools are painted on a 320x320 canvas with the handle's grip point exactly at (172, 238), the front mitten in the side neutral pose. Neutral tool orientation: handle pointing straight UP from the grip, working end at the top, pointing forward (+x)."
+}

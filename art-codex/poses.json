@@ -1,0 +1,118 @@
+{
+ "about": {
+   "units": "Angles in degrees, offsets in pixels on the 320x320 frame (origin top-left, y down).",
+   "rotation": "rot.<part> rotates that part about its rig.json pivot. Positive = clockwise on screen. Children inherit their parent's transform (rig.json parents: torso carries head, arms and scarf; arm-front carries tool; legs and torso hang from root).",
+   "side view (facing right)": "Arms and legs hang down at 0. NEGATIVE swings a limb FORWARD (toward +x, the facing direction): -90 = pointing straight ahead, -180 = straight up. Positive swings it back. Torso: POSITIVE leans forward. Scarf: positive trails it back.",
+   "front and back views": "arm-left (image left) goes out and up with POSITIVE angles (150 = up in a V); arm-right goes out and up with NEGATIVE angles. Same for the legs.",
+   "tool": "rot.tool is the prop's extra rotation about the grip (172,238), on top of arm-front's. Neutral prop: handle straight up from the grip, working end forward. The prop file is <root>/props/<prop>.png; 'prop' may be set per animation or per frame.",
+   "offsets": "torso_dy moves the torso (and so head, arms, scarf, tool) up/down. move.<part> = [dx,dy] moves one part (and its children). root_dx/root_dy (alias dx/dy) shift the whole finished frame by whole pixels, so they never blur.",
+   "head": "'head' or 'head-blink' per frame.",
+   "layers": "Optional per-animation layer order (back to front) replacing rig.json's; carry draws the sack behind the head.",
+   "props": "pickaxe and hammer: handle up from the grip, head at the top. coal-sack: grip at the knot, the sack body hanging BELOW the knot (carry's tool angle assumes that).",
+   "ground_lock": "When true, each frame is shifted vertically so the lowest leg pixel sits on ground_y (304) before root_dy is applied. This keeps feet planted while legs swing; a jump is root_dy < 0 (the checker allows exactly that).",
+   "pose animations": "An animation with 'pose' uses the painted image characters/<name>/poses/<pose>.png instead of the rig. Per frame: dx, dy (whole pixels), sx, sy (scale about (centre_x, ground_y), so the body stays on the ground), pose_frame (cell of a multi-frame pose)."
+ },
+ "anims": {
+  "idle": {
+   "view": "front",
+   "fps": 4,
+   "frames": [
+    {"torso_dy": 0, "head": "head"},
+    {"torso_dy": -1, "head": "head"},
+    {"torso_dy": -2, "head": "head-blink"},
+    {"torso_dy": -1, "head": "head"}
+   ]
+  },
+  "walk": {
+   "view": "side",
+   "fps": 10,
+   "ground_lock": true,
+   "frames": [
+    {"torso_dy": 0, "rot": {"leg-front": -25, "leg-back": 25, "arm-front": 20, "arm-back": -20, "scarf": 22}},
+    {"torso_dy": -2, "rot": {"leg-front": -12, "leg-back": 12, "arm-front": 10, "arm-back": -10, "scarf": 30}},
+    {"torso_dy": -3, "rot": {"leg-front": 12, "leg-back": -12, "arm-front": -10, "arm-back": 10, "scarf": 36}},
+    {"torso_dy": 0, "rot": {"leg-front": 25, "leg-back": -25, "arm-front": -20, "arm-back": 20, "scarf": 26}},
+    {"torso_dy": -2, "rot": {"leg-front": 12, "leg-back": -12, "arm-front": -10, "arm-back": 10, "scarf": 32}},
+    {"torso_dy": -3, "rot": {"leg-front": -12, "leg-back": 12, "arm-front": 10, "arm-back": -10, "scarf": 38}}
+   ]
+  },
+  "dig": {
+   "view": "side",
+   "fps": 8,
+   "prop": "pickaxe",
+   "ground_lock": true,
+   "frames": [
+    {"rot": {"torso": -4, "arm-front": -170, "arm-back": -160, "tool": 130, "leg-front": -8, "leg-back": 6, "scarf": 10}},
+    {"rot": {"torso": 2, "arm-front": -140, "arm-back": -132, "tool": 165, "leg-front": -8, "leg-back": 6, "scarf": 18}},
+    {"rot": {"torso": 10, "arm-front": -50, "arm-back": -46, "tool": 135, "leg-front": -8, "leg-back": 6, "scarf": 30}, "torso_dy": 2},
+    {"rot": {"torso": 5, "arm-front": -100, "arm-back": -94, "tool": 120, "leg-front": -8, "leg-back": 6, "scarf": 22}, "torso_dy": 1}
+   ]
+  },
+  "build": {
+   "view": "side",
+   "fps": 8,
+   "prop": "hammer",
+   "ground_lock": true,
+   "frames": [
+    {"rot": {"torso": -2, "arm-front": -110, "arm-back": -30, "tool": 80, "scarf": 12}},
+    {"rot": {"torso": 6, "arm-front": -80, "arm-back": -40, "tool": 170, "scarf": 20}, "torso_dy": 1},
+    {"rot": {"torso": 3, "arm-front": -95, "arm-back": -35, "tool": 125, "scarf": 16}}
+   ]
+  },
+  "carry": {
+   "view": "side",
+   "fps": 10,
+   "prop": "coal-sack",
+   "ground_lock": true,
+   "layers": ["arm-back", "leg-back", "leg-front", "scarf", "torso", "tool", "head", "arm-front"],
+   "frames": [
+    {"torso_dy": 0, "rot": {"leg-front": -22, "leg-back": 22, "arm-back": -18, "arm-front": -200, "tool": 253, "scarf": 18}},
+    {"torso_dy": -2, "rot": {"leg-front": -10, "leg-back": 10, "arm-back": -9, "arm-front": -200, "tool": 253, "scarf": 24}},
+    {"torso_dy": -3, "rot": {"leg-front": 10, "leg-back": -10, "arm-back": 9, "arm-front": -200, "tool": 253, "scarf": 28}},
+    {"torso_dy": 0, "rot": {"leg-front": 22, "leg-back": -22, "arm-back": 18, "arm-front": -200, "tool": 253, "scarf": 20}},
+    {"torso_dy": -2, "rot": {"leg-front": 10, "leg-back": -10, "arm-back": 9, "arm-front": -200, "tool": 253, "scarf": 26}},
+    {"torso_dy": -3, "rot": {"leg-front": -10, "leg-back": 10, "arm-back": -9, "arm-front": -200, "tool": 253, "scarf": 30}}
+   ]
+  },
+  "climb": {
+   "view": "back",
+   "fps": 6,
+   "ground_lock": true,
+   "frames": [
+    {"torso_dy": 0, "rot": {"arm-left": 150, "arm-right": -105, "leg-left": 0, "leg-right": -8}, "move": {"leg-right": [0, -12]}},
+    {"torso_dy": -1, "rot": {"arm-left": 135, "arm-right": -135, "leg-left": 0, "leg-right": 0}},
+    {"torso_dy": 0, "rot": {"arm-left": 105, "arm-right": -150, "leg-left": 8, "leg-right": 0}, "move": {"leg-left": [0, -12]}},
+    {"torso_dy": -1, "rot": {"arm-left": 135, "arm-right": -135, "leg-left": 0, "leg-right": 0}}
+   ]
+  },
+  "celebrate": {
+   "view": "front",
+   "fps": 6,
+   "ground_lock": true,
+   "frames": [
+    {"rot": {"arm-left": 60, "arm-right": -60}, "torso_dy": 1},
+    {"rot": {"arm-left": 150, "arm-right": -150, "leg-left": 6, "leg-right": -6}, "root_dy": -6, "head": "head"},
+    {"rot": {"arm-left": 140, "arm-right": -140}, "torso_dy": 1}
+   ]
+  },
+  "cold": {
+   "view": "front",
+   "fps": 12,
+   "pose": "cold",
+   "frames": [
+    {"dx": 0, "dy": 0},
+    {"dx": -2, "dy": 0},
+    {"dx": 1, "dy": -1}
+   ]
+  },
+  "sleep": {
+   "view": "side",
+   "fps": 1,
+   "pose": "sleep-ground",
+   "frames": [
+    {"sy": 1.0},
+    {"sy": 1.03}
+   ]
+  }
+ }
+}
