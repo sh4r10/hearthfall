@@ -38,7 +38,9 @@ pub const ROLE_PRIORITY_TICKS: u64 = 100;
 pub const REFUEL_BELOW: i32 = 20;
 
 /// Stone gained from digging one rock cell.
-pub const STONE_PER_CELL: i32 = 2;
+pub const STONE_PER_CELL: i32 = 3;
+/// Stone gained from digging one dirt cell: dirt is full of small stones.
+pub const STONE_PER_DIRT: i32 = 1;
 
 /// What a building costs, as (coal, stone). Coal is for anything that burns
 /// or glows, stone for everything you stack. Paid when the build finishes.
@@ -245,6 +247,7 @@ impl Sim {
                 match self.elements[i] {
                     Element::Coal => self.coal += COAL_PER_CELL,
                     Element::Rock => self.stone += STONE_PER_CELL,
+                    Element::Dirt => self.stone += STONE_PER_DIRT,
                     _ => {}
                 }
                 self.elements[i] = Element::Floor;
