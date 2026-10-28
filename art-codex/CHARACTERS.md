@@ -100,6 +100,8 @@ Make `turnaround.png` (960 x 320): front, side facing right, and back views in t
 
 ### 2. Parts, one view at a time
 
+*Correction after batch 1: Mara's head and torso had a visible gap. Before batch 2, redo Mara's `head` and `head-blink` in all three views with the neck rule below, re-run the compositor for her, and check that `check_art.py --id mara` passes.*
+
 For each view (side, front, back), generate one **parts sheet** with the turnaround attached: the parts from the list below, laid out apart with space between them, at the same scale as the turnaround, on a plain background. Ask for parts to be **complete**: the bit of the torso normally hidden under the arm is still painted, the top of the leg that tucks under the coat is still painted.
 
 | View | Parts |
@@ -114,7 +116,9 @@ Then cut each part out and **place it on its own 320 x 320 transparent canvas ex
 
 - Each limb's top end is a **rounded cap that extends about 12 px past its pivot** into the body (shoulder into the torso, hip up under the coat). When the limb rotates, the cap keeps the joint covered and no gap opens.
 - Limbs are **straight and rigid** in the neutral pose: arms hang straight down, legs straight. No bent elbows or knees; the animation bends them by rotation.
-- The torso's hem overlaps the tops of the legs, and the collar and scarf overlap the bottom of the head's neck stub.
+- The torso's hem overlaps the tops of the legs by at least 12 px.
+- **The neck:** every `head` (and `head-blink`) ends in a painted neck stub in skin or collar colour that reaches down to **y = 188**, about 20 px below the neck pivot, under the torso's collar and scarf. The torso's collar reaches up to y = 160 over it. So the head and torso overlap by about 25 px and no gap ever shows, even when the head tilts. This matters most for the survivors without a hood (Mara, Tobin, Pim), whose head would otherwise end at the chin or hat brim.
+- The checker fails a view if stacking its parts leaves any piece detached, or if a part overlaps its neighbour by less than 60 px around its joint, and fails any animation frame where a joint opens. Fix those by extending the part, not by moving pivots.
 - `arm-back` and `leg-back` (side view) are one shadow-tone darker than the front ones, because they are on the far side.
 - `head-blink` is the same image as `head` with only the eyes changed to closed lines. Same outline, same position, pixel for pixel elsewhere. Make it by editing `head`, not by regenerating.
 - Front-view left and right limbs are painted, not mirrored, so patches and toggles stay on the right side.

@@ -88,6 +88,44 @@ def bbox(alpha, thresh=OPAQUE):
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 
+def main_share(alpha, thresh=OPAQUE):
+    """Share of the opaque pixels that belong to the largest 8-connected piece. Below ~0.97 a part has come loose."""
+    m = alpha >= thresh
+    total = int(m.sum())
+    if total == 0:
+        return 1.0
+    h, w = m.shape
+    seen = np.zeros_like(m)
+    best = 0
+    from collections import deque
+    for y0, x0 in zip(*np.nonzero(m)):
+        if seen[y0, x0]:
+            continue
+        seen[y0, x0] = True
+        q, n = deque([(y0, x0)]), 0
+        while q:
+            y, x = q.popleft()
+            n += 1
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    yy, xx = y + dy, x + dx
+                    if 0 <= yy < h and 0 <= xx < w and m[yy, xx] and not seen[yy, xx]:
+                        seen[yy, xx] = True
+                        q.append((yy, xx))
+        best = max(best, n)
+        if best * 2 > total:
+            break
+    return best / total
+
+
+def joint_overlap(child, parent, pivot, radius=28):
+    """Pixels where both parts are opaque within `radius` of the joint pivot."""
+    h, w = child.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    near = (xx - pivot[0]) ** 2 + (yy - pivot[1]) ** 2 <= radius ** 2
+    return int(((child >= OPAQUE) & (parent >= OPAQUE) & near).sum())
+
+
 def border_mask(h, w, edges, width=2):
     m = np.zeros((h, w), bool)
     if "t" in edges:
@@ -283,6 +321,12 @@ def check_strip(r, img, a, ground, airborne):
         if len(grounded) > 1 and max(grounded) - min(grounded) > 3:
             r.check(False, f"feet/bottom row drifts {max(grounded) - min(grounded)} px between frames (max 3)", not lenient)
 
+    if a["kind"] == "anim":
+        for i, fr in enumerate(frames):
+            share = main_share(np.asarray(fr.getchannel("A")))
+            r.check(share >= 0.97, f"frame {i}: {100 * (1 - share):.0f}% of the figure is detached (a joint opens a gap); "
+                                   "lengthen the joint caps of the parts")
+
     if a["frames"] > 1:
         if is_char:
             c = [x for x in lower_cents if x is not None]
@@ -354,6 +398,21 @@ def check_figures(root, chars, rig, results):
                 r.check(abs(y1 - ground) <= 4, f"feet at y={y1}, ground is {ground} (±4)")
                 r.check(230 <= hgt <= 270, f"figure is {hgt} px tall (want 230-270)")
                 r.check(x0 > 2 and x1 < fig.width - 3 and y0 > 2, "stacked figure touches the frame edge")
+                share = main_share(np.asarray(fig.getchannel("A")))
+                r.check(share >= 0.97, f"{100 * (1 - share):.0f}% of the stacked figure is detached: a gap between parts")
+                spec = rig["views"][view]["parts"]
+                alphas = {}
+                for part in spec:
+                    pp = root / "characters" / char / view / f"{part}.png"
+                    if pp.exists():
+                        alphas[part] = np.asarray(Image.open(pp).convert("RGBA").getchannel("A"))
+                for part, info in spec.items():
+                    parent = info["parent"] if info["parent"] != "root" else "torso"
+                    if part in ("torso", "tool") or part not in alphas or parent not in alphas:
+                        continue
+                    ov = joint_overlap(alphas[part], alphas[parent], info["pivot"])
+                    r.check(ov >= 60, f"{part} overlaps {parent} by only {ov} px around the joint {info['pivot']} "
+                                      "(need 60+): extend the part under its neighbour so no gap shows when it moves")
             hb = root / "characters" / char / view / "head-blink.png"
             hd = root / "characters" / char / view / "head.png"
             if hb.exists() and hd.exists():
