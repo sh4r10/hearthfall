@@ -15,7 +15,7 @@ pub struct WebSim {
 const BLOCKERS_EVERY: u64 = 10;
 
 /// Values per colonist in [`WebSim::colonists`].
-pub const COLONIST_STRIDE: usize = 13;
+pub const COLONIST_STRIDE: usize = 15;
 /// Values per job in [`WebSim::jobs`].
 pub const JOB_STRIDE: usize = 8;
 /// Values per event in [`WebSim::events`].
@@ -43,6 +43,7 @@ impl WebSim {
             4 => Building::MushroomBed,
             6 => Building::Lamp,
             7 => Building::Bed,
+            8 => Building::Stockpile,
             _ => return,
         };
         self.queued.push(Command::Build { x, y, building });
@@ -130,6 +131,16 @@ impl WebSim {
         self.sim.refuel_priority.clone()
     }
 
+    /// What lies loose on each cell, as a `sim::Item` number (0 for nothing).
+    pub fn pile_item(&self) -> Vec<u8> {
+        self.sim.pile_item.clone()
+    }
+
+    /// How much lies loose on each cell.
+    pub fn pile_amount(&self) -> Vec<i32> {
+        self.sim.pile_amount.clone()
+    }
+
     pub fn light(&self) -> Vec<u8> {
         self.sim.light.clone()
     }
@@ -156,7 +167,8 @@ impl WebSim {
     /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, warmth,
     /// energy, fullness, mood, sleep quality (needs out of 10000), then the
     /// job's x and y (-1 if none) and its kind, then the cause of death
-    /// (0 alive, 1 froze, 2 taken by a Shade).
+    /// (0 alive, 1 froze, 2 taken by a Shade), then what they carry (a
+    /// `sim::Item` number, 0 for nothing) and how much.
     pub fn colonists(&self) -> Vec<i32> {
         let s = &self.sim;
         s.colonists
@@ -168,13 +180,14 @@ impl WebSim {
                     c.warmth, c.energy, c.fullness, c.mood, c.sleep_quality,
                     job.map_or(-1, |j| j.x as i32), job.map_or(-1, |j| j.y as i32), job.map_or(-1, |j| j.kind.code() as i32),
                     c.cause as i32,
+                    c.carrying.map_or(0, |(i, _)| i as i32), c.carrying.map_or(0, |(_, n)| n),
                 ]
             })
             .collect()
     }
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
-    /// 3 deconstruct), building (to build, or to take down), progress percent,
+    /// 3 deconstruct, 4 haul), building (to build, or to take down), progress percent,
     /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
     /// `sim::BLOCK_` value, 0 if it isn't).
     pub fn jobs(&mut self) -> Vec<i32> {

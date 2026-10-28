@@ -222,7 +222,7 @@ impl Sim {
                 && !self.colonists.iter().any(|c| c.alive() && (c.x as i32, c.y as i32) == (x, y))
         });
         let Some(spot) = spot else { return };
-        let roles = [Role::Builder, Role::Digger, Role::Firekeeper];
+        let roles = [Role::Builder, Role::Hauler, Role::Digger, Role::Firekeeper];
         let role = roles[self.colonists.len() % roles.len()];
         self.colonists.push(Colonist::new(spot as u32 % self.width, spot as u32 / self.width, role));
         self.push_event(EVENT_ARRIVAL, self.colonists.len() as u32 - 1);

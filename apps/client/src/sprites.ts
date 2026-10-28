@@ -113,6 +113,28 @@ if (has('lamp')) registerModel('lamp', () => {
   return g;
 });
 
+// The stockpile is a two-cell pallet; the renderer picks a state by name.
+if (has('stockpile', 'stockpile-half', 'stockpile-full')) registerModel('stockpile', () => {
+  const g = new THREE.Group();
+  for (const [state, name] of [['empty', 'stockpile'], ['half', 'stockpile-half'], ['full', 'stockpile-full']]) {
+    const m = card(name, 128 * PX);
+    m.name = state;
+    m.position.y = -0.02;
+    m.renderOrder = 3;
+    g.add(m);
+  }
+  return g;
+});
+
+if (has('pile-coal')) registerModel('pile-coal', () => {
+  const g = new THREE.Group();
+  const m = card('pile-coal', 0.42);
+  m.position.y = -0.04;
+  m.renderOrder = 4;
+  g.add(m);
+  return g;
+});
+
 if (has('cairn')) registerModel('cairn', () => {
   const g = new THREE.Group();
   const m = card('cairn', 160 * PX);

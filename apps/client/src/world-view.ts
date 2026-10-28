@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -136,6 +136,7 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Lamp]: 'lamp',
   [Building.Bed]: 'bed',
   [Building.Vent]: 'vent',
+  [Building.Stockpile]: 'stockpile',
 };
 
 const ELEMENT_COLOURS: Record<number, string[]> = {
@@ -173,6 +174,9 @@ export class WorldView {
   private foamSurface?: { ids: Int32Array; base: Float32Array };
   private buildings = new THREE.Group();
   private markerGroup = new THREE.Group();
+  /** Loose piles of dug goods, by cell. */
+  private piles = new Map<number, { item: number; big: boolean; model: THREE.Object3D }>();
+  private pileGroup = new THREE.Group();
   /** Painted effects: one-shot bursts, and streams of falling water keyed by cell. */
   private effects = new THREE.Group();
   private bursts: { obj: THREE.Object3D; age: number; frames: number; fps: number; vx: number; vy: number }[] = [];
@@ -221,7 +225,7 @@ export class WorldView {
     this.renderer.toneMapping = PAINTED ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = PAINTED ? 1.05 : 1.2;
     this.scene.background = new THREE.Color('#020304');
-    this.scene.add(this.terrain, this.buildings, this.markerGroup, this.effects);
+    this.scene.add(this.terrain, this.buildings, this.markerGroup, this.effects, this.pileGroup);
     this.selection.visible = false;
     this.selection.renderOrder = 10;
     this.scene.add(this.selection);
@@ -698,7 +702,7 @@ export class WorldView {
     const p = new THREE.Vector3();
     for (let k = 0; k < frame.jobs.length; k += JOB_STRIDE) {
       const [x, y, kind, building, progress] = frame.jobs.subarray(k, k + JOB_STRIDE);
-      if (kind === JOB_REFUEL) continue; // refuelling happens on its own
+      if (kind === JOB_REFUEL || kind === JOB_HAUL) continue; // refuelling and hauling happen on their own
       const key = `${x},${y},${kind},${building}`;
       let marker = this.markers.get(key);
       if (!marker) {
@@ -757,6 +761,40 @@ export class WorldView {
       this.markerGroup.remove(marker.object, marker.bar, ...(marker.object.userData.square ? [marker.object.userData.square] : []));
       for (const b of [marker.badge, marker.alert]) if (b) { this.markerGroup.remove(b); b.material.dispose(); }
       this.markers.delete(key);
+    }
+  }
+
+  /** Match the pile models to the sim's loose goods: a small or a big heap per cell. */
+  private updatePiles(frame: Frame) {
+    const p = new THREE.Vector3();
+    for (const [i, v] of this.piles) {
+      if (frame.pileItem[i] !== v.item || frame.pileAmount[i] >= 8 !== v.big) {
+        this.pileGroup.remove(v.model);
+        this.piles.delete(i);
+      }
+    }
+    for (let i = 0; i < frame.pileItem.length; i++) {
+      const item = frame.pileItem[i];
+      if (!item || this.piles.has(i)) continue;
+      const big = frame.pileAmount[i] >= 8;
+      const model = makeModel(item === Item.Coal ? 'pile-coal' : 'pile-stone', i);
+      model.scale.setScalar(big ? 1.25 : 0.85);
+      this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
+      model.position.set(p.x + ((i * 37) % 7 - 3) * 0.04, p.y - 0.5, 0.25);
+      this.pileGroup.add(model);
+      this.piles.set(i, { item, big, model });
+    }
+  }
+
+  /** Stockpiles show the colony's coal: an empty pallet, a heap, a big heap. */
+  private fillStockpiles(frame: Frame) {
+    const level = frame.coal >= 40 ? 'full' : frame.coal >= 10 ? 'half' : 'empty';
+    for (const b of this.buildings.children) {
+      if (frame.buildings[b.userData.cell] !== Building.Stockpile) continue;
+      for (const state of ['empty', 'half', 'full']) {
+        const o = b.getObjectByName(state);
+        if (o) o.visible = state === level;
+      }
     }
   }
 
@@ -924,6 +962,8 @@ export class WorldView {
     if (first) this.shade.set(this.shadeTarget);
     this.paintField(frame);
     this.updateMarkers(frame);
+    this.updatePiles(frame);
+    this.fillStockpiles(frame);
 
     this.survivors.forEach((s, i) => {
       const o = i * COLONIST_STRIDE;
@@ -932,7 +972,8 @@ export class WorldView {
       s.target.y -= 0.5;
       if (first) s.pos.copy(s.target);
       s.activity = activity;
-      s.job = frame.colonists[o + 11];
+      // Hauling walks with the sack, like carrying coal to a hearth.
+      s.job = frame.colonists[o + 13] > 0 ? JOB_REFUEL : frame.colonists[o + 11];
       // Face the work while at it.
       const jobX = frame.colonists[o + 9];
       if (activity === 2 && jobX >= 0 && jobX !== x) s.facing = Math.sign(jobX - x);
@@ -1336,6 +1377,7 @@ export class WorldView {
     });
     tint(this.buildings);
     tint(this.effects);
+    tint(this.pileGroup);
     for (const s of this.survivors) {
       tint(s.model);
       if (s.sleeper?.visible) tint(s.sleeper);
