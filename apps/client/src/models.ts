@@ -310,6 +310,70 @@ registerModel('cairn', (variant = 0) => {
   return g;
 });
 
+/** A lamp: a post with a brass lantern whose glass glows; the renderer adds the light. */
+registerModel('lamp', () => {
+  const g = new THREE.Group();
+  const post = mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.7, 6), mat('#6b4a2f'), 0, 0.35, 0);
+  const arm = mesh(new THREE.BoxGeometry(0.28, 0.04, 0.04), mat('#4a5258'), 0.1, 0.72, 0);
+  const cap = mesh(new THREE.ConeGeometry(0.13, 0.1, 6), mat('#b08d4a'), 0.22, 0.74, 0);
+  const glass = mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.17, 6), mat('#ffe2a0', { emissive: '#ffb347', emissiveIntensity: 2.2, roughness: 0.3 }), 0.22, 0.6, 0);
+  glass.name = 'glass';
+  glass.castShadow = false;
+  const base = mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.05, 6), mat('#4a5258'), 0.22, 0.5, 0);
+  g.add(post, arm, cap, glass, base);
+  return g;
+});
+
+/** A bed: a low wooden cot with a mattress and a folded blanket at the foot. */
+registerModel('bed', (variant = 0) => {
+  const g = new THREE.Group();
+  const frame = mesh(new THREE.BoxGeometry(1.1, 0.08, 0.5), mat('#8a6440'), 0, 0.16, 0);
+  const mattress = mesh(new THREE.BoxGeometry(1.0, 0.1, 0.44), mat('#d9cdb8'), 0, 0.25, 0);
+  mattress.name = 'mattress';
+  const blanket = mesh(new THREE.BoxGeometry(0.42, 0.06, 0.46), mat(COATS[variant % COATS.length]), -0.26, 0.33, 0);
+  const pillow = mesh(new THREE.BoxGeometry(0.22, 0.08, 0.3), mat('#ece4d6'), 0.38, 0.32, 0);
+  g.add(frame, mattress, blanket, pillow);
+  for (const [x] of [[-0.48], [0.48]]) {
+    const leg = mesh(new THREE.BoxGeometry(0.06, 0.16, 0.06), mat('#6b4a2f'), x, 0.08, 0.18);
+    const leg2 = mesh(new THREE.BoxGeometry(0.06, 0.16, 0.06), mat('#6b4a2f'), x, 0.08, -0.18);
+    g.add(leg, leg2);
+  }
+  return g;
+});
+
+/** A Shade: a tattered dark wisp with two pale eyes. Not lit by the fire; it is the dark. */
+registerModel('shade', (variant = 0) => {
+  const g = new THREE.Group();
+  const cloth = new THREE.MeshBasicMaterial({ color: '#06070c', transparent: true, opacity: 0.88, depthWrite: false });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8).scale(1, 1.35, 0.6), cloth);
+  body.position.y = 0.75;
+  body.name = 'body';
+  // A cold rim so the silhouette still reads against the dark.
+  const rim = new THREE.Mesh(body.geometry, new THREE.MeshBasicMaterial({ color: '#5b7a9c', transparent: true, opacity: 0.35, side: THREE.BackSide, depthWrite: false }));
+  rim.scale.setScalar(1.08);
+  rim.position.y = 0.75;
+  rim.name = 'rim';
+  g.add(rim, body);
+  for (let i = 0; i < 4; i++) {
+    const rag = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.55 + rand(variant + i) * 0.3, 5).rotateX(Math.PI), cloth);
+    rag.position.set(-0.3 + i * 0.2, 0.3, (i % 2) * 0.1 - 0.05);
+    rag.name = `rag${i}`;
+    g.add(rag);
+  }
+  const eye = new THREE.MeshBasicMaterial({ color: '#cfe6ff', toneMapped: false });
+  for (const x of [-0.12, 0.12]) {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eye);
+    e.position.set(x, 0.95, 0.3);
+    e.name = 'eye';
+    g.add(e);
+  }
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35, depthWrite: false }));
+  halo.position.set(0, 0.7, -0.3);
+  halo.name = 'halo';
+  g.add(halo);
+  return g;
+});
+
 // --- Markers ---------------------------------------------------------------
 
 registerModel('dig-marker', () => {

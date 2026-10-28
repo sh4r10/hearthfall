@@ -22,6 +22,10 @@ const paths: Record<string, string> = {
   energy: '<path d="M13 2 5 13h6l-1 9 8-11h-6Z"/>',
   mood: '<circle cx="12" cy="12" r="9"/><path d="M8 14.5c2 2 6 2 8 0"/><path d="M9 9.5h.01M15 9.5h.01"/>',
   sleep: '<path d="M4 6h6l-6 7h6M14 12h5l-5 6h5"/>',
+  lamp: '<path d="M9 3h6l1 3H8Z"/><path d="M8 6h8v8a4 4 0 0 1-8 0Z"/><path d="M12 10v3"/><path d="M10 18h4v3h-4Z"/>',
+  bed: '<path d="M3 18V8"/><path d="M3 12h18v6"/><path d="M3 15h18"/><path d="M7 12V9h5a3 3 0 0 1 3 3"/>',
+  shade: '<path d="M12 3c-3.5 0-6 3-6 7v6c1.5-1 2.5 1 4 0s2.5 1 4 0 2.5 1 4 0v-6c0-4-2.5-7-6-7Z"/><path d="M9.5 10h.01M14.5 10h.01"/>',
+  depth: '<path d="M12 3v14"/><path d="m7 12 5 5 5-5"/><path d="M4 21h16"/>',
   skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.2 4 3 5v3h8v-3c1.8-1 3-2.5 3-5a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.5"/><circle cx="14.5" cy="10.5" r="1.5"/>',
 };
 

@@ -50,12 +50,16 @@ Defined in `apps/client/src/style.css` and reused everywhere:
 - **Survivor card:** a glass panel with a 38 px round portrait, the name in 600, the role picker as a quiet pill select (11 px, muted, hairline border, small chevron) on the right, one muted line saying what they're doing, then the need bars in two columns. The card border turns amber when any need is under 25%; a dead survivor's card greys out and their line turns red.
 - **Day clock:** a 28 px dial, ice blue for day and `--night` navy for night, with a white hand and centre dot; next to it "Day N" in 700 and the countdown in muted 600 (amber at night).
 - **Stats:** one panel of chips (icon, uppercase label, value in 16 px 700) separated by hairlines. A low stat turns amber and pulses gently.
+- **Depth gauge:** a panel beside the stats with a down-arrow icon in ice blue, "N m down" in 700, the layer name and cells to the next layer in muted 600, and five stacked 14 x 4 px bars on the right: ice blue for layers passed, half-strength for the current one, 14% white for the rest.
+- **Event log:** glass lines under the top bar on the left, one per event (a 16 px icon in `--danger` and one sentence with the name in 700). Each slides in from the left and fades out after 8 s.
+- **Tutorial:** a 440 px panel centred under the top bar: an uppercase 11 px ice-blue kicker ("First night · 1 of 4"), one muted sentence with the action in white 700, and a quiet Skip button on the right. The tool button a step needs pulses with a 3 px `--accent` ring.
 - **Game over:** a centred, slightly more opaque panel with a white 800 heading, one muted line on how long the colony lasted, and a primary button to start again.
 
 ## Layout
 
 - Title screen: the story illustration full-bleed, slowly drifting, darkened with a `--void` gradient from the bottom left where the kicker, the white wordmark, one paragraph and the buttons sit.
-- Top bar: the white "Hearthfall" wordmark, the day clock and the stats panel, all 46 px tall.
+- Top bar: the white "Hearthfall" wordmark, the day clock, the stats panel and the depth gauge, all 46 px tall.
+- Under the top bar: the event log on the left, the tutorial in the centre.
 - Right edge: survivor roster.
 - Bottom centre: one toolbar panel, order tools then a hairline divider then view overlays.
 - Bottom left, above the toolbar: a hint for the selected tool, with its icon in ice blue. Hidden below 1100 px.

@@ -58,6 +58,8 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       hearth: () => s.build(x, y, Building.Hearth),
       mushroom: () => s.build(x, y, Building.MushroomBed),
       diffuser: () => s.build(x, y, Building.OxygenDiffuser),
+      lamp: () => s.build(x, y, Building.Lamp),
+      bed: () => s.build(x, y, Building.Bed),
     })[msg.tool]();
   } else if (msg.type === 'build' && sim) {
     sim.build(msg.x, msg.y, msg.building);

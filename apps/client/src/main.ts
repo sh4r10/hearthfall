@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_STRIDE, LAMP_COST, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -22,6 +22,8 @@ const TOOLS: ToolInfo[] = [
   { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', cost: HEARTH_COST },
   { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food, but only in the dark, away from the fire.' },
   { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back into a room the fire is choking.' },
+  { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', cost: LAMP_COST },
+  { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Remove orders you have marked.' },
 ];
 const OVERLAYS: { overlay: Overlay; key: string; label: string; icon: string; tip: string }[] = [
@@ -36,6 +38,8 @@ const HINTS: Record<Tool, string> = {
   hearth: `<b>Hearth:</b> costs ${HEARTH_COST} coal. Light up a new part of the caves.`,
   mushroom: '<b>Mushrooms:</b> place a bed outside the light. It grows food only in the dark.',
   diffuser: '<b>Oxygen:</b> place in a room with stale air.',
+  lamp: `<b>Lamp:</b> costs ${LAMP_COST} coal. Light a tunnel so Shades keep out of it.`,
+  bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
   cancel: '<b>Cancel:</b> click or drag over orders to remove them.',
 };
 
@@ -123,7 +127,7 @@ function renderRoster(frame: Frame) {
     card.classList.toggle('struggling', !dead && NEEDS.some(([, o]) => c[o] < STAT_MAX / 4));
     const job = c[12] >= 0 ? JOB_NAMES[c[12]] : '';
     card.querySelector('.doing')!.textContent =
-      dead ? (c[5] <= 0 ? 'Froze to death' : 'Suffocated')
+      dead ? (CAUSES[c[13]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
       : activity === 'Walking' && job ? `Heading off ${job}`
       : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
       : activity === 'Sleeping' ? 'Asleep'
@@ -143,15 +147,87 @@ function announce(frame: Frame) {
     const [tick, kind, who] = [frame.events[i], frame.events[i + 1], frame.events[i + 2]];
     if (tick <= lastEventTick) continue;
     lastEventTick = tick;
-    if (kind !== EVENT_DEATH) continue;
-    const cause = CAUSES[frame.colonists[who * COLONIST_STRIDE + 13]] ?? 'died';
+    const name = NAMES[who % NAMES.length];
+    let text: string, glyph: string;
+    if (kind === EVENT_DEATH) {
+      text = `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 13]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}.`;
+      glyph = 'skull';
+    } else if (kind === EVENT_SHADE_ATTACK) {
+      text = `A Shade has <b>${name}</b>! Get them into the light.`;
+      glyph = 'shade';
+    } else continue;
     const line = document.createElement('li');
     line.className = 'panel';
-    line.innerHTML = `${icon('skull', 16)}<span><b>${NAMES[who % NAMES.length]}</b> ${cause} on day ${Math.floor(tick / DAY_TICKS) + 1}.</span>`;
+    line.innerHTML = `${icon(glyph, 16)}<span>${text}</span>`;
     log.prepend(line);
     setTimeout(() => line.classList.add('fade'), 8000);
     setTimeout(() => line.remove(), 9000);
   }
+}
+
+// --- First-night tutorial ------------------------------------------------------
+
+/** Each step waits for the world to show it done, and lights up the button it needs. */
+const TUTORIAL: { text: string; tool?: Tool; done: (f: Frame) => boolean }[] = [
+  { text: 'Your fire is all that keeps the cold out, and it burns coal. <b>Mark a coal seam to dig</b>: pick Dig and click the black rock.', tool: 'dig',
+    done: (f) => { for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) return true; return false; } },
+  { text: 'Shades come out of the dark at night. <b>Build a lamp</b> in a tunnel to keep them out of it.', tool: 'lamp',
+    done: (f) => f.buildings.includes(Building.Lamp) || hasBuildJob(f, Building.Lamp) },
+  { text: 'Tired survivors work slowly. <b>Build a bed</b> inside the light.', tool: 'bed',
+    done: (f) => f.buildings.includes(Building.Bed) || hasBuildJob(f, Building.Bed) },
+  { text: 'Keep everyone in the light and the fire fed, and <b>get through the first night</b>.',
+    done: (f) => f.tick >= DAY_TICKS },
+];
+function hasBuildJob(f: Frame, b: number) {
+  for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 1 && f.jobs[i + 3] === b) return true;
+  return false;
+}
+const tutorial = $('tutorial');
+const TUTORIAL_KEY = 'hearthfall.tutorial';
+let step = (() => { try { return localStorage.getItem(TUTORIAL_KEY) === 'done' ? TUTORIAL.length : 0; } catch { return 0; } })();
+function endTutorial() {
+  step = TUTORIAL.length;
+  tutorial.hidden = true;
+  document.querySelectorAll('.tool.pulse').forEach((b) => b.classList.remove('pulse'));
+  try { localStorage.setItem(TUTORIAL_KEY, 'done'); } catch { /* private mode */ }
+}
+function showStep() {
+  const s = TUTORIAL[step];
+  document.querySelectorAll('.tool.pulse').forEach((b) => b.classList.remove('pulse'));
+  if (s.tool) document.querySelector(`[data-tool="${s.tool}"]`)?.classList.add('pulse');
+  tutorial.innerHTML = `<small>First night · ${step + 1} of ${TUTORIAL.length}</small><p>${s.text}</p><button class="quiet" id="skip-tutorial">Skip</button>`;
+  tutorial.hidden = false;
+  $('skip-tutorial').onclick = endTutorial;
+}
+function tutorialStep(frame: Frame) {
+  if (step >= TUTORIAL.length) return;
+  if (tutorial.hidden) showStep();
+  if (!TUTORIAL[step].done(frame)) return;
+  step++;
+  if (step >= TUTORIAL.length) {
+    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Now dig down: the Deep Hearth is five layers below.</p>';
+    setTimeout(endTutorial, 8000);
+  } else showStep();
+}
+
+// --- Depth gauge ---------------------------------------------------------------
+
+/** The five layers of the descent, from docs/design.md; each is a fifth of the rock below the start. */
+const LAYERS = ['Frost Crust', 'Coal Seams', 'Flooded Galleries', 'The Old Mine', 'The Warm Deep'];
+const depthBox = $('depth');
+let deepest = 0;
+/** Depth is the deepest cell any survivor has stood in, in cells below the start cave. */
+function renderDepth(frame: Frame) {
+  const startY = Math.floor(frame.height / 2);
+  for (let i = 0; i < frame.colonists.length; i += COLONIST_STRIDE) {
+    if (frame.colonists[i + 3] !== 5) deepest = Math.max(deepest, frame.colonists[i + 1] - startY);
+  }
+  const perLayer = (frame.height - startY - 2) / LAYERS.length;
+  const layer = Math.min(Math.floor(deepest / perLayer), LAYERS.length - 1);
+  const toNext = layer < LAYERS.length - 1 ? Math.ceil((layer + 1) * perLayer - deepest) : 0;
+  depthBox.innerHTML =
+    `${icon('depth', 16)}<div class="depth-text"><b>${deepest} m down</b><span>${LAYERS[layer]}${toNext ? ` · next layer in ${toNext}` : ' · the Deep Hearth is near'}</span></div>` +
+    `<div class="layers">${LAYERS.map((_, k) => `<i class="${k < layer ? 'done' : k === layer ? 'now' : ''}"></i>`).join('')}</div>`;
 }
 
 function onFrame(event: MessageEvent<FromWorker>) {
@@ -173,6 +249,8 @@ function onFrame(event: MessageEvent<FromWorker>) {
     stat('food', 'Food', frame.food, frame.food < 5) +
     stat('people', 'Survivors', `${alive}/${total}`, alive < total);
   renderRoster(frame);
+  renderDepth(frame);
+  tutorialStep(frame);
   document.body.classList.toggle('night', frame.night);
   const over = $('gameover');
   if (alive === 0 && over.hidden) {

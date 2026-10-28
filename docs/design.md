@@ -20,7 +20,7 @@ Each run is a descent (plan agreed 2026-10-28). **You win by digging down to the
 
 - **Score:** days taken, with a bonus for each survivor alive. Endless mode continues after the win, with longer nights and more creatures, and the leaderboard ranks days survived.
 - **Competitive:** same seed, same map, fastest descent wins.
-- **The HUD always shows:** depth (a gauge with the 5 layers), what the next layer needs, and time until night.
+- **The HUD always shows:** depth (a gauge with the 5 layers, counted in cells below the start cave; each layer is a fifth of the rock below) **(built)**, what the next layer needs, and time until night **(built)**.
 
 ### The daily rhythm
 
@@ -90,7 +90,7 @@ Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Su
 ## Milestones
 
 1. **Polish (done 2026-10-28):** smooth movement, bedrolls, collapse and cairns, painted water, hauling still to do.
-2. **Nights that bite:** Shades at night, lamps, beds, depth gauge, first-night tutorial. This is where it becomes a game.
+2. **Nights that bite (done 2026-10-28):** Shades at night, lamps, beds, depth gauge, first-night tutorial.
 3. **Layers 1 to 3:** the vertical map, stone, workbench and the first research, Burrowers and Heat-leeches.
 4. **A growing colony:** refugees with skill cards, skills that grow, kitchen and medbay.
 5. **The win:** layers 4 and 5, defences, the Deep thing, the Deep Hearth, win screen.
@@ -98,7 +98,7 @@ Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Su
 
 ## Tutorial
 
-On the first run, a guided tutorial on a fixed map covers the basics only: mark a dig, dig coal, refuel the hearth, build a ladder, plant mushrooms in the dark, and get through the first night. Each step waits for the player and highlights the relevant button. It can be skipped or replayed from the menu.
+**(built)** On the first run a four-step guide sits under the top bar: mark coal to dig, build a lamp, build a bed, get through the first night. Each step waits for the world to show it done and pulses the button it needs. Skip remembers itself in the browser. Still to come: a fixed tutorial map and replaying it from the menu.
 
 ## Look
 

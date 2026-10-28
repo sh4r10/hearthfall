@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, Element, JOB_STRIDE, STAT_MAX, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, Element, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
 import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -68,6 +68,18 @@ interface Hearth {
   light: THREE.PointLight;
 }
 
+/** A Shade on screen: it drifts after the sim's cell and sways on its own. */
+interface ShadeView {
+  model: THREE.Object3D;
+  target: THREE.Vector3;
+  pos: THREE.Vector3;
+  attacking: boolean;
+  /** 0..1 fade, so they loom in and out instead of popping. */
+  fade: number;
+  gone: boolean;
+}
+const SHADE_SPEED = 3; // cells per second, a touch slower than a survivor
+
 interface Survivor {
   model: THREE.Object3D;
   parts: Record<'legL' | 'legR' | 'armF' | 'armB' | 'head' | 'tool', THREE.Object3D>;
@@ -104,6 +116,8 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.MushroomBed]: 'mushroom-bed',
   [Building.Hearth]: 'hearth',
   [Building.Cairn]: 'cairn',
+  [Building.Lamp]: 'lamp',
+  [Building.Bed]: 'bed',
 };
 
 const ELEMENT_COLOURS: Record<number, string[]> = {
@@ -134,6 +148,8 @@ export class WorldView {
   private markerGroup = new THREE.Group();
   private markers = new Map<string, Marker>();
   private hearths: Hearth[] = [];
+  private lamps: THREE.PointLight[] = [];
+  private shades: ShadeView[] = [];
   private survivors: Survivor[] = [];
   private embers!: THREE.Points;
   private emberLife!: Float32Array;
@@ -592,6 +608,8 @@ export class WorldView {
     this.buildings.clear();
     for (const h of this.hearths) this.scene.remove(h.light);
     this.hearths = [];
+    for (const l of this.lamps) this.scene.remove(l);
+    this.lamps = [];
     const p = new THREE.Vector3();
     buildings.forEach((b, i) => {
       const name = BUILDING_MODELS[b];
@@ -614,6 +632,12 @@ export class WorldView {
         }
         this.scene.add(light);
         this.hearths.push({ cell: i, model, flame: model.getObjectByName('flame')!, light });
+      } else if (b === Building.Lamp) {
+        model.scale.setScalar(1.3);
+        const light = new THREE.PointLight('#ffd98a', 4, 7, 1.2);
+        light.position.set(p.x + 0.22, p.y + 0.15, 1.2);
+        this.scene.add(light);
+        this.lamps.push(light);
       }
     });
   }
@@ -768,6 +792,60 @@ export class WorldView {
       if (first) s.pos.copy(s.target);
       s.activity = activity;
       s.warmth = warmth;
+    });
+    this.updateShades(frame);
+  }
+
+  /** Match the Shade views to the sim's list; extras fade out before they are removed. */
+  private updateShades(frame: Frame) {
+    const n = frame.shades.length / SHADE_STRIDE;
+    for (let i = 0; i < n; i++) {
+      const [x, y, state] = frame.shades.subarray(i * SHADE_STRIDE, i * SHADE_STRIDE + 3);
+      let v = this.shades[i];
+      if (!v) {
+        const model = makeModel('shade', i);
+        this.scene.add(model);
+        v = { model, target: new THREE.Vector3(), pos: new THREE.Vector3(), attacking: false, fade: 0, gone: false };
+        this.cellToWorld(x, y, v.pos);
+        v.pos.y -= 0.5;
+        this.shades[i] = v;
+      }
+      this.cellToWorld(x, y, v.target);
+      v.target.y -= 0.5;
+      v.attacking = state === SHADE_ATTACKING;
+      v.gone = false;
+    }
+    for (let i = n; i < this.shades.length; i++) this.shades[i].gone = true;
+  }
+
+  private animateShades(dt: number, t: number) {
+    this.shades = this.shades.filter((v, i) => {
+      v.fade = THREE.MathUtils.clamp(v.fade + (v.gone ? -dt * 1.5 : dt * 0.8), 0, 1);
+      if (v.gone && v.fade <= 0) {
+        this.scene.remove(v.model);
+        return false;
+      }
+      const dx = v.target.x - v.pos.x, dy = v.target.y - v.pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 3) v.pos.copy(v.target);
+      else if (dist > 0.001) {
+        const step = Math.min(dist, SHADE_SPEED * dt * (v.attacking ? 1.6 : 1));
+        v.pos.x += (dx / dist) * step;
+        v.pos.y += (dy / dist) * step;
+      }
+      const { model } = v;
+      model.position.set(v.pos.x, v.pos.y + Math.sin(t * 1.7 + i) * 0.12, 0.15);
+      model.rotation.z = Math.sin(t * 1.1 + i * 2) * 0.12;
+      const shiver = v.attacking ? Math.sin(t * 30) * 0.06 : 0;
+      model.scale.setScalar((0.6 + v.fade * 0.4) * (1 + shiver));
+      model.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return;
+        const m = o.material as THREE.MeshBasicMaterial;
+        if (o.name === 'eye') { m.opacity = 1; o.visible = v.fade > 0.3; return; }
+        m.opacity = (o.name === 'halo' || o.name === 'rim' ? 0.35 : 0.88) * v.fade;
+        if (o.name.startsWith('rag')) o.rotation.z = Math.sin(t * 4 + Number(o.name[3]) * 1.3) * 0.25;
+      });
+      return true;
     });
   }
 
@@ -1009,6 +1087,8 @@ export class WorldView {
       }
       for (const marker of this.markers.values()) if (!marker.flat) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
       this.survivors.forEach((s, i) => this.animateSurvivor(s, dt, t, i));
+      this.animateShades(dt, t);
+      for (const l of this.lamps) l.intensity = 4 + Math.sin(t * 9 + l.position.x) * 0.3;
       this.lightSprites(t);
       if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;
     }

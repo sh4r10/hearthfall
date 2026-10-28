@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'ladder' | 'hearth' | 'mushroom' | 'diffuser';
+export type Tool = 'dig' | 'cancel' | 'ladder' | 'hearth' | 'mushroom' | 'diffuser' | 'lamp' | 'bed';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
