@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, BLOCK_NONE, BLOCK_REASONS, BUILD_COST, Building, CAUSES, DEFAULT_PRIORITY, MAX_PRIORITY, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -28,7 +28,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. Digging under a building takes it down first.',
+  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. A building\'s floor can\'t be dug: remove the building first.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
@@ -80,8 +80,11 @@ const mapPick = $('map') as HTMLSelectElement;
 mapPick.innerHTML = MAPS.map((m, i) => `<option value="${i}">${m.name}</option>`).join('');
 let seed = 0;
 
-const story = artUrl('story-1');
+// The title scene, with the painted wordmark in place of the plain heading.
+const story = artUrl('story-title');
 if (story) (document.querySelector('.title-art') as HTMLElement).style.backgroundImage = `url(${story})`;
+const wordmark = artUrl('wordmark');
+if (wordmark) document.querySelector('#title h1')!.innerHTML = `<img class="wordmark" src="${wordmark}" alt="Hearthfall">`;
 $('how').onclick = () => {
   const list = $('howto');
   list.hidden = !list.hidden;
@@ -396,7 +399,7 @@ function applies(t: Tool, f: Frame, i: number) {
   const x = i % f.width, y = Math.floor(i / f.width);
   if (t === 'dig') {
     const e = f.elements[i];
-    return e === Element.Dirt || e === Element.Rock || e === Element.Coal;
+    return (e === Element.Dirt || e === Element.Rock || e === Element.Coal) && heldUpBy(f, x, y) === undefined;
   }
   if (t === 'deconstruct') return f.buildings[i] !== Building.None && f.buildings[i] !== Building.Cairn;
   // Priority repaints any order, and a hearth keeps its refuel priority even between refuels.
@@ -434,7 +437,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (drag.paint) order(e);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag) return;
+  if (!drag) return digTip(e);
   if (drag.paint) return order(e);
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.hypot(dx, dy) > 5) drag.moved = true;
@@ -444,6 +447,22 @@ canvas.addEventListener('pointermove', (e) => {
   world.view.x = drag.vx - dx * u;
   world.view.y = drag.vy + dy * u;
 });
+/** Over a building's floor with Dig picked, say why it can't be dug. */
+function digTip(e: PointerEvent) {
+  const cell = tool === 'dig' && last ? world.pickCell(e.clientX, e.clientY) : undefined;
+  const on = cell && last ? heldUpBy(last, cell[0], cell[1]) : undefined;
+  if (on === undefined || !last) {
+    if (tooltip.dataset.dig) { tooltip.hidden = true; delete tooltip.dataset.dig; }
+    return;
+  }
+  const name = BUILDING_NAMES[last.buildings[on]] ?? 'building';
+  tooltip.innerHTML = `<b>Can't dig here</b>Supports the ${name.toLowerCase()}. Remove it first.`;
+  tooltip.dataset.dig = '1';
+  tooltip.hidden = false;
+  tooltip.style.left = `${e.clientX + 14}px`;
+  tooltip.style.top = `${e.clientY + 14}px`;
+}
+canvas.addEventListener('pointerleave', () => { if (tooltip.dataset.dig) { tooltip.hidden = true; delete tooltip.dataset.dig; } });
 canvas.addEventListener('pointerup', (e) => {
   if (drag?.box) applyBox(e, drag.box);
   else if (drag && !drag.moved && !drag.paint) click(e);

@@ -1,3 +1,5 @@
+import { artUrl } from './art';
+
 // Small line icons for the interface, drawn on a 24 x 24 grid in the
 // current text colour. Swap any of them for painted icons later by name.
 
@@ -31,7 +33,14 @@ const paths: Record<string, string> = {
 };
 
 // Small icons get a heavier stroke so they still land on about 1.2 px on screen.
+// A painted glyph in apps/client/art/icon-<name>.png replaces the drawn one; it
+// is a white shape used as a mask, so it takes the text colour like the rest.
 export function icon(name: string, size = 18) {
+  const painted = artUrl(`icon-${name}`);
+  if (painted) {
+    const mask = `url(${painted}) center / contain no-repeat`;
+    return `<span class="icon" style="display:inline-block;width:${size}px;height:${size}px;background:currentColor;-webkit-mask:${mask};mask:${mask}" aria-hidden="true"></span>`;
+  }
   const stroke = size <= 12 ? 2.4 : size <= 16 ? 2.1 : 1.8;
   return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ?? ''}</svg>`;
 }
