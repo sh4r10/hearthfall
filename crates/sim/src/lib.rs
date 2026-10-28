@@ -10,11 +10,15 @@ mod jobs;
 mod nav;
 mod physics;
 mod rng;
+mod shades;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, STAT_MAX};
-pub use jobs::{Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, REFUEL_BELOW};
+pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, LIT_COLD_DRAIN, STAT_MAX};
+pub use jobs::{build_cost, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
+pub use shades::{
+    Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
+};
 pub use world::{Building, Element, START_OXYGEN_MG, START_TEMP_CK};
 
 /// Oxygen a colonist breathes in (and CO2 breathed out) per tick, in mg.
@@ -35,6 +39,9 @@ pub const START_FOOD: i32 = 20;
 /// How far hearth light reaches through open cells, by day and by night.
 pub const LIGHT_RADIUS_DAY: i32 = 13;
 pub const LIGHT_RADIUS_NIGHT: i32 = 8;
+/// How far lamp light reaches, by day and by night.
+pub const LAMP_RADIUS_DAY: i32 = 4;
+pub const LAMP_RADIUS_NIGHT: i32 = 3;
 /// A hearth needs this much oxygen in its cell to stay lit.
 pub const HEARTH_MIN_OXYGEN_MG: i32 = 150;
 /// Below this light level a cell counts as dark and colonists get cold.
@@ -43,6 +50,8 @@ pub const DARK_BELOW: u8 = 40;
 pub const MAX_EVENTS: usize = 32;
 /// [`Event::kind`] for a survivor dying.
 pub const EVENT_DEATH: u8 = 1;
+/// [`Event::kind`] for a Shade starting an attack on a survivor.
+pub const EVENT_SHADE_ATTACK: u8 = 2;
 
 /// Something the renderer should hear about once, such as a death.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,14 +85,18 @@ pub struct Sim {
     pub oxygen: Vec<i32>,
     pub co2: Vec<i32>,
     pub temperature: Vec<i32>,
-    /// Light level per cell, 0..=255. Derived from hearths each tick.
+    /// Light level per cell, 0..=255. Derived from hearths and lamps each tick.
     pub light: Vec<u8>,
+    /// The part of `light` that comes from hearths. Only this warms.
+    pub firelight: Vec<u8>,
     /// Coal in the colony stockpile.
     pub coal: i32,
     /// Rations in the colony stockpile.
     pub food: i32,
     pub colonists: Vec<Colonist>,
     pub jobs: Vec<Job>,
+    /// Shades abroad. Only ever non-empty at night.
+    pub shades: Vec<Shade>,
     /// The last [`MAX_EVENTS`] events, oldest first.
     pub events: Vec<Event>,
     next_job_id: u32,
@@ -116,10 +129,12 @@ impl Sim {
             co2: vec![0; n],
             temperature: vec![START_TEMP_CK; n],
             light: vec![0; n],
+            firelight: vec![0; n],
             coal: START_COAL,
             food: START_FOOD,
             colonists,
             jobs: Vec::new(),
+            shades: Vec::new(),
             events: Vec::new(),
             next_job_id: 1,
             rng: Rng::new(seed ^ 0xC010_C010),
@@ -161,6 +176,7 @@ impl Sim {
         self.update_light();
         self.water_tick();
         self.maintain_jobs();
+        self.shades_tick();
         self.colonists_tick();
         self.diffuse_gases();
         self.conduct_heat();
@@ -245,6 +261,10 @@ impl Sim {
             for v in [j.id as i32, j.x as i32, j.y as i32, j.kind.code() as i32, j.progress, j.created as i32, j.claimed_by.map_or(-1, |c| c as i32)] {
                 eat(&v.to_le_bytes());
             }
+        }
+        eat(&(self.shades.len() as u32).to_le_bytes());
+        for s in &self.shades {
+            s.hash_into(&mut eat);
         }
         for e in &self.events {
             eat(&e.tick.to_le_bytes());

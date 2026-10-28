@@ -25,6 +25,8 @@ pub struct Job {
 
 /// Coal a hearth costs to build.
 pub const HEARTH_COST: i32 = 8;
+/// Coal a lamp costs to build. It needs no fuel after that.
+pub const LAMP_COST: i32 = 2;
 /// Coal gained from digging one coal cell.
 pub const COAL_PER_CELL: i32 = 4;
 pub const HEARTH_CAPACITY: i32 = 40;
@@ -32,6 +34,15 @@ pub const HEARTH_CAPACITY: i32 = 40;
 pub const ROLE_PRIORITY_TICKS: u64 = 100;
 /// Firekeepers top up a hearth once its fuel falls below this.
 pub const REFUEL_BELOW: i32 = 20;
+
+/// Coal a building costs to build.
+pub fn build_cost(b: Building) -> i32 {
+    match b {
+        Building::Hearth => HEARTH_COST,
+        Building::Lamp => LAMP_COST,
+        _ => 0,
+    }
+}
 
 impl JobKind {
     pub fn role(self) -> Role {
@@ -76,7 +87,7 @@ impl Sim {
         match job.kind {
             JobKind::Dig => self.elements[i].is_diggable(),
             JobKind::Build(b) => {
-                self.elements[i].is_open() && self.buildings[i] == Building::None && (b != Building::Hearth || self.coal >= HEARTH_COST)
+                self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= build_cost(b)
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
         }
@@ -105,8 +116,8 @@ impl Sim {
                 self.elements[i] = Element::Floor;
             }
             JobKind::Build(b) => {
+                self.coal -= build_cost(b);
                 if b == Building::Hearth {
-                    self.coal -= HEARTH_COST;
                     self.hearth_fuel[i] = 10;
                 }
                 self.buildings[i] = b;

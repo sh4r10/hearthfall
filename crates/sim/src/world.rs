@@ -46,6 +46,10 @@ pub enum Building {
     /// Marks where a survivor died. Placed by the sim, never built, and
     /// blocks nothing.
     Cairn = 5,
+    /// A small light that needs no fuel once built. Gives no warmth.
+    Lamp = 6,
+    /// Somewhere to sleep well. One sleeper at a time, and blocks nothing.
+    Bed = 7,
 }
 
 /// Gas masses are in milligrams per cell, temperatures in centi-kelvin.

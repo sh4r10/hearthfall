@@ -1,7 +1,7 @@
 //! Survivors: their needs, moods and what they decide to do each tick.
 
 use crate::nav::UNREACHED;
-use crate::{Building, Sim, BREATH_MG, EVENT_DEATH, SUFFOCATE_BELOW_MG};
+use crate::{Building, Sim, BREATH_MG, EVENT_DEATH, SHADE_DRAIN, SUFFOCATE_BELOW_MG};
 
 /// Every need runs from 0 (empty) to this.
 pub const STAT_MAX: i32 = 10_000;
@@ -10,6 +10,12 @@ pub const STAT_MAX: i32 = 10_000;
 pub const CAUSE_ALIVE: u8 = 0;
 pub const CAUSE_FROZE: u8 = 1;
 pub const CAUSE_SUFFOCATED: u8 = 2;
+pub const CAUSE_TAKEN: u8 = 3;
+
+/// Warmth lost per tick in lamp light: not warm, but not the biting dark either.
+pub const LIT_COLD_DRAIN: i32 = 5;
+/// A tired survivor walks at most this many steps to a free bed.
+pub const BED_REACH: i32 = 40;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,6 +62,8 @@ pub struct Colonist {
     /// Id of the claimed job, if any.
     pub job: Option<u32>,
     pub path: Vec<(u32, u32)>,
+    /// Cell index of the bed they have claimed, on the way to it or asleep in it.
+    pub bed: Option<u32>,
     /// Why they died, one of the `CAUSE_` values. `CAUSE_ALIVE` until then.
     pub cause: u8,
     timer: u32,
@@ -76,6 +84,7 @@ impl Colonist {
             sleep_quality: STAT_MAX * 7 / 10,
             job: None,
             path: Vec::new(),
+            bed: None,
             cause: CAUSE_ALIVE,
             timer: 0,
         }
@@ -94,7 +103,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.cause as i32, self.timer as i32] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.timer as i32] {
             eat(&v.to_le_bytes());
         }
     }
@@ -121,7 +130,9 @@ impl Sim {
     fn update_needs(&mut self, c: usize) {
         let i = self.idx(self.colonists[c].x, self.colonists[c].y);
         let dark = self.is_dark(i);
+        let warm = self.is_warm(i);
         let night = self.is_night();
+        let attacked = self.under_attack(c);
         let inhaled = self.oxygen[i].min(BREATH_MG);
         self.oxygen[i] -= inhaled;
         self.co2[i] += inhaled;
@@ -130,18 +141,31 @@ impl Sim {
         let col = &mut self.colonists[c];
         col.breath = if low_air { col.breath - 60 } else { col.breath + 150 }.min(STAT_MAX);
         let starving = col.fullness == 0;
-        col.warmth = if dark {
-            col.warmth - if night { 30 } else { 15 } - if starving { 10 } else { 0 }
+        let starve = if starving { 10 } else { 0 };
+        col.warmth = if warm {
+            col.warmth + 40 - starve
+        } else if !dark {
+            col.warmth - LIT_COLD_DRAIN - starve // lamp light: cold, but the dark isn't biting
         } else {
-            col.warmth + 40 - if starving { 10 } else { 0 }
+            col.warmth - if night { 30 } else { 15 } - starve
         }
-        .min(STAT_MAX);
+        .min(STAT_MAX)
+            - if attacked { SHADE_DRAIN } else { 0 };
         col.fullness = (col.fullness - 4).max(0);
         if col.activity == Activity::Sleeping {
-            // Warm, lit spots give a good night's sleep.
-            let quality = if dark { 3_500 } else if col.warmth > STAT_MAX * 7 / 10 { STAT_MAX } else { 7_000 };
+            // Warm, lit spots give a good night's sleep. A bed in the light
+            // sleeps as well as anywhere even when a little cold, and rests faster.
+            let in_bed = col.bed == Some(i as u32);
+            let quality = match (in_bed, dark) {
+                (true, false) => STAT_MAX,
+                (true, true) => 7_000,
+                (false, true) => 3_500,
+                (false, false) if col.warmth > STAT_MAX * 7 / 10 => STAT_MAX,
+                (false, false) => 7_000,
+            };
             col.sleep_quality += (quality - col.sleep_quality) / 50;
-            col.energy = (col.energy + 30 * col.sleep_quality / STAT_MAX).min(STAT_MAX);
+            let rest = if in_bed { 45 } else { 30 };
+            col.energy = (col.energy + rest * col.sleep_quality / STAT_MAX).min(STAT_MAX);
         } else {
             col.energy = (col.energy - if col.activity == Activity::Working { 10 } else { 6 }).max(0);
         }
@@ -150,11 +174,18 @@ impl Sim {
 
         if col.breath <= 0 || col.warmth <= 0 {
             // Running out of air takes precedence if both give out at once.
-            col.cause = if col.breath <= 0 { CAUSE_SUFFOCATED } else { CAUSE_FROZE };
+            col.cause = if col.breath <= 0 {
+                CAUSE_SUFFOCATED
+            } else if attacked {
+                CAUSE_TAKEN
+            } else {
+                CAUSE_FROZE
+            };
             col.breath = col.breath.max(0);
             col.warmth = col.warmth.max(0);
             col.activity = Activity::Dead;
             col.path.clear();
+            col.bed = None;
             if let Some(id) = col.job.take() {
                 if let Some(job) = self.jobs.iter_mut().find(|j| j.id == id) {
                     job.claimed_by = None;
@@ -191,8 +222,11 @@ impl Sim {
         match col.activity {
             Activity::Sleeping => {
                 let rested = col.energy >= STAT_MAX * 95 / 100 || (!self.is_night() && col.energy >= STAT_MAX * 7 / 10);
-                if rested {
-                    self.colonists[c].activity = Activity::Idle;
+                // Nobody sleeps through a Shade.
+                if rested || self.under_attack(c) {
+                    let col = &mut self.colonists[c];
+                    col.activity = Activity::Idle;
+                    col.bed = None;
                 }
                 return;
             }
@@ -208,6 +242,27 @@ impl Sim {
             _ => {}
         }
 
+        // On the way to bed.
+        if let Some(bed) = col.bed {
+            let bed = bed as usize;
+            if self.buildings[bed] == Building::Bed && self.idx(col.x, col.y) == bed {
+                self.colonists[c].activity = Activity::Sleeping;
+                return;
+            }
+            if self.buildings[bed] == Building::Bed && !col.path.is_empty() {
+                if !self.step_along(c) {
+                    self.colonists[c].path.clear();
+                }
+                return;
+            }
+            // The bed is gone or the way changed: think again below.
+            let col = &mut self.colonists[c];
+            col.bed = None;
+            col.path.clear();
+            col.activity = Activity::Idle;
+        }
+
+        let col = &self.colonists[c];
         // Needs come before errands.
         if col.fullness < STAT_MAX * 35 / 100 && self.food > 0 && col.activity != Activity::Working {
             self.release_job(c);
@@ -220,7 +275,9 @@ impl Sim {
         let tired = col.energy < STAT_MAX / 4 || (self.is_night() && col.energy < STAT_MAX / 2);
         if tired && col.activity != Activity::Working {
             self.release_job(c);
-            self.colonists[c].activity = Activity::Sleeping;
+            if !self.go_to_bed(c) {
+                self.colonists[c].activity = Activity::Sleeping; // right where they stand
+            }
             return;
         }
         // Miserable survivors refuse to work.
@@ -231,8 +288,21 @@ impl Sim {
         match self.colonists[c].job {
             Some(id) => self.pursue_job(c, id),
             None => {
+                if !self.colonists[c].path.is_empty() {
+                    // Running for the light.
+                    if !self.step_along(c) {
+                        self.colonists[c].path.clear();
+                    }
+                    if self.colonists[c].path.is_empty() {
+                        self.colonists[c].activity = Activity::Idle;
+                    }
+                    return;
+                }
                 self.colonists[c].timer += 1;
                 if self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
+                    return;
+                }
+                if self.colonists[c].timer % 10 == 5 && self.flee_to_light(c) {
                     return;
                 }
                 if self.colonists[c].timer % 6 == 0 {
@@ -308,22 +378,8 @@ impl Sim {
             self.release_job(c);
             return;
         }
-        let col = &mut self.colonists[c];
-        if let Some(&(nx, ny)) = col.path.first() {
-            col.activity = Activity::Walking;
-            col.timer += 1;
-            if col.timer < STEP_TICKS {
-                return;
-            }
-            col.timer = 0;
-            let (x, y) = (col.x as i32, col.y as i32);
-            let (moves, n) = self.moves(x, y);
-            if moves[..n].contains(&(nx as i32, ny as i32)) {
-                let col = &mut self.colonists[c];
-                col.x = nx;
-                col.y = ny;
-                col.path.remove(0);
-            } else {
+        if !self.colonists[c].path.is_empty() {
+            if !self.step_along(c) {
                 // The way changed under them; let the job go and choose again.
                 self.release_job(c);
             }
@@ -331,6 +387,7 @@ impl Sim {
         }
 
         // Arrived: work it off. Role specialists work faster, low mood slows everyone.
+        let col = &mut self.colonists[c];
         col.activity = Activity::Working;
         let mut speed = if self.jobs[k].kind.role() == col.role { 3 } else { 2 };
         if col.mood < STAT_MAX * 3 / 10 {
@@ -342,6 +399,79 @@ impl Sim {
             self.finish_job(&job);
             self.colonists[c].drop_job();
         }
+    }
+
+    /// Take the next step along the survivor's path once it is due. Returns
+    /// false if that step is no longer possible.
+    fn step_along(&mut self, c: usize) -> bool {
+        let col = &mut self.colonists[c];
+        let Some(&(nx, ny)) = col.path.first() else { return true };
+        col.activity = Activity::Walking;
+        col.timer += 1;
+        if col.timer < STEP_TICKS {
+            return true;
+        }
+        col.timer = 0;
+        let (x, y) = (col.x as i32, col.y as i32);
+        let (moves, n) = self.moves(x, y);
+        if !moves[..n].contains(&(nx as i32, ny as i32)) {
+            return false;
+        }
+        let col = &mut self.colonists[c];
+        col.x = nx;
+        col.y = ny;
+        col.path.remove(0);
+        true
+    }
+
+    /// Claim the nearest free bed within [`BED_REACH`] and head for it.
+    /// Returns false if there is none.
+    fn go_to_bed(&mut self, c: usize) -> bool {
+        let col = &self.colonists[c];
+        let field = self.field_from(col.x, col.y);
+        let taken = |i: usize| self.colonists.iter().any(|o| o.alive() && o.bed == Some(i as u32));
+        let mut best: Option<usize> = None;
+        for i in 0..self.buildings.len() {
+            let d = field.dist[i];
+            if self.buildings[i] == Building::Bed && d <= BED_REACH && best.map_or(true, |b| d < field.dist[b]) && !taken(i) {
+                best = Some(i);
+            }
+        }
+        let Some(bed) = best else { return false };
+        let path = self.path_to(&field, bed);
+        let col = &mut self.colonists[c];
+        col.bed = Some(bed as u32);
+        col.timer = 0;
+        col.activity = if path.is_empty() { Activity::Sleeping } else { Activity::Walking };
+        col.path = path;
+        true
+    }
+
+    /// An idle survivor caught in the dark heads for the nearest lit cell they
+    /// can stand in. Returns false if they are already lit or no light is in reach.
+    fn flee_to_light(&mut self, c: usize) -> bool {
+        let col = &self.colonists[c];
+        if !self.is_dark(self.idx(col.x, col.y)) {
+            return false;
+        }
+        let field = self.field_from(col.x, col.y);
+        let mut best: Option<usize> = None;
+        for i in 0..self.light.len() {
+            let d = field.dist[i];
+            if d != UNREACHED && !self.is_dark(i) && best.map_or(true, |b| d < field.dist[b]) {
+                let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
+                if self.supported(x, y) {
+                    best = Some(i);
+                }
+            }
+        }
+        let Some(to) = best else { return false };
+        let path = self.path_to(&field, to);
+        let col = &mut self.colonists[c];
+        col.path = path;
+        col.timer = 0;
+        col.activity = Activity::Walking;
+        true
     }
 
     /// Idle survivors potter about, but won't step out of the light on their own.

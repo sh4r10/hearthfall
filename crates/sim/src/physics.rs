@@ -1,48 +1,31 @@
 //! Environment: light, water, gases and heat.
 
-use crate::{Building, Element, Sim, DARK_BELOW, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::{Building, Element, Sim, DARK_BELOW, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
 
 impl Sim {
-    /// Flood light outwards from every lit hearth through open cells, so
-    /// walls cast real shadows. The first solid cell hit is lit too, so cave
-    /// walls show at the edge of the light.
+    /// Flood light outwards from every lit hearth and every lamp through
+    /// open cells, so walls cast real shadows. The first solid cell hit is lit
+    /// too, so cave walls show at the edge of the light. Hearth light is also
+    /// kept on its own in `firelight`, since only firelight warms.
     pub(crate) fn update_light(&mut self) {
-        let (w, h) = (self.width as i32, self.height as i32);
-        let radius = if self.is_night() { LIGHT_RADIUS_NIGHT } else { LIGHT_RADIUS_DAY };
-        self.light.iter_mut().for_each(|l| *l = 0);
-        let mut dist = vec![i32::MAX; self.light.len()];
-        let mut queue = std::collections::VecDeque::new();
-        for i in 0..self.buildings.len() {
-            if self.hearth_lit(i) {
-                dist[i] = 0;
-                queue.push_back(i);
-            }
-        }
-        while let Some(i) = queue.pop_front() {
-            let d = dist[i];
-            let level = (255 * (radius - d) / radius).max(0) as u8;
-            self.light[i] = self.light[i].max(level);
-            if d >= radius || !self.elements[i].is_open() {
-                continue;
-            }
-            let (x, y) = ((i as i32) % w, (i as i32) / w);
-            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-                let (nx, ny) = (x + dx, y + dy);
-                if nx < 0 || ny < 0 || nx >= w || ny >= h {
-                    continue;
-                }
-                let j = (ny * w + nx) as usize;
-                if dist[j] > d + 1 {
-                    dist[j] = d + 1;
-                    queue.push_back(j);
-                }
-            }
-        }
+        let night = self.is_night();
+        let (radius, lamp_radius) = if night { (LIGHT_RADIUS_NIGHT, LAMP_RADIUS_NIGHT) } else { (LIGHT_RADIUS_DAY, LAMP_RADIUS_DAY) };
+        self.firelight.iter_mut().for_each(|l| *l = 0);
+        let hearths: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.hearth_lit(i)).collect();
+        flood_light(self.width, self.height, &self.elements, &hearths, radius, &mut self.firelight);
+        self.light.copy_from_slice(&self.firelight);
+        let lamps: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.buildings[i] == Building::Lamp).collect();
+        flood_light(self.width, self.height, &self.elements, &lamps, lamp_radius, &mut self.light);
     }
 
     pub fn is_dark(&self, i: usize) -> bool {
         self.light[i] < DARK_BELOW
+    }
+
+    /// Lit by a hearth, so survivors here warm up. Lamp light alone does not count.
+    pub fn is_warm(&self, i: usize) -> bool {
+        self.firelight[i] >= DARK_BELOW
     }
 
     pub(crate) fn hearth_lit(&self, i: usize) -> bool {
@@ -122,6 +105,38 @@ impl Sim {
                     t[i] -= flux;
                     t[j] += flux;
                 }
+            }
+        }
+    }
+}
+
+/// Breadth-first light from `sources` through open cells, raising `light` to
+/// each cell's level. Sources are visited in index order, so the result is fixed.
+fn flood_light(width: u32, height: u32, elements: &[Element], sources: &[usize], radius: i32, light: &mut [u8]) {
+    let (w, h) = (width as i32, height as i32);
+    let mut dist = vec![i32::MAX; light.len()];
+    let mut queue = std::collections::VecDeque::new();
+    for &i in sources {
+        dist[i] = 0;
+        queue.push_back(i);
+    }
+    while let Some(i) = queue.pop_front() {
+        let d = dist[i];
+        let level = (255 * (radius - d) / radius).max(0) as u8;
+        light[i] = light[i].max(level);
+        if d >= radius || !elements[i].is_open() {
+            continue;
+        }
+        let (x, y) = ((i as i32) % w, (i as i32) / w);
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let (nx, ny) = (x + dx, y + dy);
+            if nx < 0 || ny < 0 || nx >= w || ny >= h {
+                continue;
+            }
+            let j = (ny * w + nx) as usize;
+            if dist[j] > d + 1 {
+                dist[j] = d + 1;
+                queue.push_back(j);
             }
         }
     }

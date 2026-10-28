@@ -25,8 +25,9 @@ function sendFrame(s: WebSim) {
     colonists: s.colonists(),
     jobs: s.jobs(),
     events: s.events(),
+    shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.hearthFuel, frame.oxygen, frame.co2, frame.temperature, frame.colonists, frame.jobs, frame.events].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.hearthFuel, frame.oxygen, frame.co2, frame.temperature, frame.colonists, frame.jobs, frame.events, frame.shades].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -58,6 +59,8 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       mushroom: () => s.build(x, y, Building.MushroomBed),
       diffuser: () => s.build(x, y, Building.OxygenDiffuser),
     })[msg.tool]();
+  } else if (msg.type === 'build' && sim) {
+    sim.build(msg.x, msg.y, msg.building);
   } else if (msg.type === 'role' && sim) {
     sim.set_role(msg.colonist, msg.role);
   }

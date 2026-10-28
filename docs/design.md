@@ -45,7 +45,7 @@ Every layer needs its own hearth, so going deeper splits fuel and people.
 You never control survivors directly. You mark jobs, and survivors claim and carry them out based on their role, skills and needs, as in Oxygen Not Included.
 
 - **Hearths are everything (built).** They light and warm the caves around them. Light only travels through open space, so walls cast shadows. Hearths burn their own fuel and use up oxygen while giving off carbon dioxide and heat.
-- **Light is territory (built).** Survivors won't wander into the dark on their own. In the dark they lose warmth, faster at night, and die if it runs out.
+- **Light is territory (built).** Survivors won't wander into the dark on their own, and an idle survivor caught in the dark heads for the nearest lit cell. In the dark they lose warmth, faster at night, and die if it runs out. Lamp light without a hearth is "lit but cold": warmth drifts down slowly (5 per tick) instead of recovering.
 - **Coal is fuel (built).** Dig coal seams to fill the stockpile. Firekeepers carry it to hearths that run low.
 - **Food (built: mushroom beds).** Mushroom beds only grow in the dark, which forces you to build outside the light.
 - **Air (built).** Carbon dioxide sinks and pools, and a sealed room with a fire suffocates.
@@ -66,12 +66,15 @@ You never control survivors directly. You mark jobs, and survivors claim and car
 
 Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Survivors research at a workbench to unlock more:
 
-- **Utilities:** beds, lamps, heaters, air pumps and vents, water pumps, a medical bay, doors, storage.
+- **Lamps (built):** cost 2 coal and burn nothing. They light 4 cells by day and 3 at night through open space like hearth light, give no warmth, and keep Shades out like any light.
+- **Beds (built):** free to build and walkable. A tired survivor claims the nearest free bed within 40 steps and sleeps there, one per bed: in a lit bed they sleep as well as by a warm fire and regain energy 50% faster. With no free bed they sleep where they stand.
+
+- **Utilities:** heaters, air pumps and vents, water pumps, a medical bay, doors, storage.
 - **Defence:** barricades, flare lamps (scare off Shades), spike traps (Burrowers), braziers (keep Heat-leeches off hearths), crossbow turrets.
 
 ## Creatures
 
-- **Shades** live in the dark and avoid light. They attack anyone outside the firelight.
+- **Shades (built)** rise at night from day 2, from dark open cells at least 6 cells from any light and within 24 cells of a survivor, at most one per 3 survivors plus one. They float one cell every 4 ticks through dark open cells towards the nearest survivor in the dark, never entering light; one on a survivor drains 400 warmth a tick (a death "taken by a Shade"). They fade at dawn, when light reaches them, or when their prey reaches light with no one else in the dark within 12 cells.
 - **Heat-leeches** are drawn to warmth. They latch onto hearths and drain fuel.
 - **Burrowers** tunnel through rock and can breach walls, letting in water, gas or cold.
 - **Deep things** are rare, big and dangerous. They appear once you've dug deep or grown large.

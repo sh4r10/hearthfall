@@ -250,3 +250,131 @@ fn water_levels_out_into_a_flat_pool() {
     assert_eq!(water.len(), 48);
     assert!(water.iter().all(|&i| i / 16 >= 13), "pool is not level");
 }
+
+#[test]
+fn same_seed_gives_same_hash_through_a_night_with_shades() {
+    // Long enough to cover the second night, when Shades first come out.
+    assert_eq!(run(42, sim::DAY_TICKS * 2 + 100), run(42, sim::DAY_TICKS * 2 + 100));
+}
+
+#[test]
+fn lamps_light_cells_without_warming_them() {
+    let mut sim = sealed_room(11, 40, (5, 10, 30, 20));
+    let lamp = sim.idx(10, 20);
+    sim.buildings[lamp] = Building::Lamp;
+    sim.colonists[0].x = 11;
+    sim.colonists[0].warmth = 5000;
+    sim.colonists[1].x = 25;
+    sim.colonists[1].warmth = 5000;
+    sim.step(&[]);
+    // Radius 4 by day: three cells out is still lit, four is dark.
+    assert!(sim.light[lamp] > 200);
+    assert!(!sim.is_dark(sim.idx(13, 20)));
+    assert!(sim.is_dark(sim.idx(14, 20)));
+    assert!(!sim.is_warm(lamp));
+    for _ in 0..19 {
+        sim.step(&[]);
+    }
+    // Lamp light: a slow drift down. Out in the dark: the full day rate.
+    assert!(!sim.is_dark(sim.idx(sim.colonists[0].x, sim.colonists[0].y)));
+    assert_eq!(sim.colonists[0].warmth, 5000 - 20 * sim::LIT_COLD_DRAIN);
+    assert!(sim.colonists[1].warmth < sim.colonists[0].warmth);
+
+    // Radius 3 at night.
+    sim.tick = sim::DAY_TICKS * 6 / 10;
+    sim.step(&[]);
+    assert!(!sim.is_dark(sim.idx(12, 20)));
+    assert!(sim.is_dark(sim.idx(13, 20)));
+}
+
+#[test]
+fn builders_build_lamps_for_coal() {
+    let mut sim = sealed_room(11, 40, (5, 10, 30, 20));
+    sim.coal = 3;
+    sim.step(&[Command::Build { x: 12, y: 20, building: Building::Lamp }]);
+    for _ in 0..400 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.buildings[sim.idx(12, 20)], Building::Lamp, "jobs: {:?}", sim.jobs);
+    assert_eq!(sim.coal, 3 - sim::LAMP_COST);
+}
+
+#[test]
+fn tired_survivors_walk_to_a_free_bed() {
+    let mut sim = sealed_room(12, 40, (5, 10, 30, 20));
+    let bed = sim.idx(12, 20);
+    sim.buildings[bed] = Building::Bed;
+    sim.colonists[0].energy = 100;
+    sim.colonists[1].energy = 100;
+    sim.step(&[]);
+    // The first takes the bed; one sleeper per bed, so the second lies down where they are.
+    assert_eq!(sim.colonists[0].bed, Some(bed as u32));
+    assert_eq!(sim.colonists[0].activity, Activity::Walking);
+    assert_eq!(sim.colonists[1].bed, None);
+    assert_eq!(sim.colonists[1].activity, Activity::Sleeping);
+    for _ in 0..30 {
+        sim.step(&[]);
+    }
+    assert_eq!((sim.colonists[0].x, sim.colonists[0].y), (12, 20));
+    assert_eq!(sim.colonists[0].activity, Activity::Sleeping);
+    for _ in 0..200 {
+        sim.step(&[]);
+    }
+    // Even in the dark, a bed rests better than the floor.
+    assert!(sim.colonists[0].energy > sim.colonists[1].energy, "bed {} floor {}", sim.colonists[0].energy, sim.colonists[1].energy);
+    assert!(sim.colonists[0].sleep_quality > sim.colonists[1].sleep_quality);
+}
+
+#[test]
+fn shades_come_out_from_the_second_night_and_never_enter_light() {
+    let mut sim = sealed_room(13, 48, (2, 14, 45, 24));
+    let lamp = (40u32, 24u32);
+    let i = sim.idx(lamp.0, lamp.1);
+    sim.buildings[i] = Building::Lamp;
+    let mut seen = false;
+    let mut count = 0;
+    while sim.tick < sim::DAY_TICKS * 2 + 50 {
+        // Keep everyone alive so the Shades keep coming.
+        for c in sim.colonists.iter_mut() {
+            c.warmth = sim::STAT_MAX;
+            c.fullness = sim::STAT_MAX;
+        }
+        // The tick being simulated, before step moves the clock on.
+        let (night, day) = (sim.is_night(), sim.day());
+        sim.step(&[]);
+        if !night || day < sim::SHADE_FIRST_DAY {
+            assert!(sim.shades.is_empty(), "shade at tick {}", sim.tick);
+        }
+        assert!(sim.shades.len() <= sim.alive_colonists() / 3 + 1);
+        for s in &sim.shades {
+            assert!(sim.is_dark(sim.idx(s.x, s.y)), "shade in the light at {},{}", s.x, s.y);
+        }
+        if sim.shades.len() > count {
+            let s = sim.shades.last().unwrap();
+            assert!(s.x.abs_diff(lamp.0) + s.y.abs_diff(lamp.1) >= sim::SHADE_SPAWN_FROM_LIGHT as u32);
+        }
+        count = sim.shades.len();
+        seen |= count > 0;
+    }
+    assert!(seen, "no shade ever came");
+}
+
+#[test]
+fn shades_take_survivors_left_in_the_dark() {
+    let mut sim = sealed_room(14, 40, (5, 10, 30, 20));
+    // Nightfall on day 2, with no light anywhere.
+    sim.tick = sim::DAY_TICKS + sim::DAY_TICKS * 6 / 10;
+    for _ in 0..300 {
+        sim.step(&[]);
+    }
+    let taken = sim.colonists.iter().filter(|c| c.cause == sim::CAUSE_TAKEN).count();
+    assert!(taken > 0, "causes: {:?}", sim.colonists.iter().map(|c| c.cause).collect::<Vec<_>>());
+    assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_SHADE_ATTACK));
+    assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_DEATH));
+    // Dawn sends them away.
+    while sim.is_night() {
+        sim.step(&[]);
+    }
+    sim.step(&[]);
+    assert!(sim.shades.is_empty());
+}
