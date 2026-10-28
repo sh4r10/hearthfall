@@ -7,6 +7,7 @@ import { icon } from './icons';
 import { MAP_VIEWS, MapViews } from './map-views';
 import { PriorityBrush, SpeedControl, StuckOrders } from './management';
 import { Inspector, NEEDS, doing, needBar } from './inspect';
+import { BUILDING_NAMES, judge, lightFrom, line, nightRadius, refusal, type Spot } from './placement';
 import SimWorker from './sim.worker.ts?worker&inline';
 
 const TICKS_PER_SECOND = 10;
@@ -32,7 +33,7 @@ const TOOLS: ToolInfo[] = [
 const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. A building\'s floor can\'t be dug: remove the building first.',
   stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
-  ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
+  ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
   lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
@@ -56,6 +57,11 @@ let worker: Worker | undefined;
 const send = (msg: ToWorker) => worker?.postMessage(msg);
 
 let tool: Tool = 'dig';
+function buildingOf(t: Tool) { return TOOLS.find((x) => x.tool === t)?.building; }
+/** A pan, a box for an area tool, or a line of buildings from the cell it started on. */
+let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; box?: Tool; line?: [number, number] } | undefined;
+/** Where the pointer is over the world, for the preview. */
+let pointer: { x: number; y: number } | undefined;
 const speed = new SpeedControl(send);
 const brush = new PriorityBrush();
 const inspector = new Inspector(NAMES, TICKS_PER_SECOND, send, () => { world.select(); hint.hidden = false; });
@@ -196,10 +202,6 @@ function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' =
 }
 
 const views = new MapViews(NAMES, logLine);
-const BUILDING_NAMES: Record<number, string> = {
-  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.Stockpile]: 'stockpile',
-  [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed',
-};
 
 // --- First-night tutorial ------------------------------------------------------
 
@@ -271,6 +273,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
   const frame = event.data;
   last = frame;
   world.applyFrame(frame, TICKS_PER_SECOND);
+  if (pointer) showPreview(); // what fits changes as survivors dig and build
   announce(frame);
   const total = frame.colonists.length / COLONIST_STRIDE;
   let alive = 0;
@@ -342,7 +345,9 @@ function setTool(t: Tool) {
   selectButton('data-tool', t);
   brush.shown(t === 'priority');
   world.setShowPriorities(t === 'priority');
-  hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}<br>Drag to look around, scroll to zoom.</div>`;
+  const row = buildingOf(t) !== undefined && t !== 'ladder' ? ' Shift-drag to place a row.' : '';
+  hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}${row}<br>Drag to look around, scroll to zoom.</div>`;
+  showPreview();
 }
 function setOverlay(o: Overlay) {
   if (!views.isOpen(o)) return;
@@ -375,26 +380,21 @@ window.addEventListener('keydown', (e) => {
 // Right-click and right-drag cancel with any tool.
 const BOX_TOOLS: Tool[] = ['dig', 'deconstruct', 'cancel', 'priority'];
 const selectBox = $('select-box');
-let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; paint: boolean; box?: Tool } | undefined;
 /** Place an order with `t` on a cell, or for Priority, repaint the order there. */
 function orderAt(t: Tool, x: number, y: number) {
   if (t === 'priority') send({ type: 'priority', x, y, priority: brush.level });
   else send({ type: 'command', tool: t, x, y });
 }
-const order = (e: PointerEvent) => {
-  const cell = world.pickCell(e.clientX, e.clientY);
-  if (cell) orderAt(tool, cell[0], cell[1]);
-};
 /** A plain click: order if the tool does something there, else inspect what is there. */
 function click(e: PointerEvent) {
   const cell = world.pickCell(e.clientX, e.clientY);
   if (!cell || !last) return;
   const [x, y] = cell;
   const i = y * last.width + x;
-  const builds = TOOLS.find((t) => t.tool === tool)?.building !== undefined;
+  const building = buildingOf(tool);
   // Clicking an order already there with a tool that would only repeat it shows the order instead.
   const ordered = tool !== 'cancel' && tool !== 'priority' && applies('cancel', last, i);
-  const orders = !ordered && (builds ? last.elements[i] === Element.Floor && last.buildings[i] === Building.None : applies(tool, last, i));
+  const orders = !ordered && (building !== undefined ? refusal(last, x, y, building) === undefined : applies(tool, last, i));
   if (orders) {
     orderAt(tool, x, y);
     if (inspector.cell?.[0] === x && inspector.cell?.[1] === y) inspector.update(last);
@@ -438,43 +438,99 @@ function applyBox(e: PointerEvent, t: Tool) {
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
+  if (e.shiftKey) e.preventDefault(); // or shift-drag selects the page's text
   const right = e.button === 2;
   const box = right ? 'cancel' : e.shiftKey && BOX_TOOLS.includes(tool) ? tool : undefined;
-  drag = { x: e.clientX, y: e.clientY, vx: world.view.x, vy: world.view.y, moved: false, paint: e.shiftKey && !box, box };
-  if (drag.paint) order(e);
+  const start = !right && e.shiftKey && buildingOf(tool) !== undefined ? world.pickCell(e.clientX, e.clientY) : undefined;
+  drag = { x: e.clientX, y: e.clientY, vx: world.view.x, vy: world.view.y, moved: false, box, line: start };
+  showPreview();
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag) return digTip(e);
-  if (drag.paint) return order(e);
+  pointer = { x: e.clientX, y: e.clientY };
+  if (!drag || drag.line) return showPreview();
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.hypot(dx, dy) > 5) drag.moved = true;
   if (!drag.moved) return;
-  if (drag.box) return showBox(e);
+  if (drag.box) { showBox(e); return showPreview(); }
+  hideTip();
   const u = world.unitsPerPixel();
   world.view.x = drag.vx - dx * u;
   world.view.y = drag.vy + dy * u;
 });
-/** Over a building's floor with Dig picked, say why it can't be dug. */
-function digTip(e: PointerEvent) {
-  const cell = tool === 'dig' && last ? world.pickCell(e.clientX, e.clientY) : undefined;
-  const on = cell && last ? heldUpBy(last, cell[0], cell[1]) : undefined;
-  if (on === undefined || !last) {
-    if (tooltip.dataset.dig) { tooltip.hidden = true; delete tooltip.dataset.dig; }
-    return;
+const AREA_COLOURS: Partial<Record<Tool, string>> = { dig: '#ffb454', deconstruct: '#ff6b6b', cancel: '#ff6b6b', priority: '#7cc4ff' };
+/** The cells a build line or an area box would cover, as the pointer stands now. */
+function previewCells(f: Frame): [number, number][] {
+  const here = pointer && world.pickCell(pointer.x, pointer.y);
+  if (!here) return [];
+  if (drag?.line) return line(drag.line, here);
+  if (!drag?.box || !drag.moved) return [here];
+  const a = world.pickCell(drag.x, drag.y) ?? here;
+  const cells: [number, number][] = [];
+  for (let y = Math.min(a[1], here[1]); y <= Math.max(a[1], here[1]); y++) {
+    for (let x = Math.min(a[0], here[0]); x <= Math.max(a[0], here[0]) && cells.length < 20_000; x++) cells.push([x, y]);
   }
-  const name = BUILDING_NAMES[last.buildings[on]] ?? 'building';
-  tooltip.innerHTML = `<b>Can't dig here</b>Supports the ${name.toLowerCase()}. Remove it first.`;
-  tooltip.dataset.dig = '1';
-  tooltip.hidden = false;
-  tooltip.style.left = `${e.clientX + 14}px`;
-  tooltip.style.top = `${e.clientY + 14}px`;
+  return cells;
 }
-canvas.addEventListener('pointerleave', () => { if (tooltip.dataset.dig) { tooltip.hidden = true; delete tooltip.dataset.dig; } });
+/**
+ * Show what the tool would do before it does it: a ghost of each building it
+ * would place, green if it fits, amber if it waits for stock, red if refused,
+ * with the reason and cost by the cursor; or the cells a dig, remove, cancel or
+ * priority box would touch.
+ */
+function showPreview() {
+  const f = last;
+  const panning = drag && !drag.box && !drag.line && drag.moved;
+  if (!f || !pointer || panning) { world.setPreview(); return hideTip(); }
+  const building = buildingOf(drag?.box ?? tool);
+  const cells = previewCells(f);
+  if (building === undefined) {
+    const t = drag?.box ?? tool;
+    const spots = cells.filter(([x, y]) => applies(t, f, y * f.width + x)).map(([x, y]): Spot => ({ x, y, fit: 'ok' }));
+    world.setPreview(spots.length ? { spots, area: AREA_COLOURS[t] } : undefined);
+    const held = t === 'dig' && cells.length === 1 ? heldUpBy(f, cells[0][0], cells[0][1]) : undefined;
+    if (held === undefined) return hideTip();
+    const name = BUILDING_NAMES[f.buildings[held]] ?? 'building';
+    return showTip(`<b>Can't dig here</b><em class="bad">Supports the ${name}. Remove it first.</em>`);
+  }
+  if (!cells.length) { world.setPreview(); return hideTip(); }
+  const spots = judge(f, building, cells);
+  const placed = spots.filter((s) => s.fit !== 'bad');
+  const radius = nightRadius(building);
+  const glow = radius && placed.length ? lightFrom(f, placed.map((s) => s.y * f.width + s.x), radius) : undefined;
+  world.setPreview({ building, spots, glow, warm: building === Building.Hearth });
+
+  const name = BUILDING_NAMES[building] ?? 'building';
+  const n = Math.max(placed.length, 1);
+  const [coal, stone] = BUILD_COST[building] ?? [0, 0];
+  const cost = [coal ? `${icon('coal', 12)} ${coal * n} coal` : '', stone ? `${icon('stone', 12)} ${stone * n} stone` : ''].filter(Boolean).join(' &nbsp;') || 'Free';
+  const title = cells.length > 1 ? `${placed.length} of ${cells.length} ${name}s fit` : name[0].toUpperCase() + name.slice(1);
+  const light = radius ? `<span class="note">The glow is how far its ${building === Building.Hearth ? 'light and warmth reach' : 'light reaches'} at night.</span>` : '';
+  const problem = spots.find((s) => s.fit === 'bad') ?? spots.find((s) => s.fit === 'wait');
+  const why = problem ? `<em class="${problem.fit === 'bad' ? 'bad' : ''}">${problem.reason}</em>` : '';
+  showTip(`<b>${title}</b><span class="cost">${cost}</span>${light}${why}`);
+}
+function showTip(html: string) {
+  if (!pointer) return;
+  tooltip.innerHTML = html;
+  tooltip.dataset.cursor = '1';
+  tooltip.hidden = false;
+  const t = tooltip.getBoundingClientRect();
+  tooltip.style.left = `${Math.min(pointer.x + 16, window.innerWidth - t.width - 8)}px`;
+  tooltip.style.top = `${Math.min(pointer.y + 16, window.innerHeight - t.height - 8)}px`;
+}
+function hideTip() {
+  if (tooltip.dataset.cursor) { tooltip.hidden = true; delete tooltip.dataset.cursor; }
+}
+canvas.addEventListener('pointerleave', () => { pointer = undefined; if (!drag) { world.setPreview(); hideTip(); } });
 canvas.addEventListener('pointerup', (e) => {
   if (drag?.box) applyBox(e, drag.box);
-  else if (drag && !drag.moved && !drag.paint) click(e);
+  else if (drag?.line && last) {
+    const building = buildingOf(tool)!;
+    for (const s of judge(last, building, previewCells(last))) if (s.fit !== 'bad') orderAt(tool, s.x, s.y);
+  } else if (drag && !drag.moved) click(e);
   drag = undefined;
   selectBox.hidden = true;
+  showPreview();
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();

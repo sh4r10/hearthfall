@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -145,6 +145,17 @@ const ELEMENT_COLOURS: Record<number, string[]> = {
   [Element.Coal]: ['#2e2c31', '#242327', '#38353a'],
 };
 
+/** At most this many cells light up in a preview. */
+const PREVIEW_MAX = 4096;
+function previewMesh(blending: THREE.Blending, opacity: number, size = 0.94) {
+  const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ transparent: true, opacity, blending, depthTest: false, depthWrite: false, toneMapped: false }), PREVIEW_MAX);
+  mesh.setColorAt(0, new THREE.Color());
+  mesh.count = 0;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 6;
+  return mesh;
+}
+
 export class WorldView {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
@@ -183,6 +194,11 @@ export class WorldView {
   private streams = new Map<number, THREE.Object3D>();
   private wasNight = false;
   private markers = new Map<string, Marker>();
+  /** The build preview: ghosts, the cells they cover, and the light they would cast. */
+  private previewGhosts = new THREE.Group();
+  private previewSquares = previewMesh(THREE.NormalBlending, 0.22);
+  private previewGlow = previewMesh(THREE.AdditiveBlending, 1, 1);
+  private previewKey = '';
   private hearths: Hearth[] = [];
   private lamps: THREE.PointLight[] = [];
   private shades: ShadeView[] = [];
@@ -225,7 +241,7 @@ export class WorldView {
     this.renderer.toneMapping = PAINTED ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = PAINTED ? 1.05 : 1.2;
     this.scene.background = new THREE.Color('#020304');
-    this.scene.add(this.terrain, this.buildings, this.markerGroup, this.effects, this.pileGroup);
+    this.scene.add(this.terrain, this.buildings, this.markerGroup, this.effects, this.previewGlow, this.previewSquares, this.previewGhosts, this.pileGroup);
     this.selection.visible = false;
     this.selection.renderOrder = 10;
     this.scene.add(this.selection);
@@ -683,18 +699,68 @@ export class WorldView {
     });
   }
 
-  private ghost(building: number) {
+  private ghost(building: number, tint = '#9fc3ff', opacity = 0.5) {
     const model = makeModel(BUILDING_MODELS[building]);
+    const flat = tint === '#9fc3ff' ? this.ghostMaterial : new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: opacity * 0.7, depthWrite: false });
     model.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return;
       const map = (o.material as THREE.MeshBasicMaterial).map;
-      // Sprites keep their picture, washed out in blue; models become a blue silhouette.
-      o.material = map ? new THREE.MeshBasicMaterial({ map, color: '#9fc3ff', transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }) : this.ghostMaterial;
+      // Sprites keep their picture, washed out in the tint; models become a tinted silhouette.
+      o.material = map ? new THREE.MeshBasicMaterial({ map, color: tint, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }) : flat;
       o.userData.lit = false;
       o.castShadow = false;
     });
-    if (building === Building.Hearth) model.scale.setScalar(1.3);
+    if (building === Building.Hearth || building === Building.Lamp) model.scale.setScalar(1.3);
     return model;
+  }
+
+  /**
+   * Show where a building would go before it is ordered: a ghost of it on each
+   * cell, tinted by whether it fits, over squares marking the cells it covers.
+   * `cells` alone (no building) marks the cells an area tool would touch, and
+   * `glow` the cells its light would reach, 0..1.
+   */
+  setPreview(p?: { building?: number; spots: { x: number; y: number; fit: 'ok' | 'wait' | 'bad' }[]; area?: string; glow?: Map<number, number>; warm?: boolean }) {
+    const key = p ? JSON.stringify([p.building, p.spots, p.area, p.glow ? [...p.glow.keys()].length : 0, p.warm]) : '';
+    if (key === this.previewKey) return;
+    this.previewKey = key;
+    // Ghost materials are made per preview; their pictures are shared and stay.
+    this.previewGhosts.traverse((o) => { if (o instanceof THREE.Mesh && o.material !== this.ghostMaterial) (o.material as THREE.Material).dispose(); });
+    this.previewGhosts.clear();
+    const squares = this.previewSquares, glow = this.previewGlow;
+    squares.count = glow.count = 0;
+    if (!p) return;
+    const m = new THREE.Matrix4(), c = new THREE.Color(), pos = new THREE.Vector3();
+    const tint = { ok: '#8ff0ad', wait: '#ffd27a', bad: '#ff7a7a' };
+    for (const s of p.spots) {
+      const color = p.area ?? tint[s.fit];
+      const r = p.building !== undefined ? REACH[p.building] ?? 0 : 0;
+      for (let dx = -r; dx <= r && squares.count < PREVIEW_MAX; dx++) {
+        this.cellToWorld(s.x + dx, s.y, pos);
+        m.makeTranslation(pos.x, pos.y, 0.06);
+        squares.setMatrixAt(squares.count, m);
+        squares.setColorAt(squares.count++, c.set(color));
+      }
+      if (p.building === undefined) continue;
+      const ghost = this.ghost(p.building, color, s.fit === 'bad' ? 0.45 : 0.62);
+      this.cellToWorld(s.x, s.y, pos);
+      ghost.position.set(pos.x, pos.y - 0.5, 0.02);
+      ghost.traverse((o) => { if (o instanceof THREE.Mesh) { (o.material as THREE.Material).depthTest = false; o.renderOrder = 8; } });
+      this.previewGhosts.add(ghost);
+    }
+    const open = this.latest?.elements;
+    for (const [i, level] of p.glow ?? []) {
+      if (glow.count >= PREVIEW_MAX) break;
+      if (open && open[i] !== Element.Floor) continue; // light stops at the rock face
+      this.cellToWorld(i % this.width, Math.floor(i / this.width), pos);
+      m.makeTranslation(pos.x, pos.y, 0.04);
+      glow.setMatrixAt(glow.count, m);
+      glow.setColorAt(glow.count++, c.set(p.warm ? '#ff9a3c' : '#ffe08a').multiplyScalar(0.18 * level * level));
+    }
+    for (const mesh of [squares, glow]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
   }
 
   private updateMarkers(frame: Frame) {
