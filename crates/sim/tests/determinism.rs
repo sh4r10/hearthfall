@@ -453,12 +453,12 @@ fn the_start_room_is_sealed_with_coal_in_its_walls() {
                 continue;
             }
             seen[i] = true;
-            assert!((x - cx).abs() <= 8 && (-4..=0).contains(&(y - cy)), "seed {seed}: ({x}, {y}) is open outside the start room");
+            assert!((x - cx).abs() <= 8 && (-5..=0).contains(&(y - cy)), "seed {seed}: ({x}, {y}) is open outside the start room");
             stack.extend([(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]);
         }
         let coal = sim.elements.iter().enumerate().filter(|&(i, &e)| {
             let (x, y) = (i as i32 % 160, i as i32 / 160);
-            e == Element::Coal && (x - cx).abs() <= 10 && (-6..=2).contains(&(y - cy))
+            e == Element::Coal && (x - cx).abs() <= 10 && (-7..=2).contains(&(y - cy))
         }).count();
         assert!(coal >= 14, "seed {seed}: only {coal} coal cells in the start shell");
     }
@@ -501,4 +501,16 @@ fn a_colony_left_alone_survives_its_first_night() {
         sim.step(&[]);
     }
     assert!(sim.colonists.iter().all(|c| c.alive()), "someone died on day 1 with no orders given");
+}
+
+#[test]
+fn the_set_maps_let_a_colony_through_two_nights_untouched() {
+    // The seeds behind the title screen's set maps (apps/client/src/main.ts).
+    for seed in [7, 1234, 99_999] {
+        let mut sim = Sim::new(seed, 160, 110);
+        for _ in 0..2 * sim::DAY_TICKS {
+            sim.step(&[]);
+        }
+        assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within two days with no orders given");
+    }
 }

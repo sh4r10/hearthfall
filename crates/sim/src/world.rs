@@ -53,7 +53,7 @@ pub enum Building {
 }
 
 /// Gas masses are in milligrams per cell, temperatures in centi-kelvin.
-pub const START_OXYGEN_MG: i32 = 1_800;
+pub const START_OXYGEN_MG: i32 = 2_400;
 pub const START_TEMP_CK: i32 = 29_315; // 20 C
 
 /// Smooth integer value noise in 0..=255, cell size `1 << shift`.
@@ -90,11 +90,11 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
             // random cave and falls somewhere they can't climb out of before
             // the player has dug anything. Coal seams sit in the shell where
             // they can be seen from inside, so the first fuel is never a hunt.
-            let element = if dx.abs() <= 8 && (-4..=0).contains(&dy) {
+            let element = if dx.abs() <= 8 && (-5..=0).contains(&dy) {
                 Element::Floor
             } else if START_SEAMS.iter().any(|s| s.contains(&(dx, dy))) {
                 Element::Coal
-            } else if dx.abs() <= 10 && (-6..=2).contains(&dy) {
+            } else if dx.abs() <= 10 && (-7..=2).contains(&dy) {
                 Element::Dirt
             } else if n < 70 {
                 Element::Floor

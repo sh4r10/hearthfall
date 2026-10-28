@@ -59,6 +59,21 @@ let tool: Tool = 'dig';
 
 // --- Title screen ------------------------------------------------------------
 
+/**
+ * Set maps are fixed seeds: the generator is deterministic, so a seed is a
+ * map, and these are ones worth coming back to. "Random" rolls a new seed
+ * each run; `?seed=N` plays any seed and is shown at game over for sharing.
+ */
+const MAPS: { name: string; seed?: number }[] = [
+  { name: 'Hearth Hollow', seed: 7 },
+  { name: 'The Long Gallery', seed: 1234 },
+  { name: 'Frostbite', seed: 99_999 },
+  { name: 'Random seed' },
+];
+const mapPick = $('map') as HTMLSelectElement;
+mapPick.innerHTML = MAPS.map((m, i) => `<option value="${i}">${m.name}</option>`).join('');
+let seed = 0;
+
 const story = artUrl('story-1');
 if (story) (document.querySelector('.title-art') as HTMLElement).style.backgroundImage = `url(${story})`;
 $('how').onclick = () => {
@@ -75,7 +90,8 @@ function start() {
   worker = new SimWorker();
   worker.onerror = (e) => console.error('sim worker failed:', e.message);
   worker.onmessage = onFrame;
-  const seed = Number(new URLSearchParams(location.search).get('seed') ?? Date.now() % 1_000_000);
+  const param = new URLSearchParams(location.search).get('seed');
+  seed = param !== null ? Number(param) : MAPS[Number(mapPick.value)].seed ?? Date.now() % 1_000_000;
   send({ type: 'init', seed, width: MAP_WIDTH, height: MAP_HEIGHT, ticksPerSecond: TICKS_PER_SECOND });
 }
 $('play').onclick = start;
@@ -169,7 +185,7 @@ function announce(frame: Frame) {
 
 /** Each step waits for the world to show it done, and lights up the button it needs. */
 const TUTORIAL: { text: string; tool?: Tool; done: (f: Frame) => boolean }[] = [
-  { text: 'Your fire is all that keeps the cold out, and it burns coal. <b>Mark a coal seam to dig</b>: pick Dig and click the black rock.', tool: 'dig',
+  { text: 'Your fire is all that keeps the cold out, and it burns coal. <b>Mark a coal seam to dig</b>: pick Dig and click the black rock in the cave walls.', tool: 'dig',
     done: (f) => { for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) return true; return false; } },
   { text: 'Shades come out of the dark at night. <b>Build a lamp</b> in a tunnel to keep them out of it.', tool: 'lamp',
     done: (f) => f.buildings.includes(Building.Lamp) || hasBuildJob(f, Building.Lamp) },
@@ -255,7 +271,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
   const over = $('gameover');
   if (alive === 0 && over.hidden) {
     over.hidden = false;
-    over.querySelector('.summary')!.textContent = `Your colony lasted ${day} day${day === 1 ? '' : 's'}.`;
+    over.querySelector('.summary')!.textContent = `Your colony lasted ${day} day${day === 1 ? '' : 's'} on seed ${seed}.`;
   }
 }
 
