@@ -21,6 +21,10 @@ export interface Frame {
   elements: Uint8Array;
   buildings: Uint8Array;
   light: Uint8Array;
+  /** Hearth light only, 0..255; a survivor warms up where it is at least DARK_BELOW. */
+  firelight: Uint8Array;
+  /** Where hearth light will reach tonight if the fires stay fed. */
+  nightFirelight: Uint8Array;
   hearthFuel: Int32Array;
   oxygen: Int32Array;
   co2: Int32Array;
@@ -52,6 +56,13 @@ export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'suffoca
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
+/** Light below this counts as dark; must match DARK_BELOW in crates/sim/src/lib.rs. */
+export const DARK_BELOW = 40;
+/** Oxygen (mg) below which survivors suffocate and hearths go out; must match SUFFOCATE_BELOW_MG and HEARTH_MIN_OXYGEN_MG. */
+export const SUFFOCATE_BELOW_MG = 300;
+export const HEARTH_MIN_OXYGEN_MG = 150;
+/** Oxygen a fresh cave cell starts with; must match START_OXYGEN_MG. */
+export const START_OXYGEN_MG = 2400;
 
 // Mirror the enums in crates/sim/src/world.rs.
 export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
@@ -63,3 +74,6 @@ export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth'] as const
 export const HEARTH_COST = 8;
 /** Coal a lamp costs; must match LAMP_COST in crates/sim/src/jobs.rs. */
 export const LAMP_COST = 2;
+/** Fuel a full hearth holds, and ticks each unit burns for; must match HEARTH_CAPACITY and HEARTH_BURN_TICKS. */
+export const HEARTH_CAPACITY = 40;
+export const HEARTH_BURN_TICKS = 40;

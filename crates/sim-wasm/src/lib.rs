@@ -103,6 +103,16 @@ impl WebSim {
         self.sim.light.clone()
     }
 
+    /// The part of `light` that comes from hearths: only this keeps survivors warm.
+    pub fn firelight(&self) -> Vec<u8> {
+        self.sim.firelight.clone()
+    }
+
+    /// Where hearth light will reach tonight; see `Sim::night_firelight`.
+    pub fn night_firelight(&self) -> Vec<u8> {
+        self.sim.night_firelight()
+    }
+
     pub fn oxygen(&self) -> Vec<i32> {
         self.sim.oxygen.clone()
     }

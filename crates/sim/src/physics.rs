@@ -19,6 +19,15 @@ impl Sim {
         flood_light(self.width, self.height, &self.elements, &lamps, lamp_radius, &mut self.light);
     }
 
+    /// Where hearth light will reach after nightfall if every lit hearth stays
+    /// fed: a read-only forecast for the client's warmth view. Changes no state.
+    pub fn night_firelight(&self) -> Vec<u8> {
+        let mut out = vec![0; self.light.len()];
+        let hearths: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.hearth_lit(i)).collect();
+        flood_light(self.width, self.height, &self.elements, &hearths, LIGHT_RADIUS_NIGHT, &mut out);
+        out
+    }
+
     pub fn is_dark(&self, i: usize) -> bool {
         self.light[i] < DARK_BELOW
     }
