@@ -39,6 +39,8 @@ COPY = {
     "lamp": "buildings/lamp-on.png",
     "lamp-off": "buildings/lamp-off.png",
 }
+# Props cut to their painted area, for markers and icons in the world.
+CROP = {"pickaxe": "props/pickaxe.png"}
 # Strips of FRAME x FRAME cells, scaled to SHOWN.
 ANIMS = ["idle", "walk", "dig", "build", "carry", "climb", "celebrate", "cold", "sleep"]
 POSES = ["eat", "collapse", "dead"]
@@ -50,6 +52,9 @@ def main():
         old.unlink()
     for name, path in COPY.items():
         shutil.copyfile(src / path, ART / f"{name}.png")
+    for name, path in CROP.items():
+        img = Image.open(src / path)
+        img.crop(img.getbbox()).save(ART / f"{name}.png", optimize=True)
     for v, who in enumerate(CAST):
         base = src / "characters" / who
         strips = {a: base / "anim" / f"{a}.png" for a in ANIMS} | {p: base / "poses" / f"{p}.png" for p in POSES}
