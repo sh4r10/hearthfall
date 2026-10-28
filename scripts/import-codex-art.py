@@ -44,6 +44,24 @@ CROP = {"pickaxe": "props/pickaxe.png"}
 # Strips of FRAME x FRAME cells, scaled to SHOWN.
 ANIMS = ["idle", "walk", "dig", "build", "carry", "climb", "celebrate", "cold", "sleep"]
 POSES = ["eat", "collapse", "dead"]
+# Batch 1 painted some whole-body poses bigger than the rigged animations.
+# Shrink them about the feet so heads match the walk cycle. Drop an entry once
+# Codex repaints that pose at the right scale.
+POSE_SCALE = {
+    ("esk", "eat"): 0.7, ("esk", "collapse"): 0.8, ("esk", "dead"): 0.8,
+    ("mara", "eat"): 0.8, ("mara", "collapse"): 0.8, ("mara", "dead"): 0.8,
+}
+FEET = 304  # feet row in a survivor frame
+
+
+def rescale(img, k):
+    """Scale every frame of a strip by k about the centre of its feet row."""
+    out = Image.new("RGBA", img.size)
+    side = round(FRAME * k)
+    for f in range(img.width // FRAME):
+        frame = img.crop((f * FRAME, 0, (f + 1) * FRAME, FRAME)).resize((side, side), Image.LANCZOS)
+        out.paste(frame, (f * FRAME + (FRAME - side) // 2, FEET - round(FEET * k)), frame)
+    return out
 
 
 def main():
@@ -59,7 +77,9 @@ def main():
         base = src / "characters" / who
         strips = {a: base / "anim" / f"{a}.png" for a in ANIMS} | {p: base / "poses" / f"{p}.png" for p in POSES}
         for name, path in strips.items():
-            img = Image.open(path)
+            img = Image.open(path).convert("RGBA")
+            if (who, name) in POSE_SCALE:
+                img = rescale(img, POSE_SCALE[(who, name)])
             frames = img.width // FRAME
             img.resize((frames * SHOWN, SHOWN), Image.LANCZOS).save(ART / f"survivor-{v}-{name}.png", optimize=True)
         Image.open(base / "portrait.png").resize((128, 128), Image.LANCZOS).save(ART / f"survivor-{v}-portrait.png", optimize=True)

@@ -137,12 +137,7 @@ impl Sim {
     /// Whether `b` can go at (x, y): open, empty, and clear of every building
     /// and planned building on the row by their combined [`reach`].
     pub fn room_for(&self, x: u32, y: u32, b: Building) -> bool {
-        let i = self.idx(x, y);
-        if !self.elements[i].is_open() || self.buildings[i] != Building::None {
-            return false;
-        }
-        // Everything but a ladder stands on solid floor.
-        if b != Building::Ladder && (y + 1 >= self.height || self.elements[self.idx(x, y + 1)].is_open()) {
+        if self.buildings[self.idx(x, y)] != Building::None || !self.fits(x, y, b) {
             return false;
         }
         let clear = |ox: u32, other: Building| other == Building::None || x.abs_diff(ox) > reach(b) + reach(other);
@@ -155,16 +150,33 @@ impl Sim {
             })
     }
 
-    /// Whether `b` needs solid floor under it. Ladders hang on their own, and
-    /// a cairn lies wherever its survivor fell.
+    /// Whether `b`'s whole picture at (x, y) is in open cells and, for all but
+    /// a ladder, stands on solid ground (not water) all the way across.
+    pub fn fits(&self, x: u32, y: u32, b: Building) -> bool {
+        let r = reach(b) as i32;
+        (-r..=r).all(|dx| {
+            let (cx, cy) = (x as i32 + dx, y as i32);
+            self.open(cx, cy) && (b == Building::Ladder || (cy + 1 < self.height as i32 && self.elements[self.idx(cx as u32, cy as u32 + 1)].is_diggable()))
+        })
+    }
+
+    /// Whether `b` needs solid floor under it. Ladders hang on their own.
     pub fn needs_floor(b: Building) -> bool {
-        !matches!(b, Building::None | Building::Ladder | Building::Cairn)
+        !matches!(b, Building::None | Building::Ladder)
     }
 
     /// Whether the cell is the floor under a building, so digging it out would
     /// leave the building floating. Such a dig waits until the building is down.
+    /// Wide buildings rest on the cells under their whole picture.
     pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
-        y > 0 && Self::needs_floor(self.buildings[self.idx(x, y - 1)])
+        y > 0
+            && (-1..=1).any(|dx: i32| {
+                let ox = x as i32 + dx;
+                ox >= 0 && ox < self.width as i32 && {
+                    let b = self.buildings[self.idx(ox as u32, y - 1)];
+                    Self::needs_floor(b) && dx.unsigned_abs() <= reach(b)
+                }
+            })
     }
 
     /// Whether a non-ladder building or planned building at (x, y) has lost
@@ -204,7 +216,7 @@ impl Sim {
             JobKind::Dig => self.elements[i].is_diggable() && !self.holds_up_building(job.x, job.y),
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);
-                self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= coal && self.stone >= stone
+                self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && self.coal >= coal && self.stone >= stone
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
             JobKind::Deconstruct => removable(self.buildings[i]),
@@ -277,10 +289,8 @@ impl Sim {
             let job = &self.jobs[k];
             let stale = match job.kind {
                 JobKind::Dig => !self.elements[self.idx(job.x, job.y)].is_diggable(),
-                JobKind::Build(b) => {
-                    let i = self.idx(job.x, job.y);
-                    !self.elements[i].is_open() || self.buildings[i] != Building::None || self.unsupported(job.x, job.y, b)
-                }
+                // Ground dug out from under a planned building drops the plan.
+                JobKind::Build(b) => self.buildings[self.idx(job.x, job.y)] != Building::None || !self.fits(job.x, job.y, b),
                 JobKind::Refuel => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
                 JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
             };
