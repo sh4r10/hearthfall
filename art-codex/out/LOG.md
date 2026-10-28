@@ -432,3 +432,160 @@ Final strict result after the frost-crusted dead pose was delivered: `check_art.
 
 
 Final survivor strict checks: Tobin41 PASS/0 WARN, Ostra40 PASS/1 WARN, Pim40 PASS/1 WARN, Ruta40 PASS/1 WARN; every survivor has0 FAIL and0 missing. The three warnings are the reviewed standing-to-lying collapse motion,14px for Ostra,26px for Pim and31px for Ruta.
+
+## Batch 3: play-test fixes
+
+Built-in imagegen; uniformly scaled generated figures, never fitted seated art to standing height. Eating 175 px; collapse standing 250, buckling 215, kneeling 188, lying 88. Support pixels registered on y304, lower support centre x160. White icon interiors filled to remove hairline holes.
+
+### esk-pose-eat
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-ce6066d7-1da8-4104-9068-96b4038bca33.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target: second reference eating strip. First reference is Esk's exact character model and SCALE reference. Repaint eating frames with head EXACTLY the same pixel size as model sheet head, not enlarged. Three equally spaced 320x320 cells in one horizontal 960x320 strip, transparent. Same character as reference, same proportions, same colours. Each seated figure is only 175px tall from hat to soles, resting on y304. Head and hood around 105px tall, body compact beneath. Do not enlarge figure to fill cell. Frame1 holding bowl; frame2 raising spoon; frame3 bite. Same body placement and scale throughout. Generous transparent space above each seated figure.
+
+### esk-pose-collapse
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-466433c5-098f-4d64-8b78-f853d2be1b2d.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Use case: identity-preserve. Repaint second reference's four-frame collapse strip. First reference is exact esk model sheet. The same character as reference, same proportions, same colours. Four evenly spaced cells in one horizontal strip, transparent. Frame1 standing eyes half shut; frame2 knees buckle reaching down; frame3 kneeling slumping forward; frame4 lying on side eyes shut. IMPORTANT head stays EXACTLY same size throughout, and matches turnaround side head. Standing height250, kneeling188, lying88; DO NOT stretch or enlarge later poses to fill cells. Boots stay planted at same horizontal support x160 and ground y304 as body folds down, no sliding sideways. Same head construction, clothes and palette as turnaround. Thin dark brown ink, clean flat fills. Last lying figure fits compactly about240px long, head on right. No floor.
+
+### esk-pose-dead
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-50f20c23-8b2e-491a-96e3-ca9c78e10da3.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target second reference dead pose; first reference esk exact scale and model. Repaint same character as reference, same proportions, same colours. Lying on side eyes closed calmly, head right, thin pale frost crust on TOP edges of hood, coat, boots. No gruesome features. Head must be EXACTLY same size as model turnaround head. Compact lying height about88px, length about250px, resting y304 on 320x320 transparent frame. Never enlarge to fill canvas. Match the final collapse pose, boots at left.
+
+### mara-pose-eat
+
+Tries: 3. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8309bf16-ee67-4366-af4c-1d81c4efe94a.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target reference eating strip. Change ONLY Mara's exposed hands into plain dark-brown leather MITTENS #6b4a2f. No visible fingers. Preserve every other detail, exact head size, figure height, positions and three frames, transparent background. Same character as the reference, same proportions, same colours. Keep175px seated height and105px head within each320px cell.
+
+### mara-pose-collapse
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-83e926a4-7a68-4910-9e58-5b072baba09e.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Use case: identity-preserve. Repaint second reference's four-frame collapse strip. First reference is exact mara model sheet. The same character as reference, same proportions, same colours. Four evenly spaced cells in one horizontal strip, transparent. Frame1 standing eyes half shut; frame2 knees buckle reaching down; frame3 kneeling slumping forward; frame4 lying on side eyes shut. IMPORTANT head stays EXACTLY same size throughout, and matches turnaround side head. Standing height250, kneeling188, lying88; DO NOT stretch or enlarge later poses to fill cells. Boots stay planted at same horizontal support x160 and ground y304 as body folds down, no sliding sideways. Same head construction, clothes and palette as turnaround. Thin dark brown ink, clean flat fills. Last lying figure fits compactly about240px long, head on right. No floor.
+
+### mara-pose-dead
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-cc8d3d39-15c9-4d0e-b2b2-83c11a12918b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target second reference dead pose; first reference mara exact scale and model. Repaint same character as reference, same proportions, same colours. Lying on side eyes closed calmly, head right, thin pale frost crust on TOP edges of hood, coat, boots. No gruesome features. Head must be EXACTLY same size as model turnaround head. Compact lying height about88px, length about250px, resting y304 on 320x320 transparent frame. Never enlarge to fill canvas. Match the final collapse pose, boots at left.
+
+### tobin-pose-eat
+
+Tries: 2. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-4f03094e-4c88-4f0f-9b61-233c1327012e.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The same character as the reference, same proportions, same colours: tobin. Produce a three frame eating animation as one horizontal transparent strip. Facing right, seated cross-legged, holding wooden mushroom bowl: spoon in bowl, raising spoon, spoon at lips. CRITICAL PROPORTIONS: the HEAD IS HUGE relative to seated body: head/hat from crown to chin is 110 units tall, compact torso plus folded legs under chin only65 units tall, overall seated silhouette175 units. Thus head occupies 63 PERCENT of the seated figure's entire height. This matches the exact head size of the standing turnaround which is250 units tall. Do NOT make a miniature version of standing character, do NOT give a long torso, do NOT shrink head. Reduce seated torso and folded-leg area beneath the full-sized model-sheet head. Each320x320 cell has ground y304 and highest head pixel y129. All3frames same body, headsize and placement. Leave wide clear transparent area above. No standing figure, no extra objects. Preserve exact hat, hair, face, scarf and coat identity from model sheet.
+
+### ostra-pose-eat
+
+Tries: 2. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8681648c-c9d3-4a91-872e-bdc8550871af.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The same character as the reference, same proportions, same colours: ostra. Produce a three frame eating animation as one horizontal transparent strip. Facing right, seated cross-legged, holding wooden mushroom bowl: spoon in bowl, raising spoon, spoon at lips. CRITICAL PROPORTIONS: the HEAD IS HUGE relative to seated body: head/hat from crown to chin is 110 units tall, compact torso plus folded legs under chin only65 units tall, overall seated silhouette175 units. Thus head occupies 63 PERCENT of the seated figure's entire height. This matches the exact head size of the standing turnaround which is250 units tall. Do NOT make a miniature version of standing character, do NOT give a long torso, do NOT shrink head. Reduce seated torso and folded-leg area beneath the full-sized model-sheet head. Each320x320 cell has ground y304 and highest head pixel y129. All3frames same body, headsize and placement. Leave wide clear transparent area above. No standing figure, no extra objects. Preserve exact hat, hair, face, scarf and coat identity from model sheet.
+
+### ostra-pose-collapse
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-c5fceb42-048e-4587-9edd-845f446b97ac.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Use case: identity-preserve. Repaint second reference's four-frame collapse strip. First reference is exact ostra model sheet. The same character as reference, same proportions, same colours. Four evenly spaced cells in one horizontal strip, transparent. Frame1 standing eyes half shut; frame2 knees buckle reaching down; frame3 kneeling slumping forward; frame4 lying on side eyes shut. IMPORTANT head stays EXACTLY same size throughout, and matches turnaround side head. Standing height250, kneeling188, lying88; DO NOT stretch or enlarge later poses to fill cells. Boots stay planted at same horizontal support x160 and ground y304 as body folds down, no sliding sideways. Same head construction, clothes and palette as turnaround. Thin dark brown ink, clean flat fills. Last lying figure fits compactly about240px long, head on right. No floor.
+
+### pim-pose-eat
+
+Tries: 2. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-02d68120-ed89-4037-b87e-ce74471823ae.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The same character as the reference, same proportions, same colours: pim. Produce a three frame eating animation as one horizontal transparent strip. Facing right, seated cross-legged, holding wooden mushroom bowl: spoon in bowl, raising spoon, spoon at lips. CRITICAL PROPORTIONS: the HEAD IS HUGE relative to seated body: head/hat from crown to chin is 110 units tall, compact torso plus folded legs under chin only65 units tall, overall seated silhouette175 units. Thus head occupies 63 PERCENT of the seated figure's entire height. This matches the exact head size of the standing turnaround which is250 units tall. Do NOT make a miniature version of standing character, do NOT give a long torso, do NOT shrink head. Reduce seated torso and folded-leg area beneath the full-sized model-sheet head. Each320x320 cell has ground y304 and highest head pixel y129. All3frames same body, headsize and placement. Leave wide clear transparent area above. No standing figure, no extra objects. Preserve exact hat, hair, face, scarf and coat identity from model sheet.
+
+### pim-pose-collapse
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f6063ae8-b320-419a-bf77-f1306d36507a.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Use case: identity-preserve. Repaint second reference's four-frame collapse strip. First reference is exact pim model sheet. The same character as reference, same proportions, same colours. Four evenly spaced cells in one horizontal strip, transparent. Frame1 standing eyes half shut; frame2 knees buckle reaching down; frame3 kneeling slumping forward; frame4 lying on side eyes shut. IMPORTANT head stays EXACTLY same size throughout, and matches turnaround side head. Standing height250, kneeling188, lying88; DO NOT stretch or enlarge later poses to fill cells. Boots stay planted at same horizontal support x160 and ground y304 as body folds down, no sliding sideways. Same head construction, clothes and palette as turnaround. Thin dark brown ink, clean flat fills. Last lying figure fits compactly about240px long, head on right. No floor.
+
+### ruta-pose-eat
+
+Tries: 2. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-458e964b-6048-4f73-bf7f-e8ee123070cf.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The same character as the reference, same proportions, same colours: ruta. Produce a three frame eating animation as one horizontal transparent strip. Facing right, seated cross-legged, holding wooden mushroom bowl: spoon in bowl, raising spoon, spoon at lips. CRITICAL PROPORTIONS: the HEAD IS HUGE relative to seated body: head/hat from crown to chin is 110 units tall, compact torso plus folded legs under chin only65 units tall, overall seated silhouette175 units. Thus head occupies 63 PERCENT of the seated figure's entire height. This matches the exact head size of the standing turnaround which is250 units tall. Do NOT make a miniature version of standing character, do NOT give a long torso, do NOT shrink head. Reduce seated torso and folded-leg area beneath the full-sized model-sheet head. Each320x320 cell has ground y304 and highest head pixel y129. All3frames same body, headsize and placement. Leave wide clear transparent area above. No standing figure, no extra objects. Preserve exact hat, hair, face, scarf and coat identity from model sheet.
+
+### ruta-pose-collapse
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-b955571f-3c2a-48ea-9373-f3d2c3965e4b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Use case: identity-preserve. Repaint second reference's four-frame collapse strip. First reference is exact ruta model sheet. The same character as reference, same proportions, same colours. Four evenly spaced cells in one horizontal strip, transparent. Frame1 standing eyes half shut; frame2 knees buckle reaching down; frame3 kneeling slumping forward; frame4 lying on side eyes shut. IMPORTANT head stays EXACTLY same size throughout, and matches turnaround side head. Standing height250, kneeling188, lying88; DO NOT stretch or enlarge later poses to fill cells. Boots stay planted at same horizontal support x160 and ground y304 as body folds down, no sliding sideways. Same head construction, clothes and palette as turnaround. Thin dark brown ink, clean flat fills. Last lying figure fits compactly about240px long, head on right. No floor.
+
+### icon-coal
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-01840b42-36f8-40bd-ac4d-49dde520a6a7.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+OVERRIDE for interface icon: Flat interface glyph, pure white #ffffff on real transparent background. Repaint reference icon as one chunky irregular lump of coal, absolutely solid interior. ONE SOLID SILHOUETTE. NO inner lines, NO outlines, NO shading, NO texture, NO fine detail, NO dark pixels, NO holes. Rounded geometric forms, central96px of128px canvas with16px margin. Must read instantly when reduced to20px.
+
+### icon-food
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-1b3cdc0a-3d80-4065-ab47-36dccdccc787.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+OVERRIDE for interface icon: Flat interface glyph, pure white #ffffff on real transparent background. Repaint reference icon as one bowl heaped with three mushroom cap silhouettes fused into bowl, absolutely solid interior. ONE SOLID SILHOUETTE. NO inner lines, NO outlines, NO shading, NO texture, NO fine detail, NO dark pixels, NO holes. Rounded geometric forms, central96px of128px canvas with16px margin. Must read instantly when reduced to20px.
+
+### icon-survivors
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f3dd47ea-0d73-407e-b9a9-10c59c06f0c3.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+OVERRIDE for interface icon: Flat interface glyph, pure white #ffffff on real transparent background. Repaint reference icon as two hooded head-and-shoulder silhouettes fused together, no faces. ONE SOLID SILHOUETTE. NO inner lines, NO outlines, NO shading, NO texture, NO fine detail, NO dark pixels, NO holes. Rounded geometric forms, central96px of128px canvas with16px margin. Must read instantly when reduced to20px.
+
+### icon-hearth
+
+Tries: 1. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7b6536a3-ab1f-43a3-8403-9b01c1eaa76f.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+OVERRIDE for interface icon: Flat interface glyph, pure white #ffffff on real transparent background. Repaint reference icon as one flame rising from fused crossed logs, solid flame interior. ONE SOLID SILHOUETTE. NO inner lines, NO outlines, NO shading, NO texture, NO fine detail, NO dark pixels, NO holes. Rounded geometric forms, central96px of128px canvas with16px margin. Must read instantly when reduced to20px.
