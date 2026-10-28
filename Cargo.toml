@@ -5,3 +5,7 @@ members = ["crates/sim", "crates/sim-wasm"]
 [profile.release]
 opt-level = 3
 lto = true
+
+# The sim tests run thousands of ticks; unoptimised builds make them crawl.
+[profile.test]
+opt-level = 2

@@ -8,6 +8,8 @@ pub enum Element {
     Dirt = 1,
     Rock = 2,
     Water = 3,
+    /// Fuel for hearths. Digging it adds to the colony's fuel stock.
+    Coal = 4,
 }
 
 impl Element {
@@ -16,7 +18,7 @@ impl Element {
     }
 
     pub fn is_diggable(self) -> bool {
-        matches!(self, Element::Dirt | Element::Rock)
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal)
     }
 
     /// Thermal conductivity on a 0..=1024 scale.
@@ -26,6 +28,7 @@ impl Element {
             Element::Dirt => 300,
             Element::Rock => 600,
             Element::Water => 800,
+            Element::Coal => 400,
         }
     }
 }
@@ -35,10 +38,13 @@ impl Element {
 pub enum Building {
     None = 0,
     OxygenDiffuser = 1,
+    Ladder = 2,
+    /// Burns fuel to light and warm the area around it.
+    Hearth = 3,
 }
 
 /// Gas masses are in milligrams per cell, temperatures in centi-kelvin.
-pub const START_OXYGEN_MG: i32 = 1_000;
+pub const START_OXYGEN_MG: i32 = 1_800;
 pub const START_TEMP_CK: i32 = 29_315; // 20 C
 
 /// Smooth integer value noise in 0..=255, cell size `1 << shift`.
@@ -60,12 +66,18 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
         for x in 0..w {
             let n = (value_noise(seed, x, y, 4) * 3 + value_noise(seed ^ 0xA5A5, x, y, 2)) / 4;
             let (dx, dy) = (x - cx, y - cy);
-            let element = if dx * dx + dy * dy < 64 {
-                Element::Floor // guaranteed open starting area
+            // Side view: y grows downwards. Carve a starting room with a solid
+            // floor under it so the colonists have somewhere to stand.
+            let element = if dx.abs() <= 8 && (-4..=0).contains(&dy) {
+                Element::Floor
+            } else if dx.abs() <= 9 && (1..=2).contains(&dy) {
+                Element::Dirt
             } else if n < 70 {
                 Element::Floor
             } else if n < 90 {
                 Element::Water
+            } else if value_noise(seed ^ 0xC0A1, x, y, 2) > 200 {
+                Element::Coal // veins scattered through the rock
             } else if n < 160 {
                 Element::Dirt
             } else {

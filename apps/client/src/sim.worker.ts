@@ -12,14 +12,17 @@ function sendFrame(s: WebSim) {
     hash: s.state_hash().toString(16),
     width: s.width(),
     height: s.height(),
+    fuel: s.fuel(),
+    night: s.is_night(),
     elements: s.elements(),
     buildings: s.buildings(),
+    light: s.light(),
     oxygen: s.oxygen(),
     co2: s.co2(),
     temperature: s.temperature(),
     colonists: s.colonists(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.oxygen, frame.co2, frame.temperature, frame.colonists].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.oxygen, frame.co2, frame.temperature, frame.colonists].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -41,7 +44,7 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
   } else if (msg.type === 'command' && sim) {
     // Commands are queued and applied at the start of the next tick, the same
     // way lockstep multiplayer will schedule them.
-    if (msg.kind === 'dig') sim.dig(msg.x, msg.y);
-    else sim.build_diffuser(msg.x, msg.y);
+    const { x, y } = msg;
+    ({ dig: () => sim!.dig(x, y), ladder: () => sim!.build_ladder(x, y), hearth: () => sim!.build_hearth(x, y), diffuser: () => sim!.build_diffuser(x, y) })[msg.tool]();
   }
 };

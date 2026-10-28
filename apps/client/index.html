@@ -4,25 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hearthfall</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <canvas id="game"></canvas>
-    <div id="hud">
-      <div class="title">Hearthfall</div>
+    <header id="top">
+      <div class="brand">Hearthfall</div>
       <div id="stats"></div>
-      <div class="tools">
-        <button data-tool="dig" class="active">Dig (1)</button>
-        <button data-tool="diffuser">Oxygen diffuser (2)</button>
+    </header>
+    <nav id="toolbar" aria-label="Tools">
+      <div class="group">
+        <button data-tool="dig" class="active"><kbd>1</kbd>Dig</button>
+        <button data-tool="ladder"><kbd>2</kbd>Ladder</button>
+        <button data-tool="hearth"><kbd>3</kbd>Hearth</button>
+        <button data-tool="diffuser"><kbd>4</kbd>Oxygen</button>
       </div>
-      <div class="tools">
-        <button data-overlay="none" class="active">No overlay</button>
-        <button data-overlay="oxygen">Oxygen (O)</button>
-        <button data-overlay="co2">CO₂ (C)</button>
-        <button data-overlay="temperature">Heat (T)</button>
+      <div class="group">
+        <button data-overlay="none" class="active">View</button>
+        <button data-overlay="oxygen"><kbd>O</kbd>O₂</button>
+        <button data-overlay="co2"><kbd>C</kbd>CO₂</button>
+        <button data-overlay="temperature"><kbd>T</kbd>Heat</button>
       </div>
-      <div class="hint">Drag to pan, scroll to zoom, right-drag to rotate. Click to use the tool.</div>
-    </div>
+    </nav>
+    <p id="hint">Dig black coal seams for fuel. Survivors won't leave the light, and the cold kills in the dark. Drag to pan, scroll to zoom.</p>
+    <div id="banner" hidden>The last fire has gone out.</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

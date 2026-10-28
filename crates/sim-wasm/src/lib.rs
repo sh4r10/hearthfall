@@ -24,6 +24,10 @@ impl WebSim {
         self.queued.push(Command::Build { x, y, building: Building::OxygenDiffuser });
     }
 
+    pub fn build_hearth(&mut self, x: u32, y: u32) {
+        self.queued.push(Command::Build { x, y, building: Building::Hearth });
+    }
+
     /// Runs one tick with every command queued since the last step.
     pub fn step(&mut self) {
         let commands = std::mem::take(&mut self.queued);
@@ -40,6 +44,18 @@ impl WebSim {
 
     pub fn tick(&self) -> u64 {
         self.sim.tick
+    }
+
+    pub fn fuel(&self) -> i32 {
+        self.sim.fuel
+    }
+
+    pub fn is_night(&self) -> bool {
+        self.sim.is_night()
+    }
+
+    pub fn light(&self) -> Vec<u8> {
+        self.sim.light.clone()
     }
 
     pub fn state_hash(&self) -> u64 {
@@ -66,8 +82,8 @@ impl WebSim {
         self.sim.temperature.clone()
     }
 
-    /// Flat `[x, y, breath, x, y, breath, ...]`.
+    /// Flat `[x, y, breath, warmth, ...]`.
     pub fn colonists(&self) -> Vec<i32> {
-        self.sim.colonists.iter().flat_map(|c| [c.x as i32, c.y as i32, c.breath]).collect()
+        self.sim.colonists.iter().flat_map(|c| [c.x as i32, c.y as i32, c.breath, c.warmth]).collect()
     }
 }
