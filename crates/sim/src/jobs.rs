@@ -167,16 +167,22 @@ impl Sim {
 
     /// Whether the cell is the floor under a building, so digging it out would
     /// leave the building floating. Such a dig waits until the building is down.
-    /// Wide buildings rest on the cells under their whole picture.
     pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
-        y > 0
-            && (-1..=1).any(|dx: i32| {
-                let ox = x as i32 + dx;
-                ox >= 0 && ox < self.width as i32 && {
-                    let b = self.buildings[self.idx(ox as u32, y - 1)];
-                    Self::needs_floor(b) && dx.unsigned_abs() <= reach(b)
-                }
-            })
+        self.held_up_by(x, y).is_some()
+    }
+
+    /// The column of the building whose floor (x, y) is, if any. Wide
+    /// buildings rest on the cells under their whole picture.
+    pub fn held_up_by(&self, x: u32, y: u32) -> Option<u32> {
+        if y == 0 {
+            return None;
+        }
+        (-1..=1).map(|dx: i32| x as i32 + dx).find(|&ox| {
+            ox >= 0 && ox < self.width as i32 && {
+                let b = self.buildings[self.idx(ox as u32, y - 1)];
+                Self::needs_floor(b) && ox.abs_diff(x as i32) <= reach(b)
+            }
+        }).map(|ox| ox as u32)
     }
 
     /// Whether a non-ladder building or planned building at (x, y) has lost

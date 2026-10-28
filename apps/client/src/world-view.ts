@@ -181,9 +181,9 @@ export class WorldView {
   private raycaster = new THREE.Raycaster();
   private playPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private ghostMaterial = new THREE.MeshBasicMaterial({ color: '#8fb8ff', transparent: true, opacity: 0.35, depthWrite: false });
-  private barMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b' });
-  private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false });
-  private removeMaterial = new THREE.MeshBasicMaterial({ color: '#ff6b6b', transparent: true, opacity: 0.2, depthWrite: false });
+  private barMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', depthTest: false });
+  private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false, depthTest: false });
+  private removeMaterial = new THREE.MeshBasicMaterial({ color: '#ff6b6b', transparent: true, opacity: 0.2, depthWrite: false, depthTest: false });
   private readonly glowTex = glowTexture();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -682,7 +682,15 @@ export class WorldView {
         this.cellToWorld(x, y, p);
         const icon = kind === JOB_DIG || kind === JOB_DECONSTRUCT;
         const object = kind === JOB_BUILD ? this.ghost(building) : makeModel(kind === JOB_DIG ? 'dig-marker' : 'deconstruct-marker');
-        object.position.set(p.x, icon ? p.y : p.y - 0.5, icon ? 0.75 : 0);
+        // Icons sit just in front of the cell, not out towards the camera, or
+        // the perspective view slides them off the block they mark. They draw
+        // over the rock lumps without depth testing instead.
+        object.position.set(p.x, icon ? p.y : p.y - 0.5, icon ? 0.1 : 0);
+        if (icon) object.traverse((o) => {
+          if (!(o instanceof THREE.Mesh)) return;
+          (o.material as THREE.Material).depthTest = false;
+          o.renderOrder = 7;
+        });
         if (icon) {
           // A faint square marks the cell itself: ember to dig, red to take down.
           // It stays square to the grid while the icon above it rocks.
@@ -692,7 +700,8 @@ export class WorldView {
           object.userData.square = square;
         }
         const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), this.barMaterial);
-        bar.position.set(p.x, p.y - 0.42, 0.8);
+        bar.position.set(p.x, p.y - 0.42, 0.12);
+        bar.renderOrder = 7;
         this.markerGroup.add(object, bar);
         marker = { object, bar, seen: true, flat: !icon };
         this.markers.set(key, marker);
