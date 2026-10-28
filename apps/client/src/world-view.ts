@@ -10,7 +10,7 @@ import { glowTexture } from './textures';
 import { artUrl } from './art';
 import { terrainMaterial } from './terrain-shader';
 import './sprites';
-import type { SurvivorAnim } from './sprites';
+import { BED_TOP, type SurvivorAnim } from './sprites';
 
 export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
 
@@ -911,14 +911,16 @@ export class WorldView {
       }
       s.sleeper.visible = true;
       s.sleeper.position.copy(s.pos);
-      if (s.sleeper.userData.flat && this.lastBuildings?.[s.cell] === Building.Bed) s.sleeper.position.y += 0.3; // on the cot, not under it
+      if (s.sleeper.userData.flat && this.lastBuildings?.[s.cell] === Building.Bed) s.sleeper.position.y += BED_TOP; // on the mattress
       s.sleeper.rotation.y = s.facing > 0 ? 0 : Math.PI;
       const blanket = s.sleeper.getObjectByName('blanket');
       if (blanket) blanket.scale.y = 1 + Math.sin(t * 1.6 + s.index) * 0.05;
       model.visible = false;
       return true;
     }
-    // Dead: 0.7 s collapse on the standing model, then the body.
+    // Dead: 0.7 s collapse on the standing model, then the body. Whatever they
+    // were doing before (asleep, say), nothing else of theirs stays on screen.
+    if (s.sleeper) s.sleeper.visible = false;
     s.dead += dt;
     const k = Math.min(s.dead / 0.7, 1);
     const play = model.userData.play as ((anim: SurvivorAnim, frame: number) => void) | undefined;

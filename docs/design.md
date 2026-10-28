@@ -56,7 +56,7 @@ You never control survivors directly. You mark jobs, and survivors claim and car
 
 ## Survivors
 
-- **Needs (built):** warmth, breath, energy, food, mood and sleep quality. Tired survivors sleep, and sleep is better somewhere warm and lit. Hungry survivors eat a ration. Mood follows how well their needs are met. Low mood slows work, and a miserable survivor refuses to work.
+- **Needs (built):** warmth, breath, energy, food, mood and sleep quality. Tired survivors sleep in a free bed, or else on their own patch of floor away from the others and the fire, and sleep is better somewhere warm and lit. Hungry survivors eat a ration. Mood follows how well their needs are met. Low mood slows work, and a miserable survivor refuses to work.
 - **Roles (built):** Digger, Builder and Firekeeper. A job waits a short while for someone in the matching role before anyone else takes it, and specialists work faster.
 - **Skills:** digging, building, firekeeping, farming, medicine and fighting, which improve with use.
 - **Traits:** for example "Night owl", "Afraid of the dark" and "Iron lungs".
@@ -64,7 +64,7 @@ You never control survivors directly. You mark jobs, and survivors claim and car
 
 ## Building and research
 
-Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Survivors research at a workbench to unlock more:
+Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Everything but a ladder stands on solid floor, buildings can't overlap (a hearth or mushroom bed needs a clear cell either side), and the floor under a building can't be dug out **(built)**. Survivors research at a workbench to unlock more:
 
 - **Lamps (built):** cost 2 coal and burn nothing. They light 4 cells by day and 3 at night through open space like hearth light, give no warmth, and keep Shades out like any light.
 - **Beds (built):** free to build and walkable. A tired survivor claims the nearest free bed within 40 steps and sleeps there, one per bed: in a lit bed they sleep as well as by a warm fire and regain energy 50% faster. With no free bed they sleep where they stand.

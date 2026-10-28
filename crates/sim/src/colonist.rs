@@ -155,7 +155,7 @@ impl Sim {
         if col.activity == Activity::Sleeping {
             // Warm, lit spots give a good night's sleep. A bed in the light
             // sleeps as well as anywhere even when a little cold, and rests faster.
-            let in_bed = col.bed == Some(i as u32);
+            let in_bed = col.bed == Some(i as u32) && self.buildings[i] == Building::Bed;
             let quality = match (in_bed, dark) {
                 (true, false) => STAT_MAX,
                 (true, true) => 7_000,
@@ -245,11 +245,12 @@ impl Sim {
         // On the way to bed.
         if let Some(bed) = col.bed {
             let bed = bed as usize;
-            if self.buildings[bed] == Building::Bed && self.idx(col.x, col.y) == bed {
+            let usable = matches!(self.buildings[bed], Building::Bed | Building::None);
+            if usable && self.idx(col.x, col.y) == bed {
                 self.colonists[c].activity = Activity::Sleeping;
                 return;
             }
-            if self.buildings[bed] == Building::Bed && !col.path.is_empty() {
+            if usable && !col.path.is_empty() {
                 if !self.step_along(c) {
                     self.colonists[c].path.clear();
                 }
@@ -275,7 +276,7 @@ impl Sim {
         let tired = col.energy < STAT_MAX / 4 || (self.is_night() && col.energy < STAT_MAX / 2);
         if tired && col.activity != Activity::Working {
             self.release_job(c);
-            if !self.go_to_bed(c) {
+            if !self.go_to_bed(c) && !self.go_to_floor(c) {
                 self.colonists[c].activity = Activity::Sleeping; // right where they stand
             }
             return;
@@ -447,6 +448,67 @@ impl Sim {
         true
     }
 
+    /// Without a bed, lie down on a free patch of floor: where they stand if it
+    /// is free, else the nearest free one within [`BED_REACH`], lit if possible.
+    /// A spot is free when nothing is built there, no hearth is beside it and
+    /// nobody else sleeps (or means to) within a cell of it, so sleepers never
+    /// pile up on each other or on the fire. Returns false if there is none.
+    fn go_to_floor(&mut self, c: usize) -> bool {
+        let col = &self.colonists[c];
+        let here = self.idx(col.x, col.y);
+        let field = self.field_from(col.x, col.y);
+        let mut best: Option<(bool, i32, usize)> = None; // (dark, distance, cell): lower is better
+        for i in 0..self.buildings.len() {
+            let d = field.dist[i];
+            if d > BED_REACH || !self.floor_free(c, i) {
+                continue;
+            }
+            let key = (self.is_dark(i), d, i);
+            if best.map_or(true, |b| key < b) {
+                best = Some(key);
+            }
+        }
+        let Some((dark, _, spot)) = best else { return false };
+        // Stay put if here is free and no better lit spot is on offer.
+        let spot = if self.floor_free(c, here) && (dark || !self.is_dark(here)) { here } else { spot };
+        let path = self.path_to(&field, spot);
+        let col = &mut self.colonists[c];
+        col.bed = Some(spot as u32);
+        col.timer = 0;
+        col.activity = if path.is_empty() { Activity::Sleeping } else { Activity::Walking };
+        col.path = path;
+        true
+    }
+
+    /// On a hearth or right beside it, where a survivor would stand in the flames.
+    pub(crate) fn by_hearth(&self, x: i32, y: i32) -> bool {
+        (-1..=1).any(|dx| {
+            let nx = x + dx;
+            nx >= 0 && nx < self.width as i32 && y >= 0 && y < self.height as i32 && self.buildings[self.idx(nx as u32, y as u32)] == Building::Hearth
+        })
+    }
+
+    fn floor_free(&self, c: usize, i: usize) -> bool {
+        let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
+        if self.buildings[i] != Building::None || !self.open(x, y) || self.ladder(x, y + 1) || !self.supported(x, y) {
+            return false;
+        }
+        let near = |j: usize| {
+            let (jx, jy) = ((j as u32 % self.width) as i32, (j as u32 / self.width) as i32);
+            jy == y && (jx - x).abs() <= 1
+        };
+        let w = self.width as i32;
+        for dx in -2..=2 {
+            let nx = x + dx;
+            if nx >= 0 && nx < w && self.buildings[(y * w + nx) as usize] == Building::Hearth {
+                return false;
+            }
+        }
+        !self.colonists.iter().enumerate().any(|(o, other)| {
+            o != c && other.alive() && (other.bed.map_or(false, |b| near(b as usize)) || (other.activity == Activity::Sleeping && near(self.idx(other.x, other.y))))
+        })
+    }
+
     /// An idle survivor caught in the dark heads for the nearest lit cell they
     /// can stand in. Returns false if they are already lit or no light is in reach.
     fn flee_to_light(&mut self, c: usize) -> bool {
@@ -475,17 +537,29 @@ impl Sim {
     }
 
     /// Idle survivors potter about, but won't step out of the light on their own.
+    /// Idle survivors shuffle about in the light, but don't loiter in the fire
+    /// or on top of each other: from such a spot every step away is taken first.
     fn wander(&mut self, c: usize) {
         let (x, y) = (self.colonists[c].x as i32, self.colonists[c].y as i32);
         let here_lit = !self.is_dark(self.idx(x as u32, y as u32));
+        let crowded = |px: i32, py: i32| {
+            self.by_hearth(px, py)
+                || self.colonists.iter().enumerate().any(|(o, other)| o != c && other.alive() && (other.x as i32, other.y as i32) == (px, py))
+        };
         let (moves, n) = self.moves(x, y);
         let mut options = [(x, y); 7];
         let mut m = 1;
+        if crowded(x, y) {
+            m = 0;
+        }
         for &(mx, my) in &moves[..n] {
-            if !here_lit || !self.is_dark(self.idx(mx as u32, my as u32)) {
+            if (!here_lit || !self.is_dark(self.idx(mx as u32, my as u32))) && !crowded(mx, my) {
                 options[m] = (mx, my);
                 m += 1;
             }
+        }
+        if m == 0 {
+            m = 1; // boxed in: stay put
         }
         let (nx, ny) = options[self.rng.below(m as u32) as usize];
         let col = &mut self.colonists[c];

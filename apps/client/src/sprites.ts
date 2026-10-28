@@ -98,9 +98,12 @@ if (has('diffuser')) registerModel('diffuser', () => {
   return g;
 });
 
+/** The cot's height, and where its mattress top is, for laying sleepers on it. */
+const BED_HEIGHT = 1.05 / 3;
+export const BED_TOP = BED_HEIGHT * 0.41 - 0.02;
 if (has('bed')) registerModel('bed', () => {
   const g = new THREE.Group();
-  const m = card('bed', 0.43); // about 1.3 wide
+  const m = card('bed', BED_HEIGHT); // one cell wide, so beds side by side don't overlap
   m.position.y = -0.02;
   m.renderOrder = 3;
   g.add(m);
@@ -170,10 +173,13 @@ export type SurvivorAnim = keyof typeof SURVIVOR_ANIMS;
 const SURVIVOR_FRAME = 1.92; // world size of a frame: a standing survivor is about 1.5 tall
 const FEET = (16 / 320) * SURVIVOR_FRAME;
 
-function survivorStrip(variant: number, anim: SurvivorAnim) {
+/** Lying down, a survivor is drawn smaller so they fit one cell, the size of a cot. */
+const LYING = 0.67;
+
+function survivorStrip(variant: number, anim: SurvivorAnim, scale = 1) {
   const v = has(`survivor-${variant % 2}-idle`) ? variant % 2 : 0;
-  const book = flipbook(`survivor-${v}-${anim}`, SURVIVOR_ANIMS[anim], SURVIVOR_FRAME);
-  book.position.y = -FEET;
+  const book = flipbook(`survivor-${v}-${anim}`, SURVIVOR_ANIMS[anim], SURVIVOR_FRAME * scale);
+  book.position.y = -FEET * scale;
   book.renderOrder = 6;
   return { book, v };
 }
@@ -201,7 +207,7 @@ if (has('survivor-0-idle')) {
   registerModel('survivor-sleeping', (variant = 0) => {
     const g = new THREE.Group();
     g.userData.flat = true;
-    const { book } = survivorStrip(variant, 'sleep');
+    const { book } = survivorStrip(variant, 'sleep', LYING);
     book.userData.animate = (t: number) => book.userData.frame(t * 0.8 + variant * 0.7);
     g.add(book);
     return g;
@@ -211,7 +217,7 @@ if (has('survivor-0-idle')) {
   registerModel('survivor-dead', (variant = 0) => {
     const g = new THREE.Group();
     g.userData.flat = true;
-    const { book } = survivorStrip(variant, 'dead');
+    const { book } = survivorStrip(variant, 'dead', LYING);
     book.name = 'body';
     g.add(book);
     return g;
