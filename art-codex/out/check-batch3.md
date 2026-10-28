@@ -1,7 +1,7 @@
 # Art check
 
 Filters: batch=3 id=* character=*  
-**79 pass, 0 warn, 0 fail, 46 missing**
+**90 pass, 0 warn, 0 fail, 35 missing**
 
 | id | status | problems |
 |---|---|---|
@@ -84,20 +84,20 @@ Filters: batch=3 id=* character=*
 | `building-heater-on` | PASS |  |
 | `building-water-pump-off` | PASS |  |
 | `building-water-pump-on` | PASS |  |
+| `creature-heat-leech-crawl` | PASS |  |
+| `creature-heat-leech-latch` | PASS |  |
+| `creature-heat-leech-feed` | PASS |  |
+| `creature-heat-leech-burst` | PASS |  |
+| `creature-burrower-dig` | PASS |  |
+| `creature-burrower-surface` | PASS |  |
+| `creature-burrower-attack` | PASS |  |
+| `creature-burrower-retreat` | PASS |  |
+| `creature-shade-idle` | PASS |  |
+| `creature-shade-dissolve` | PASS |  |
+| `refugee` | PASS |  |
 
-## Missing (46)
+## Missing (35)
 
-- `creature-heat-leech-crawl` -> `art-codex/out/creatures/heat-leech/crawl.png`
-- `creature-heat-leech-latch` -> `art-codex/out/creatures/heat-leech/latch.png`
-- `creature-heat-leech-feed` -> `art-codex/out/creatures/heat-leech/feed.png`
-- `creature-heat-leech-burst` -> `art-codex/out/creatures/heat-leech/burst.png`
-- `creature-burrower-dig` -> `art-codex/out/creatures/burrower/dig.png`
-- `creature-burrower-surface` -> `art-codex/out/creatures/burrower/surface.png`
-- `creature-burrower-attack` -> `art-codex/out/creatures/burrower/attack.png`
-- `creature-burrower-retreat` -> `art-codex/out/creatures/burrower/retreat.png`
-- `creature-shade-idle` -> `art-codex/out/creatures/shade/idle.png`
-- `creature-shade-dissolve` -> `art-codex/out/creatures/shade/dissolve.png`
-- `refugee` -> `art-codex/out/creatures/refugee/wave.png`
 - `icon-pause` -> `art-codex/out/ui/icons/pause.png`
 - `icon-speed` -> `art-codex/out/ui/icons/speed.png`
 - `icon-priority` -> `art-codex/out/ui/icons/priority.png`

@@ -81,11 +81,36 @@ def log_group(group):
     log.write_text((log.read_text()+text).rstrip()+'\n')
 
 
+def centre_strips():
+    specs = json.loads((ROOT/'assets.json').read_text())['assets']
+    for a in specs:
+        if a['batch'] != 3 or not (a['id'].startswith('creature-') or a['id']=='refugee'): continue
+        path = ROOT.parent/a['path']
+        if not path.exists(): continue
+        strip = Image.open(path).convert('RGBA')
+        w,h,n = a['width'],a['height'],a['frames']
+        cells = [strip.crop((i*w,0,(i+1)*w,h)) for i in range(n)]
+        moments = []
+        for cell in cells:
+            ys,xs = np.where(np.asarray(cell.getchannel('A')) >= 128)
+            moments.append((xs.mean(),xs.min(),xs.max()))
+        if max(m[0] for m in moments)-min(m[0] for m in moments) <= 12: continue
+        reach = max(max(c-left,right-c) for c,left,right in moments)
+        scale = min(1,(w/2-8)/reach)
+        out = Image.new('RGBA',strip.size)
+        for i,cell in enumerate(cells):
+            cell = cell.resize((round(w*scale),round(h*scale)),Image.Resampling.LANCZOS)
+            ys,xs = np.where(np.asarray(cell.getchannel('A')) >= 128)
+            out.alpha_composite(cell,(i*w+round(w/2-xs.mean()),h-2-int(ys.max())))
+        out.save(path)
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('mode',choices=('states','wrap','log'))
+    p.add_argument('mode',choices=('states','wrap','log','centre'))
     p.add_argument('value',nargs='?')
     args = p.parse_args()
     if args.mode == 'states': align_states()
+    elif args.mode == 'centre': centre_strips()
     elif args.mode == 'wrap': wrap_texture(Path(args.value))
     else: log_group(args.value)

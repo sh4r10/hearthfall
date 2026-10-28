@@ -48,12 +48,35 @@ def buildings():
     sheet.save(OUT/'contact-batch3-buildings.png')
 
 
+def creatures():
+    specs = json.loads((OUT.parent/'assets.json').read_text())['assets']
+    rows = [a for a in specs if a['batch']==3 and (a['id'].startswith('creature-') or a['id']=='refugee') and (OUT.parent.parent/a['path']).exists()]
+    sheet = Image.new('RGB',(1000,len(rows)*190),'#3d3f45')
+    draw = ImageDraw.Draw(sheet)
+    for row,a in enumerate(rows):
+        path = OUT.parent.parent/a['path']
+        strip = Image.open(path).convert('RGBA')
+        frames = []
+        for i in range(a['frames']):
+            cell = strip.crop((i*a['width'],0,(i+1)*a['width'],a['height']))
+            preview = Image.new('RGBA',cell.size,(61,63,69,255))
+            preview.alpha_composite(cell)
+            frames.append(preview.convert('RGB'))
+            cell.thumbnail((192,160),Image.Resampling.LANCZOS)
+            sheet.paste(cell,(i*200+(192-cell.width)//2,row*190+160-cell.height),cell)
+        draw.text((4,row*190+166),a['id'],fill='white')
+        loop = {'loop':0} if path.stem in ('crawl','latch','feed','dig','idle') else {}
+        frames[0].save(path.with_suffix('.gif'),save_all=True,append_images=frames[1:],duration=166,**loop)
+    sheet.save(OUT/'contact-batch3-creatures.png')
+
+
 if __name__ == '__main__':
     comparison('eat')
     comparison('collapse', ('esk','mara','ostra','pim','ruta'))
     comparison('dead', ('esk','mara'))
     icons()
     buildings()
+    creatures()
     for pose in ('climb-up','climb-down','ladder-on','ladder-off','research'):
         if all((OUT/'characters'/name/'poses'/f'{pose}.png').exists() for name in NAMES):
             comparison(pose)

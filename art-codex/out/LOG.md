@@ -1397,3 +1397,121 @@ Final prompt:
 Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
 Tobin (the builder, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
 The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+## Batch 3: creatures
+
+### creature-burrower-attack
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7e36ef25-e0b6-4be7-b46b-e90eb8ce2d4a.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. CLAW ATTACK, not digging. Frame1 whole eyeless armoured mole crouches and pulls its three big shovel claws BACK beside chest, ready to swipe. Frame2 huge near foreclaw swings far FORWARD to the right, clear attacking swipe, chest raised. Frame3 follow-through: near claw fully extended right, body leaning forward, head low. Full animal remains visible, constant plate and head size. No digging rocks, no rubble spray, no target or victim, no eyes. One small ink motion arc allowed.
+Exactly 3 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-burrower-dig
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-26c30b9a-167c-4427-a9fe-836c1b75e41e.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A Burrower: a mole-like beast the size of a dog, armoured overlapping plates, eyeless, huge shovel claws. Side view facing right. Animation: dig, 4 frames.
+Generate all frames of one animation in one image so they match.
+ONE horizontal animation strip, exactly 4 evenly spaced frames. Each frame has equal384x256 canvas and generous clear space from neighbours, real transparent background. Same anatomy, design and source-pixel scale in all frames. Base or lowest wisp remains on bottom row. Clean flat graphic shapes, consistent ink, no gradient, no glowing halo, no floor or background.  Eyeless mole, no eyes, five big armour plates, three large shovel claws; no tiny scale detail.
+
+### creature-burrower-retreat
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7f44978d-547a-4377-8750-14852898f059.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. RETREATING UNDERGROUND, not digging in place. Frame1 full mole crouches to dive headfirst into ground. Frame2 ONLY back armour arch and hind legs remain visible; head and front claws already underground, so NOT painted. Frame3 ONLY THREE small back-plate tips and a few rubble chips remain visible; NO head, NO legs, NO full body. Keep plates exactly same size, never enlarge partial fragments. No floor slab, only tiny rubble scatter.
+Exactly 3 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-burrower-surface
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5d77fb91-ae02-4615-9388-ad8bcc0b80de.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. SURFACING from beneath ground, not digging. Frame1 ONLY the tip of two armoured back plates and two claws visible above a small rubble scatter; head and almost all body hidden underground and therefore NOT painted. Frame2 half the animal emerges: head, front plates and front claws visible, hind body still hidden. Frame3 complete armoured eyeless mole fully above ground standing ready. Same size plates and same anatomy across frames. Do not enlarge partial frames to fill canvas. No floor slab, only a little rubble.
+Exactly 3 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-heat-leech-burst
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-dc939749-3fad-41b0-8497-d47e4405d73c.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. ONE-SHOT NON-LOOPING BURST. Frame1 whole bloated orange-filled leech. Frame2 body splitting open with a jagged flat orange burst shape and sparks. Frame3 ONLY scattered sparks and a few tiny pink fragments; NO body, NO head, NO sucker mouth. Frame4 ONLY FOUR tiny fading orange embers; NO animal, NO head, NO sucker, NO returning to whole body. Later fragments keep original pixel scale. This is disappearance, never regeneration. Sparse final frame must still contain four clearly visible tiny embers.
+Exactly 4 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-heat-leech-crawl
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5669a3d2-b8a7-4853-a821-95c1298e2737.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. A looping CRAWL only. All FOUR frames are EMPTY COLD GREY-PINK, absolutely NO orange or yellow in any frame. Frame1 short body bunched at back; frame2 body long low stretched forward; frame3 back catches up and bunches; frame4 extends forward again. Same round sucker mouth and same head scale. Change only body compression. Remove every internal orange patch from reference.
+Exactly 4 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-heat-leech-feed
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-07254610-fe40-4da6-905f-f84df4211c0f.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. FEEDING PULSE. Both frames already latched to imaginary surface on right, sucker pressed flat and body filled with a CRISP-EDGED SOLID FLAT ORANGE internal patch. Frame1 orange patch medium; frame2 patch slightly larger and body slightly plumper. Both frames orange, never empty cold in frame1. No gradient, no airbrush, no glowing halo; one flat orange patch with one pale flat highlight.
+Exactly 2 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-heat-leech-latch
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9a47619f-fb1c-494c-8d39-bc13bdff9e35.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Generate a corrected animation strip of the SAME CREATURE as reference, same proportions and colours. LATCHING only, not feeding. Both frames COLD GREY-PINK, NO orange or yellow. Frame1 front sucker stretches and flares toward the RIGHT; frame2 wide sucker lip presses flat against an imaginary vertical surface on right, body tail curls upward and clings. Do not paint the wall or hearth. Clear suction action, no crawl cycle.
+Exactly 2 complete, evenly spaced frames in ONE horizontal transparent strip, each frame same canvas size. No extra panels, no labels. Keep generous transparent gaps between figures. Reference shows creature design only; draw the NEW ACTION just described. Muted palette, clean crisp flat fills, no background, no ambient haze, no cast shadow.
+
+### creature-shade-dissolve
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-cdee2a19-131b-4a07-9dde-0821436bc315.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A Shade (the same figure as the batch 2 drift strip: hunched black smoke, wisping edges, pale cold eyes #e4f1fb, long thin arms). Animation: dissolve, 5 frames. Dissolving in firelight: frame 1 recoiling, frames 2 to 4 the smoke coming apart from the edges into drifting wisps and flakes, the eyes last to go, frame 5 only a few faint wisps.
+Generate all frames in one image so they match, with the batch 2 drift strip attached as the reference.
+ONE horizontal animation strip, exactly 5 evenly spaced frames. Each frame has equal320x320 canvas and generous clear space from neighbours, real transparent background. Same anatomy, design and source-pixel scale in all frames. Base or lowest wisp remains on bottom row. Clean flat graphic shapes, consistent ink, no gradient, no glowing halo, no floor or background. Same creature as the reference, same proportions, same palette.   Frame1 full hunched Shade recoils; frame2 outer wisps break; frame3 limbs fragment; frame4 eyes remain among wisps; frame5 just THREE small dark curling wisps, no eyes, no body, visible faint cores, not fully empty. Never enlarge later fragments.
+
+### creature-shade-idle
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-ef1af14e-1df2-4eae-ae0e-1abb7abdb682.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A Shade (the same figure as the batch 2 drift strip: hunched black smoke, wisping edges, pale cold eyes #e4f1fb, long thin arms). Animation: idle, 4 frames. Idle loop: hovering in place, the smoke body slowly swelling and settling, wisps curling off the shoulders, eyes blinking once on frame 3.
+Generate all frames in one image so they match, with the batch 2 drift strip attached as the reference.
+ONE horizontal animation strip, exactly 4 evenly spaced frames. Each frame has equal320x320 canvas and generous clear space from neighbours, real transparent background. Same anatomy, design and source-pixel scale in all frames. Base or lowest wisp remains on bottom row. Clean flat graphic shapes, consistent ink, no gradient, no glowing halo, no floor or background. Same creature as the reference, same proportions, same palette.
+
+### refugee
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-ba6ba4bc-b766-4b82-b2d1-4a529dbdb279.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A refugee in a ragged, snow-caked coat at the edge of the light, holding up a dim lantern and waving, facing left. Generic look, hood up, face in shadow. Two frames: arm up, arm higher.
+
+ONE horizontal animation strip, exactly 2 evenly spaced frames. Each frame has equal320x320 canvas and generous clear space from neighbours, real transparent background. Same anatomy, design and source-pixel scale in all frames. Base or lowest wisp remains on bottom row. Clean flat graphic shapes, consistent ink, no gradient, no glowing halo, no floor or background.     Survivor scale250px tall,105px head, coat95px, legs50px. Facing LEFT. Hood rounded grey-brown, face hidden in dark blue-grey shadow, ragged coat, pale frost crust. Real mittens, never fingers. No goggles. Lantern flame tiny flat orange, no halo. Boots on y304 in320px frame. Only arm waves; body and boots stay fixed.
+
+Creature cleanup: removed generated ambient haze before reduction; registered complete connected creatures where source figures crossed approximate cell divisions; kept one scale across every strip. Heat-leech fills reduced to crisp muted tones. Shade scale matches batch 2 drift, final dissolve wisps retain 65% alpha. Horizontal registration fixes centre-of-mass warnings. Refugee rests on the manifest bottom anchor.

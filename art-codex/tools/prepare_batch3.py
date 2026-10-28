@@ -2,6 +2,7 @@
 """Register generated Batch 3 art without stretching poses to fill their cells."""
 import argparse
 import json
+from io import BytesIO
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
@@ -11,6 +12,24 @@ from prepare_generated import ROOT, OUT, content, figure_cells, asset
 def clean_source(source):
     rgba = np.array(Image.open(source).convert('RGBA'))
     rgba[:, :, 3] = np.where(rgba[:, :, 3] >= 240, 255, 0)
+    return Image.fromarray(rgba)
+
+
+def leech_palette(image):
+    """Flatten the generated translucent heat treatment into crisp fill tones."""
+    colours = np.array([[42,28,20],[85,58,62],[180,155,158],[148,125,132],
+                        [207,180,172],[207,150,132],[171,118,108],[228,183,161],
+                        [231,162,79],[191,117,68],[239,188,103]],dtype=np.int32)
+    rgba = np.array(image)
+    rgb = rgba[:,:,:3].astype(np.int32)
+    best = np.full(rgb.shape[:2],1000000,dtype=np.int32)
+    indices = np.zeros(rgb.shape[:2],dtype=np.uint8)
+    for i,colour in enumerate(colours):
+        distance = ((rgb-colour)**2).sum(axis=2,dtype=np.int32)
+        update = distance < best
+        indices[update] = i
+        best[update] = distance[update]
+    rgba[:,:,:3] = colours[indices].astype(np.uint8)
     return Image.fromarray(rgba)
 
 
@@ -55,8 +74,10 @@ def pegs(source, material):
 def register(source, ident):
     specs = json.loads((ROOT / 'assets.json').read_text())['assets']
     spec = next(a for a in specs if a['id'] == ident)
+    (ROOT.parent/spec['path']).parent.mkdir(parents=True,exist_ok=True)
     image = Image.open(source).convert('RGBA')
-    if spec.get('character') and spec['kind'] == 'pose':
+    if ident == 'refugee': image = clean_source(source)
+    if (spec.get('character') and spec['kind'] == 'pose') or ident == 'refugee':
         n = spec['frames']
         cells = figure_cells(image, n) if n > 1 else [content(image)]
         pose = Path(spec['path']).stem
@@ -78,8 +99,42 @@ def register(source, ident):
             support_x = round(xs[bottom].mean())
             x = 160-support_x
             x = max(2, min(318-cell.width, x))
-            out.alpha_composite(cell, (i*320+x, 305-cell.height))
+            baseline = 319 if ident == 'refugee' else 305
+            out.alpha_composite(cell, (i*320+x, baseline-cell.height))
         out.save(ROOT.parent / spec['path'])
+    elif ident.startswith('creature-shade-'):
+        n = spec['frames']
+        cells = [content(image.crop((i*image.width//n,0,(i+1)*image.width//n,image.height))) for i in range(n)]
+        reference = Image.open(OUT/'creatures/shade/drift.png').convert('RGBA').crop((0,0,320,320))
+        target_h = content(reference).height
+        scale = min(target_h/cells[0].height,280/max(c.width for c in cells))
+        out = Image.new('RGBA',(320*n,320))
+        for i,cell in enumerate(cells):
+            cell = cell.resize((round(cell.width*scale),round(cell.height*scale)),Image.Resampling.LANCZOS)
+            if ident.endswith('dissolve') and i == n-1:
+                alpha = cell.getchannel('A').point(lambda v:round(v*.65))
+                cell.putalpha(alpha)
+            out.alpha_composite(cell,(i*320+(320-cell.width)//2,318-cell.height))
+        out.save(ROOT.parent/spec['path'])
+    elif ident.startswith(('creature-burrower-', 'creature-heat-leech-')):
+        # Discard generated ambient haze before reduction; keep the painted art.
+        painted = clean_source(source)
+        if ident.startswith('creature-heat-leech-'): painted = leech_palette(painted)
+        if ident in {'creature-heat-leech-crawl','creature-heat-leech-latch',
+                     'creature-heat-leech-feed','creature-burrower-attack'}:
+            cells = figure_cells(painted,spec['frames'])
+            w,h,n = spec['width'],spec['height'],spec['frames']
+            scale = min((w-16)/max(c.width for c in cells),(h-8)/max(c.height for c in cells))
+            out = Image.new('RGBA',(w*n,h))
+            for i,cell in enumerate(cells):
+                cell = cell.resize((round(cell.width*scale),round(cell.height*scale)),Image.Resampling.LANCZOS)
+                out.alpha_composite(cell,(i*w+(w-cell.width)//2,h-2-cell.height))
+            out.save(ROOT.parent/spec['path'])
+            return
+        buffer = BytesIO()
+        painted.save(buffer,format='PNG')
+        buffer.seek(0)
+        asset(buffer,spec)
     elif ident.startswith(('icon-', 'badge-', 'trait-')):
         cell = content(image)
         scale = min(96/cell.width, 96/cell.height)
