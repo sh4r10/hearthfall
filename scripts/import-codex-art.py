@@ -32,7 +32,6 @@ COPY = {
     "mushroom-bed": "buildings/mushroom-bed-ready.png",
     "mushroom-bed-growing": "buildings/mushroom-bed-growing.png",
     "mushroom-bed-seedling": "buildings/mushroom-bed-seedling.png",
-    "diffuser": "buildings/diffuser-on.png",
     "cairn": "buildings/grave.png",
     "bed": "buildings/bed-empty.png",
     "lamp": "buildings/lamp-on.png",

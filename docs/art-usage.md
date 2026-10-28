@@ -14,8 +14,7 @@ Ids are the asset ids in `art-codex/assets.json`; `*` matches any part of an id.
 | `item-coal-chunk`, `item-ration` | Planned | Nothing is carried or dropped on the ground yet. | Hauling and stockpiles, in the colony management thread |
 | `building-stockpile-*` | Planned | There is no stockpile building yet. Coal and food are a colony-wide count. | Stockpiles, in the colony management thread |
 | `prop-lantern` | Planned | Nothing in the game carries a lantern yet. | Refugees following the light down, and night errands |
-| `building-diffuser-on` | Retiring | Still drawn while the oxygen diffuser exists. Oxygen is being cut from the game, and the diffuser goes with it. | Nothing once oxygen is removed |
-| `building-diffuser-off`, `icon-diffuser`, `icon-breath` | Retired | Oxygen is being cut, so there is no air to show. | Nothing |
+| `building-diffuser-on`, `building-diffuser-off`, `icon-diffuser`, `icon-breath` | Retired | Air is shelved: the oxygen diffuser and the breath need are gone from the game. | Nothing, unless air comes back |
 | `building-lamp-off` | Unused | Under the current rules a lamp never goes out. | A lamp that needs fuel, if one is added |
 | `water-surface` | Unused | The pool surface is drawn by the animated water mesh, which shades it by firelight cell by cell. The painted strip would need the same per-cell light. | The water rework |
 | `icon-coal`, `icon-food`, `icon-survivors`, `icon-hearth` | Waiting on a repaint | Their inner lines turn to mush at 20 px, so the drawn line icons stay. Codex repaints them in batch 3. | The interface, once repainted |
