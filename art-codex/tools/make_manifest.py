@@ -85,6 +85,20 @@ CHAR_TEXT = {
     "ruta": "Ruta (the medic, see CHARACTERS.md)",
 }
 
+# Whole-body poses are painted, not built from the rig, so they drift in scale.
+POSE_SCALE_RULE = ("Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, "
+                   "so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about "
+                   "0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.")
+
+# Batch 3: ladder climbing (painted per character so getting on and off reads) and research at a bench.
+CLIMB_POSES = {
+    "climb-up": (4, "Climbing up a ladder, seen from behind and slightly to the side: mittens on the rungs, one knee raised, alternating. The body stays centred on x=160 over the ladder; feet move up and down within the frame, the frame does not move."),
+    "climb-down": (4, "Climbing down a ladder, seen from behind and slightly to the side, looking down past one shoulder, feet reaching for the rung below, alternating."),
+    "ladder-on": (3, "Stepping from the floor onto a ladder, side view turning to back view: frame 1 standing facing right with a hand on a rail, frame 2 one boot on the bottom rung, frame 3 both feet on, seen from behind."),
+    "research": (3, "Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move."),
+    "ladder-off": (3, "Stepping off the top of a ladder onto a ledge to the right: frame 1 seen from behind at the top rung, frame 2 one knee on the ledge, frame 3 standing on the ledge facing right."),
+}
+
 for name in CAST:
     b = 1 if name in FIRST_TWO else 2
     who = CHAR_TEXT[name]
@@ -101,8 +115,12 @@ for name in CAST:
                 notes=f"Painted in place on the full 320x320 frame, positioned exactly where it sits in the {view} neutral pose (rig.json). Everything else transparent.")
     for pose, (frames, text) in POSES.items():
         add(f"{name}-pose-{pose}", f"{base}/poses/{pose}.png", 320, 320, frames=frames, batch=b, kind="pose", character=name,
-            prompt=f"{who}. {text}",
+            prompt=f"{who}. {text} {POSE_SCALE_RULE}",
             notes="Generate all frames of a pose in one image so they match, then split into the 320x320 cells." if frames > 1 else "")
+    for pose, (frames, text) in CLIMB_POSES.items():
+        add(f"{name}-pose-{pose}", f"{base}/poses/{pose}.png", 320, 320, frames=frames, batch=3, kind="pose", character=name,
+            prompt=f"{who}. {text} {POSE_SCALE_RULE}" + ("" if pose == "research" else " Paint them on the batch 3 ladder (buildings/ladder-middle.png) as a guide, then remove the ladder so only the survivor remains."),
+            notes="Generate all frames in one image so they match." + ("" if pose == "research" else " The ladder rails sit at x=112 and x=208, so mittens and boots land on them."))
     for anim, (view, frames, text) in BUILT_ANIMS.items():
         add(f"{name}-anim-{anim}", f"{base}/anim/{anim}.png", 320, 320, frames=frames, batch=b, kind="anim", character=name,
             source="compose", prompt=f"{text} ({view} view)",
@@ -114,9 +132,10 @@ for pid, text in [
     ("pickaxe", "A worn pickaxe: ash handle wrapped with cord at the grip, chipped iron head with one pointed end and one flat chisel end."),
     ("hammer", "A short builder's hammer, wooden handle, square iron head, a nail stuck in the handle wrap."),
     ("coal-sack", "A lumpy hessian sack of coal, knotted at the top, black lumps showing at the neck, grip at the knot. Unlike the other props it HANGS: the knot is at the grip and the sack body hangs straight down below it, about 70 px tall."),
+    ("crowbar", "A short iron crowbar for taking buildings apart: a bent claw at the top end, a strip of cloth wrapped at the grip, worn paint. Used for the deconstruct marker too, so it must read at 40 px."),
     ("lantern", "A small tin lantern with a wire handle (grip at the handle top), a dim ember inside, soot on the glass."),
 ]:
-    add(f"prop-{pid}", f"props/{pid}.png", 320, 320, batch=1, kind="prop", anchor="grip",
+    add(f"prop-{pid}", f"props/{pid}.png", 320, 320, batch=3 if pid == "crowbar" else 1, kind="prop", anchor="grip",
         prompt=f"{text} Held: the grip point is exactly at (172, 238)." + ("" if pid == "coal-sack" else " The handle points straight up from it and the whole tool reaches no more than 100 px above the grip, so it stays inside the frame when swung."))
 
 # ---------------------------------------------------------------- items on the ground
@@ -125,6 +144,12 @@ for iid, text in [
     ("coal-chunk", "A single fist-sized lump of coal, faceted, near-black with two small warm glints."),
     ("ration", "A mushroom ration: three pale lavender cave mushrooms tied with twine on a scrap of cloth."),
     ("stone-pile", "A small heap of grey rubble stones."),
+    ("coal-pile", "A small heap of coal lumps on the ground, the hauled-and-dropped version of the coal chunk, five or six lumps."),
+    ("iron-ore-pile", "A small heap of rust-red iron ore lumps (#8a4a2c #b8693a) with dull metallic flecks."),
+    ("crystal-pile", "A small heap of pale teal crystal shards (#7fd1c8 #c8f0ea), each a clean faceted shape."),
+    ("coke-pile", "A neat stack of grey-black coke briquettes, rounded rectangles with a dull sheen, stacked three high."),
+    ("iron-bar-stack", "Three small iron ingots stacked in a little pyramid, dark grey metal with a pale highlight edge."),
+    ("stone-chunk", "A single fist-sized rough grey stone (#5a5b5f #7a7873), a few flat faces, one chip. The stone resource, carried and stockpiled like coal."),
     ("scrap-pile", "A small heap of scrap: bent pipe, a gear, rusty plates."),
 ]:
     add(f"item-{iid}", f"items/{iid}.png", 96, 96, batch=1 if iid in ("coal-chunk", "ration") else 3, kind="sprite",
@@ -174,13 +199,23 @@ BUILD = [
     ("lamp", 1, 1, 2, 320, ["off", "on"], "A small coal lantern hanging from a wooden post with a cross-arm. on: lantern glass warm yellow inside (painted, no glow halo)."),
     ("grave", 1, 1, 1, 160, ["base"], "A grave cairn: a small pile of stacked stones with a red scarf tied around the top stone, a little snow on it."),
     ("stockpile", 1, 2, 1, 128, ["empty", "half", "full"], "A coal stockpile: a low plank pallet with a hand-painted marker stake. half: a heap of coal lumps. full: a big heap."),
+    ("ladder-top", 3, 1, 1, 192, ["base"], "LADDER REDESIGN (replaces the batch 1 ladder, which reads as a floating block). The top section of a timber ladder: two split-log rails and lashed rungs, the rails ending in iron hooks bent over the lip of the floor above, the lashing rope tails hanging. The rails sit at x=112 and x=208. Joins the middle piece below with no seam."),
+    ("ladder-middle", 3, 1, 1, 192, ["base"], "Middle section of the same timber ladder: two rails, two rungs lashed with rope. Tiles vertically: the rails touch the top and bottom edges exactly at x=112 and x=208, and any rung sits so that stacked pieces keep an even rung spacing. No pegs (those are separate)."),
+    ("ladder-bottom", 3, 1, 1, 192, ["base"], "Bottom section of the same ladder: the rail feet resting in a small scatter of rubble and dirt on the floor, one wedge stone under a foot. Joins the middle piece above with no seam."),
+    ("ladder-peg-dirt", 3, 1, 1, 192, ["left", "right"], "Wooden stakes driven into packed dirt to hold the ladder: two short sharpened stakes with rope lashed back to the rail. left: the stakes come out of the left edge of the cell (the wall is on the left) and reach the rail at x=112. right: mirrored, from the right edge to the rail at x=208. Only the stakes, rope and a little crumbled dirt at the edge, nothing else."),
+    ("ladder-peg-rock", 3, 1, 1, 192, ["left", "right"], "Iron spikes hammered into rock to hold the ladder: two flat iron brackets with a ring, a few chips of rock at the edge. left: from the left edge of the cell to the rail at x=112. right: mirrored to x=208. Only the brackets."),
+    ("stockpile-stone", 3, 2, 1, 128, ["half", "full"], "The stockpile pallet from batch 1 (same outline and stake) piled with grey rubble stone instead of coal. half: a low heap. full: a big heap."),
+    ("coke-oven", 3, 1, 2, 320, ["off", "on"], "A squat clay kiln for baking coal into coke: a domed clay body with an iron door at the front and a short stack. on: the door seams and the stack mouth glow orange (painted flat)."),
+    ("smelter", 3, 2, 2, 384, ["off", "on"], "A stone bloomery for smelting iron: a round stone furnace with a clay chimney, leather bellows on the left side, a tap hole at the bottom front. on: the tap hole glows, the bellows are squeezed, a little smoke at the chimney."),
+    ("lens-bench", 3, 2, 1, 192, ["idle", "working"], "A lens-grinder's bench: a plank bench with a treadle grinding wheel and a small vice holding a teal crystal. working: the wheel blurred with two motion lines, a few bright crystal sparks."),
+    ("hearth-grate", 3, 2, 1, 160, ["base"], "The better-burner upgrade of the batch 1 hearth: exactly the same stone ring, footprint and outline as building-hearth, with black iron fire-bars laid across the pit. No flame (separate)."),
+    ("crystal-lamp", 3, 1, 2, 320, ["off", "on"], "The lamp upgrade: the same wooden post and cross-arm as the batch 1 lamp, the lantern now holding a cut teal crystal lens. on: the lens painted bright cool white (no glow halo)."),
     ("workbench", 3, 2, 2, 384, ["idle", "working"], "A research workbench: heavy planks, a vice, scattered tools, scraps of paper, a small oil lamp. working: lamp lit, papers spread out."),
     ("crate", 3, 1, 1, 192, ["empty", "half", "full"], "A storage crate of nailed planks. empty: open and empty. half: some coal and stones. full: overflowing."),
     ("kitchen", 3, 2, 2, 320, ["off", "cooking"], "A cooking pot hung from a tripod over a small stone fire ring. cooking: steam curls and a low painted flame under the pot."),
     ("medbay", 3, 2, 1, 160, ["empty"], "A medical cot: white-grey sheet, a red cross stitched on a hanging cloth, bandages and a bottle on a crate beside it."),
     ("door", 3, 1, 2, 384, ["closed", "open"], "A rough plank door in a timber frame with iron straps. open: the door swung to the side, frame empty."),
     ("heater", 3, 1, 2, 320, ["off", "on"], "An iron stove heater with a grille front and a chimney stub. on: grille glowing orange (painted)."),
-    ("air-pump", 3, 2, 2, 384, ["off", "on"], "A hand-cranked air pump: bellows, a fan cage, pipes. on: bellows compressed, a puff above."),
     ("water-pump", 3, 2, 2, 384, ["off", "on"], "A hand pump on a tank with a spout. on: a stream at the spout."),
     ("barricade", 4, 1, 2, 384, ["intact", "damaged", "broken"], "A barricade of sharpened stakes and planks lashed together. damaged: missing planks. broken: splinters."),
     ("flare-lamp", 4, 1, 2, 384, ["off", "on"], "A tall pole with a magnesium flare cage on top. on: white-hot core (painted flat)."),
@@ -217,6 +252,14 @@ for cid, b, w, h, anims, text in [
         add(f"creature-{cid}-{anim}", f"creatures/{cid}/{anim}.png", w, h, frames=frames, batch=b, kind="strip",
             prompt=f"{text} Animation: {anim}, {frames} frames.",
             notes="Generate all frames of one animation in one image so they match.")
+SHADE = "A Shade (the same figure as the batch 2 drift strip: hunched black smoke, wisping edges, pale cold eyes #e4f1fb, long thin arms)."
+for anim, frames, text in [
+    ("idle", 4, "Idle loop: hovering in place, the smoke body slowly swelling and settling, wisps curling off the shoulders, eyes blinking once on frame 3."),
+    ("dissolve", 5, "Dissolving in firelight: frame 1 recoiling, frames 2 to 4 the smoke coming apart from the edges into drifting wisps and flakes, the eyes last to go, frame 5 only a few faint wisps."),
+]:
+    add(f"creature-shade-{anim}", f"creatures/shade/{anim}.png", 320, 320, frames=frames, batch=3, kind="strip",
+        prompt=f"{SHADE} Animation: {anim}, {frames} frames. {text}",
+        notes="Generate all frames in one image so they match, with the batch 2 drift strip attached as the reference.")
 add("refugee", "creatures/refugee/wave.png", 320, 320, frames=2, batch=3, kind="strip",
     prompt="A refugee in a ragged, snow-caked coat at the edge of the light, holding up a dim lantern and waving, facing left. Generic look, hood up, face in shadow. Two frames: arm up, arm higher.")
 
@@ -250,13 +293,27 @@ UI_ICON = ("Flat interface glyph in a clean modern style: one solid pure-white s
 for i in ICONS:
     add(f"icon-{i}", f"ui/icons/{i}.png", 128, 128, batch=2, kind="icon", anchor="centre",
         prompt=f"{UI_ICON} Subject: {ICON_TEXT[i]}.")
-ROLE_TEXT = {"digger": "a pickaxe", "builder": "a hammer", "firekeeper": "a flame over tongs", "farmer": "a mushroom",
+for i, sym in [("pause", "two rounded vertical bars"), ("speed", "one forward chevron (the game repeats it for 2x and 3x)"),
+               ("priority", "three rising bars"), ("alert", "an exclamation mark in a rounded triangle"),
+               ("inspect", "a magnifying glass"), ("research", "a flask over an open book"), ("haul", "a sack over a shoulder"),
+               ("iron", "a lump of ore"), ("crystal", "a faceted shard"), ("coke", "a rounded rectangular briquette"),
+               ("iron-bar", "an ingot"), ("lens", "a round cut lens with one highlight"),
+               ("tech-burner", "fire-bars over a flame"), ("tech-crystal-lamp", "a lantern with a diamond shape inside"),
+               ("tech-heater", "a stove with a chimney and three heat waves")]:
+    add(f"icon-{i}", f"ui/icons/{i}.png", 128, 128, batch=3, kind="icon", anchor="centre",
+        prompt=f"{UI_ICON} Subject: {sym}. Same family as the batch 2 icons.")
+for i, sym in [("stone", "a rough rock with two flat faces"), ("deconstruct", "a crowbar prying up a plank"),
+               ("area", "a dashed rounded rectangle with a small arrow cursor at its corner (drag to select an area)"),
+               ("cancel-area", "a dashed rounded rectangle with an X inside")]:
+    add(f"icon-{i}", f"ui/icons/{i}.png", 128, 128, batch=3, kind="icon", anchor="centre",
+        prompt=f"{UI_ICON} Subject: {sym}. Same family as the batch 2 icons.")
+ROLE_TEXT = {"hauler": "a sack", "digger": "a pickaxe", "builder": "a hammer", "firekeeper": "a flame over tongs", "farmer": "a mushroom",
              "medic": "a cross", "guard": "a crossbow"}
 for r, sym in ROLE_TEXT.items():
     add(f"badge-{r}", f"ui/roles/{r}.png", 128, 128, batch=3, kind="icon", anchor="centre",
         prompt=f"{UI_ICON} Role glyph for the {r}: {sym}.")
 TRAIT_TEXT = {"hardy": "a shield with a snowflake", "night-owl": "an owl head", "glutton": "a bowl overflowing", "brave": "a raised fist",
-              "nervous": "a wobbly droplet of sweat", "iron-lungs": "a pair of lungs", "afraid-of-dark": "a crossed-out moon",
+              "nervous": "a wobbly droplet of sweat", "afraid-of-dark": "a crossed-out moon",
               "quick": "a boot with speed lines", "lazy": "a hammock", "kind": "a heart in an open hand"}
 for t, sym in TRAIT_TEXT.items():
     add(f"trait-{t}", f"ui/traits/{t}.png", 128, 128, batch=3, kind="icon", anchor="centre",
@@ -299,7 +356,7 @@ lines = ["# Asset list", "",
          "Generated from `tools/make_manifest.py`; do not edit by hand. Sizes are per frame; a strip of N frames is N times as wide.",
          "`compose` rows are built by `tools/compose_character.py`, not painted.", ""]
 titles = {1: "Batch 1: fix what looks bad now", 2: "Batch 2: the full cast, the story and the interface",
-          3: "Batch 3: a deeper, bigger colony", 4: "Batch 4: the endgame"}
+          3: "Batch 3: a deeper, bigger colony, and fixes from play-testing", 4: "Batch 4: the endgame"}
 for b in (1, 2, 3, 4):
     group = [a for a in assets if a["batch"] == b]
     lines += [f"## {titles[b]} ({len(group)} files)", "",

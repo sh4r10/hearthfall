@@ -94,6 +94,25 @@ The game interface is being rebuilt in a clean, modern style, so UI icons are **
 8. **Log.** Keep `art-codex/out/LOG.md`: for each asset, the final prompt you used, how many tries it took, and anything that is off-spec or that you are unsure about. If a spec is impossible or wrong, write it in the log and do your best; do not edit `assets.json`, `rig.json` or this brief.
 9. **Commit and push** each batch to this branch (`art/codex`) with a message like `Art batch 1: Esk and Mara, terrain, buildings`. Put the contact sheets in the commit too.
 
+## Batch 3 fixes from play-testing
+
+Seeing batches 1 and 2 in the game showed a few problems. Fix them at the start of batch 3, before the new batch 3 assets:
+
+1. **Pose scale.** Every character's `poses/eat.png` came out about 1.3 to 1.4 times too big, and Esk's and Mara's `poses/collapse.png` and `poses/dead.png` about 1.25 times, so survivors grew when they sat down to eat. The game shrinks them for now. Repaint all six `eat` strips, and Esk's and Mara's `collapse` and `dead`, in place at the right scale. The head must be exactly as big as in the turnaround. A seated figure is about 0.7 of the standing height, kneeling about 0.75 and lying about 0.35. Never stretch a pose to fill the frame. Put each pose next to the matching `anim/idle.png` frame and compare head sizes before you commit.
+2. **Ladders read as floating blocks.** The batch 1 ladder is one square tile, so a shaft of them looks like stacked crates. The batch 3 ladder is a system that fits into the cave:
+   - `ladder-top` hooks over the lip of the floor above.
+   - `ladder-middle` tiles to any height.
+   - `ladder-bottom` rests on the floor.
+   - `ladder-peg-dirt-*` and `ladder-peg-rock-*` anchor the rails into whichever wall is beside the shaft. The game picks dirt or rock from the neighbouring cell and draws the left or right peg piece only where a wall touches.
+   
+   All pieces share the rail positions (x=112 and x=208), so they join without seams. Paint them as one sheet, top to bottom, then cut.
+3. **Climbing.** The built `climb` strip is replaced by painted `climb-up`, `climb-down`, `ladder-on` and `ladder-off` poses for every character, with mittens and boots landing on the rails.
+4. **Icons that blur at 20 px.** `ui/icons/coal`, `food`, `survivors` and `hearth` have inner lines and holes that turn to mush at 20 px (see `contact-icons-20px.png`). Repaint them in place as single solid silhouettes with at most one cut-out.
+5. **No more air.** Oxygen has been cut from the game, so nothing in batch 3 shows air, gas or oxygen machines. The batch 1 diffuser and the batch 2 breath icon stay where they are but are no longer used.
+6. **Collapse drift.** Ostra's, Pim's and Ruta's collapse strips slide sideways by 14 to 31 px between frames (checker WARN). Keep the feet planted while the body goes down.
+
+Then make the rest of batch 3 in this order: the ladder pieces and climbing poses, the stockpiles, piles and items that survivors haul, the new terrain (iron ore, crystal, gravel, ice, deep rock and the layer back walls), the new buildings (coke oven, smelter, lens bench, hearth grate, crystal lamp, workbench and the rest), the research pose, the creatures, and the interface icons last.
+
 ## Folder layout
 
 ```
