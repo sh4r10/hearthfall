@@ -46,16 +46,17 @@ fn different_seeds_diverge() {
 }
 
 #[test]
-fn gas_is_conserved() {
+fn gas_is_never_created() {
     let mut sim = Sim::new(7, 96, 96);
-    // Breathing and fire turn O2 into CO2, so check the total gas mass.
+    // Breathing and fire turn O2 into CO2 and the walls soak a little CO2 up,
+    // so the total gas mass can only fall, and never below zero.
     let total = |s: &Sim| s.oxygen.iter().chain(&s.co2).map(|&v| v as i64).sum::<i64>();
     let before = total(&sim);
     for _ in 0..200 {
         sim.step(&[]);
     }
-    assert_eq!(before, total(&sim));
-    assert!(sim.oxygen.iter().all(|&v| v >= 0));
+    assert!(total(&sim) <= before);
+    assert!(sim.oxygen.iter().chain(&sim.co2).all(|&v| v >= 0));
 }
 
 #[test]
@@ -513,4 +514,34 @@ fn the_set_maps_let_a_colony_through_two_nights_untouched() {
         }
         assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within two days with no orders given");
     }
+}
+
+#[test]
+fn survivors_step_out_of_stale_air_and_a_shaft_clears() {
+    // A deep shaft under a sealed room, its bottom full of carbon dioxide.
+    let mut sim = sealed_room(5, 64, (20, 20, 44, 20));
+    let hearth = sim.idx(33, 20); // beside the shaft, so its light reaches the bottom and nobody flees the dark instead
+    sim.buildings[hearth] = Building::Hearth;
+    sim.hearth_fuel[hearth] = 40;
+    for y in 21..=30 {
+        let i = sim.idx(32, y);
+        sim.elements[i] = Element::Floor;
+        sim.buildings[i] = Building::Ladder;
+        sim.oxygen[i] = 0;
+        sim.co2[i] = 1800;
+    }
+    sim.colonists.truncate(1);
+    sim.colonists[0].x = 32;
+    sim.colonists[0].y = 30;
+    let mut left_for_air = false;
+    for _ in 0..1500 {
+        sim.step(&[]);
+        if sim.colonists[0].heading == sim::HEADING_AIR {
+            left_for_air = true;
+        }
+    }
+    assert!(left_for_air, "never went looking for air");
+    assert!(sim.colonists[0].alive(), "died in the shaft of cause {}", sim.colonists[0].cause);
+    let bottom = sim.idx(32, 30);
+    assert!(sim.co2[bottom] < 900, "the shaft still holds {} mg of CO2", sim.co2[bottom]);
 }

@@ -151,6 +151,9 @@ impl Sim {
                     self.coal += COAL_PER_CELL;
                 }
                 self.elements[i] = Element::Floor;
+                // Rock holds air in its pores: a fresh cut breathes, so a shaft
+                // isn't a vacuum that stale air rushes into.
+                self.oxygen[i] = crate::START_OXYGEN_MG;
             }
             JobKind::Build(b) => {
                 self.coal -= build_cost(b);

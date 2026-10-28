@@ -1,5 +1,8 @@
 //! Environment: light, water, gases and heat.
 
+/// Fraction of a walled cell's carbon dioxide the walls take each tick.
+const CO2_SCRUB_DIV: i32 = 400;
+
 use crate::{Building, Element, Sim, DARK_BELOW, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
 
@@ -76,6 +79,29 @@ impl Sim {
         diffuse_gas(self.width, self.height, &self.elements, &mut self.oxygen, &mut self.scratch);
         diffuse_gas(self.width, self.height, &self.elements, &mut self.co2, &mut self.scratch);
         self.settle_gases();
+        self.scrub_co2();
+    }
+
+    /// Damp cave walls soak up a little carbon dioxide, so stale air in a dead
+    /// end thins out over a few minutes instead of lingering forever. Only CO2
+    /// touching dirt or rock goes, and only a sliver of it per tick.
+    fn scrub_co2(&mut self) {
+        let (w, h) = (self.width as usize, self.height as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * w + x;
+                if !self.elements[i].is_open() || self.co2[i] < CO2_SCRUB_DIV {
+                    continue;
+                }
+                let walled = [x.checked_sub(1).map(|nx| y * w + nx), (x + 1 < w).then(|| i + 1), y.checked_sub(1).map(|ny| ny * w + x), (y + 1 < h).then(|| i + w)]
+                    .into_iter()
+                    .flatten()
+                    .any(|j| matches!(self.elements[j], Element::Dirt | Element::Rock));
+                if walled {
+                    self.co2[i] -= self.co2[i] / CO2_SCRUB_DIV;
+                }
+            }
+        }
     }
 
     /// Carbon dioxide is heavier than oxygen: let it sink by trading places

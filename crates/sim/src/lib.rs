@@ -13,7 +13,7 @@ mod rng;
 mod shades;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
+pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_AIR, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
 pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use shades::{
