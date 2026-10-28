@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'ladder' | 'hearth' | 'mushroom' | 'diffuser' | 'lamp' | 'bed';
+export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'ladder' | 'hearth' | 'mushroom' | 'diffuser' | 'lamp' | 'bed';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -49,6 +49,8 @@ export const SHADE_STRIDE = 3;
 /** Event kinds, matching sim::EVENT_*. */
 export const EVENT_DEATH = 1;
 export const EVENT_SHADE_ATTACK = 2;
+/** A building fell because its floor went; the event's colonist field is the Building number. */
+export const EVENT_COLLAPSE = 3;
 /** Shade states, matching sim::SHADE_*. */
 export const SHADE_DRIFTING = 0;
 export const SHADE_ATTACKING = 1;
@@ -70,7 +72,9 @@ export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as cons
 export const Building = { None: 0, OxygenDiffuser: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
-export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth'] as const;
+export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down'] as const;
+/** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3;
 /** What each building costs as [coal, stone]; must match build_cost in crates/sim/src/jobs.rs. */
 export const BUILD_COST: Record<number, [number, number]> = {
   [Building.Hearth]: [8, 4],

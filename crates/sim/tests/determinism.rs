@@ -431,11 +431,22 @@ fn buildings_never_float() {
     // Nothing but a ladder goes up in mid-air.
     sim.step(&[Command::Build { x: 12, y: 15, building: Building::Bed }]);
     assert!(sim.jobs.is_empty());
-    // And the floor under a building can't be dug out.
+    // Digging out a building's floor takes the building down first, and the
+    // dig waits until it is.
     let lamp = sim.idx(12, 20);
     sim.buildings[lamp] = Building::Lamp;
     sim.step(&[Command::Dig { x: 12, y: 21 }]);
-    assert!(sim.jobs.is_empty());
+    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct && (j.x, j.y) == (12, 20)));
+    let dig = sim.jobs.iter().find(|j| j.kind == JobKind::Dig).unwrap().clone();
+    assert!(sim.holds_up_building(dig.x, dig.y));
+    // A bed whose floor goes anyway falls and is salvaged at once.
+    let bed = sim.idx(20, 20);
+    sim.buildings[bed] = Building::Bed;
+    let (stone, below) = (sim.stone, sim.idx(20, 21));
+    sim.elements[below] = Element::Floor;
+    sim.step(&[]);
+    assert_eq!(sim.buildings[bed], Building::None);
+    assert_eq!(sim.stone, stone + 2);
 }
 
 #[test]
@@ -546,3 +557,20 @@ fn survivors_step_out_of_stale_air_and_a_shaft_clears() {
     let bottom = sim.idx(32, 30);
     assert!(sim.co2[bottom] < 900, "the shaft still holds {} mg of CO2", sim.co2[bottom]);
 }
+
+#[test]
+fn deconstruct_takes_a_building_down_and_salvages_it() {
+    let mut sim = Sim::new(7, 128, 96);
+    let (cx, cy) = (sim.width / 2, sim.height / 2);
+    let fire = sim.idx(cx, cy);
+    assert_eq!(sim.buildings[fire], Building::Hearth);
+    sim.step(&[Command::Deconstruct { x: cx, y: cy }]);
+    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct));
+    for _ in 0..400 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.buildings[fire], Building::None);
+    assert_eq!(sim.hearth_fuel[fire], 0);
+    assert!(sim.jobs.iter().all(|j| j.kind != JobKind::Deconstruct));
+}
+

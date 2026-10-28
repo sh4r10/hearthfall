@@ -44,6 +44,10 @@ Every layer needs its own hearth, so going deeper splits fuel and people.
 
 You never control survivors directly. You mark jobs, and survivors claim and carry them out based on their role, skills and needs, as in Oxygen Not Included.
 
+- **Orders (built):** dig, build, remove and cancel. Click one cell, or shift-drag a box over many (build tools paint along the pointer instead). Right-click or right-drag cancels with any tool. Cancelling frees the survivor on it at once.
+- **Remove (built):** a Builder walks over and takes the building down, salvaging half its cost rounded up (a hearth also gives back the fuel in it). Cairns can't be removed.
+- **Support (built):** everything but ladders and cairns stands on solid floor. Marking a building's floor to dig also orders the building taken down, and the dig waits until it is. A building whose floor goes some other way falls at once, is salvaged as if removed, and the log says so. A planned building whose floor is dug out is dropped.
+
 - **Hearths are everything (built).** They light and warm the caves around them. Light only travels through open space, so walls cast shadows. Hearths burn their own fuel and use up oxygen while giving off carbon dioxide and heat.
 - **Light is territory (built).** Survivors won't wander into the dark on their own, and an idle survivor caught in the dark heads for the nearest lit cell. In the dark they lose warmth, faster at night, and die if it runs out. Lamp light without a hearth is "lit but cold": warmth drifts down slowly (5 per tick) instead of recovering.
 - **Coal is fuel (built).** Dig coal seams to fill the stockpile. Firekeepers carry it to hearths that run low.
