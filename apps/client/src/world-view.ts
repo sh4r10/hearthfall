@@ -97,6 +97,8 @@ interface Survivor {
   warmth: number;
   /** Moving more up or down than sideways: on a ladder. */
   climbing: boolean;
+  /** Dropping with nothing underfoot. */
+  falling: boolean;
   /** Seconds since they last moved on screen, so the walking pose outlasts a brief pause between steps. */
   still: number;
   stride: number;
@@ -301,7 +303,7 @@ export class WorldView {
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i });
+      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, index: i });
     }
 
     const first = frame.buildings.indexOf(Building.Hearth);
@@ -687,10 +689,12 @@ export class WorldView {
         const object = kind === 0 ? makeModel('dig-marker') : this.ghost(building);
         object.position.set(p.x, kind === 0 ? p.y : p.y - 0.5, kind === 0 ? 0.75 : 0);
         if (kind === 0) {
-          // A faint ember square marks the cell itself.
+          // A faint ember square marks the cell itself. It stays square to the
+          // grid while the pickaxe above it rocks.
           const square = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), this.digMaterial);
-          square.position.set(0, 0, -0.7);
-          object.add(square);
+          square.position.set(p.x, p.y, 0.05);
+          this.markerGroup.add(square);
+          object.userData.square = square;
         }
         const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), this.barMaterial);
         bar.position.set(p.x, p.y - 0.42, 0.8);
@@ -704,7 +708,7 @@ export class WorldView {
     }
     for (const [key, marker] of this.markers) {
       if (marker.seen) continue;
-      this.markerGroup.remove(marker.object, marker.bar);
+      this.markerGroup.remove(marker.object, marker.bar, ...(marker.object.userData.square ? [marker.object.userData.square] : []));
       this.markers.delete(key);
     }
   }
@@ -900,20 +904,34 @@ export class WorldView {
   private glide(s: Survivor, dt: number) {
     const dx = s.target.x - s.pos.x, dy = s.target.y - s.pos.y;
     const dist = Math.hypot(dx, dy);
-    if (dist > 2.5) {
-      s.pos.copy(s.target); // teleported (a fall, or the first frame)
+    s.falling = false;
+    if (dist > 6) {
+      s.pos.copy(s.target); // teleported (the first frame)
       s.still = 10;
       return false;
     }
     if (dist < 0.002) {
       s.still += dt;
-      return s.still < 0.18 && s.activity === 1;
+      return s.still < 0.18 && s.activity <= 1;
     }
-    const step = Math.min(dist, WALK_SPEED * dt * (dy < -0.3 ? 1.6 : 1)); // falls are quick
-    s.pos.x += (dx / dist) * step;
-    s.pos.y += (dy / dist) * step;
+    const onLadder = this.lastBuildings?.[s.cell] === Building.Ladder || this.lastBuildings?.[s.cell + this.width] === Building.Ladder;
+    const falling = dy < -0.3 && !onLadder;
+    // Falls drop like a stone (the sim moves a cell a tick); idle pottering is
+    // an amble, so it reads as slow walking rather than stop-start dashes.
+    const amble = s.activity === 0 && dist < 1.05; // idle steps come every 6 ticks
+    const speed = falling ? 14 : amble ? WALK_SPEED / 3 : WALK_SPEED * Math.max(1, dist);
+    const step = Math.min(dist, speed * dt);
+    if (falling && Math.abs(dx) > 0.01) {
+      // Off a ledge: step out over the edge, then drop, never drift through the air.
+      s.pos.x += Math.sign(dx) * Math.min(Math.abs(dx), 2 * WALK_SPEED * dt);
+      if (Math.abs(dx) < 0.5) s.pos.y += Math.max(dy, -14 * dt);
+    } else {
+      s.pos.x += (dx / dist) * step;
+      s.pos.y += (dy / dist) * step;
+    }
     if (Math.abs(dx) > 0.05) s.facing = Math.sign(dx);
-    s.climbing = Math.abs(dy) > Math.abs(dx);
+    s.climbing = onLadder && Math.abs(dy) > Math.abs(dx);
+    s.falling = falling;
     s.still = 0;
     s.stride += step;
     return true;
@@ -981,9 +999,11 @@ export class WorldView {
     s.corpse.visible = true;
     s.corpse.position.copy(s.pos);
     s.corpse.rotation.y = s.facing > 0 ? 0 : Math.PI;
-    // Sink into the ground over a few seconds, leaving the cairn.
-    const gone = Math.min(Math.max((s.dead - 6) / 4, 0), 1);
-    s.corpse.position.y -= gone * 0.6;
+    // The body lies a moment, then fades and leaves only the cairn.
+    const gone = Math.min(Math.max((s.dead - 1.5) / 0.8, 0), 1);
+    s.corpse.traverse((o) => {
+      if (o instanceof THREE.Mesh) (o.material as THREE.MeshBasicMaterial).opacity = 1 - gone;
+    });
     s.corpse.visible = gone < 1;
     return true;
   }
@@ -999,7 +1019,8 @@ export class WorldView {
       model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
       model.scale.set(1, 1, 1);
       const cold = 1 - s.warmth / STAT_MAX;
-      if (moving && s.climbing) play('climb', s.stride * 4);
+      if (s.falling) play('idle', 0);
+      else if (moving && s.climbing) play('climb', s.stride * 4);
       else if (moving) play(s.job === 2 ? 'carry' : 'walk', (s.stride / 1.2) * 6 + i);
       else if (s.activity === 2) play(s.job === 0 ? 'dig' : 'build', t * (s.job === 0 ? 6 : 7) + i);
       else if (s.activity === 4) play('eat', t * 2.5 + i);

@@ -203,8 +203,15 @@ impl Sim {
                     job.claimed_by = None;
                 }
             }
-            // Leave a cairn where they fell, unless something already stands there.
-            if self.buildings[i] == Building::None {
+            // The body comes to rest on the ground, and a cairn goes up there if
+            // it has room, never in mid-air or over another building.
+            let (x, mut y) = (col.x as i32, col.y as i32);
+            while !self.supported(x, y) && self.open(x, y + 1) {
+                y += 1;
+            }
+            self.colonists[c].y = y as u32;
+            if self.room_for(x as u32, y as u32, Building::Cairn) {
+                let i = self.idx(x as u32, y as u32);
                 self.buildings[i] = Building::Cairn;
             }
             self.push_event(EVENT_DEATH, c as u32);
@@ -311,7 +318,16 @@ impl Sim {
         if tired && col.activity != Activity::Working {
             self.release_job(c);
             if !self.go_to_bed(c) && !self.go_to_floor(c) {
-                self.colonists[c].activity = Activity::Sleeping; // right where they stand
+                // Nowhere free in reach: lie down right here, unless that is on
+                // top of someone else, in which case stay up and look again.
+                let col = &self.colonists[c];
+                let (x, y) = (col.x, col.y);
+                let crowded = self.colonists.iter().enumerate().any(|(o, other)| {
+                    o != c && other.alive() && other.y == y && other.x.abs_diff(x) <= 1 && (other.activity == Activity::Sleeping || other.bed.is_some())
+                });
+                if !crowded {
+                    self.colonists[c].activity = Activity::Sleeping;
+                }
             }
             return;
         }
@@ -618,7 +634,9 @@ impl Sim {
             m = 0;
         }
         for &(mx, my) in &moves[..n] {
-            if (!here_lit || !self.is_dark(self.idx(mx as u32, my as u32))) && !crowded(mx, my) {
+            // Pottering never takes anyone off a ledge or onto a ladder.
+            let floor = self.supported(mx, my) && !self.ladder(mx, my) && my == y;
+            if floor && (!here_lit || !self.is_dark(self.idx(mx as u32, my as u32))) && !crowded(mx, my) {
                 options[m] = (mx, my);
                 m += 1;
             }

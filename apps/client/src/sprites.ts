@@ -228,7 +228,7 @@ if (has('survivor-0-idle')) {
   registerModel('survivor-dead', (variant = 0) => {
     const g = new THREE.Group();
     g.userData.flat = true;
-    const { book } = survivorStrip(variant, 'dead', LYING);
+    const { book } = survivorStrip(variant, 'dead'); // the last collapse frame, so the same size
     book.name = 'body';
     g.add(book);
     return g;
