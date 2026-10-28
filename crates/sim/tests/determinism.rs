@@ -187,9 +187,9 @@ fn firekeepers_refuel_hearths_from_the_stockpile() {
     for _ in 0..12 {
         sim.step(&[]);
     }
-    // The firekeeper (colonist 2) takes it, even though the digger is as close.
+    // The firekeeper (Mara, colonist 1) takes it, even though the digger is as close.
     let refuel = sim.jobs.iter().find(|j| j.kind == JobKind::Refuel).expect("refuel job");
-    assert_eq!(refuel.claimed_by, Some(2));
+    assert_eq!(refuel.claimed_by, Some(1));
     for _ in 0..300 {
         sim.step(&[]);
     }
@@ -594,3 +594,19 @@ fn deconstruct_takes_a_building_down_and_salvages_it() {
     assert!(sim.jobs.iter().all(|j| j.kind != JobKind::Deconstruct));
 }
 
+
+#[test]
+fn refugees_join_at_dawn_when_a_bed_and_food_are_spare() {
+    let mut sim = Sim::new(42, 160, 110);
+    assert_eq!(sim.colonists.len(), 2, "the colony starts with Esk and Mara");
+    let bed = sim.idx(84, 55);
+    sim.buildings[bed] = Building::Bed;
+    sim.food = 40;
+    for _ in 0..2 * sim::DAY_TICKS + 1 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.colonists.len(), 3, "nobody arrived at dawn of day 3");
+    assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_ARRIVAL && e.colonist == 2));
+    let c = &sim.colonists[2];
+    assert!(sim.is_warm(sim.idx(c.x, c.y)), "the refugee appeared in the dark");
+}

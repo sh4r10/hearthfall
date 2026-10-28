@@ -57,6 +57,14 @@ pub const EVENT_SHADE_ATTACK: u8 = 2;
 /// [`Event::kind`] for a building falling because its floor went. Its
 /// `colonist` field holds the [`Building`] number instead.
 pub const EVENT_COLLAPSE: u8 = 3;
+/// [`Event::kind`] for a refugee joining the colony.
+pub const EVENT_ARRIVAL: u8 = 4;
+/// Refugees can arrive at dawn from this day on, every other day.
+pub const REFUGEE_FIRST_DAY: u64 = 3;
+/// A refugee only joins a colony with this much food to spare.
+pub const REFUGEE_FOOD: i32 = 5;
+/// The colony never grows past this on its own.
+pub const MAX_COLONISTS: usize = 8;
 
 /// Something the renderer should hear about once, such as a death.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,9 +128,10 @@ impl Sim {
         let n = elements.len();
         let oxygen = elements.iter().map(|e| if e.is_open() { START_OXYGEN_MG } else { 0 }).collect();
         let (cx, cy) = (width / 2, height / 2);
-        let roles = [Role::Digger, Role::Builder, Role::Firekeeper];
+        // Esk and Mara. Everyone else follows the firelight down later.
+        let roles = [Role::Digger, Role::Firekeeper];
         // Around the hearth, not in it, and not on top of each other.
-        let spots = [cx - 3, cx + 3, cx + 5];
+        let spots = [cx - 3, cx + 3];
         let colonists = roles.iter().zip(spots).map(|(&r, x)| Colonist::new(x, cy, r)).collect();
         let mut buildings = vec![Building::None; n];
         let mut hearth_fuel = vec![0; n];
@@ -166,6 +175,34 @@ impl Sim {
         x < self.width && y < self.height
     }
 
+    /// At dawn every other day from [`REFUGEE_FIRST_DAY`], a refugee drawn by
+    /// the firelight joins, if there is a free bed, food to spare and a fire
+    /// to stand by. They appear in the firelight on a free patch of floor.
+    fn refugees_tick(&mut self) {
+        let day = self.tick / DAY_TICKS + 1;
+        if self.tick % DAY_TICKS != 0 || day < REFUGEE_FIRST_DAY || (day - REFUGEE_FIRST_DAY) % 2 != 0 {
+            return;
+        }
+        if self.colonists.len() >= MAX_COLONISTS || self.food < REFUGEE_FOOD {
+            return;
+        }
+        let bed_free = (0..self.buildings.len()).any(|i| self.buildings[i] == Building::Bed && !self.colonists.iter().any(|c| c.alive() && c.bed == Some(i as u32)));
+        if !bed_free {
+            return;
+        }
+        let w = self.width as i32;
+        let spot = (0..self.buildings.len()).find(|&i| {
+            let (x, y) = (i as i32 % w, i as i32 / w);
+            self.is_warm(i) && self.open(x, y) && self.supported(x, y) && self.buildings[i] == Building::None && !self.by_hearth(x, y)
+                && !self.colonists.iter().any(|c| c.alive() && (c.x as i32, c.y as i32) == (x, y))
+        });
+        let Some(spot) = spot else { return };
+        let roles = [Role::Builder, Role::Digger, Role::Firekeeper];
+        let role = roles[self.colonists.len() % roles.len()];
+        self.colonists.push(Colonist::new(spot as u32 % self.width, spot as u32 / self.width, role));
+        self.push_event(EVENT_ARRIVAL, self.colonists.len() as u32 - 1);
+    }
+
     pub fn is_night(&self) -> bool {
         self.tick % DAY_TICKS >= DAY_TICKS * 6 / 10
     }
@@ -188,6 +225,7 @@ impl Sim {
         self.update_light();
         self.water_tick();
         self.maintain_jobs();
+        self.refugees_tick();
         self.shades_tick();
         self.colonists_tick();
         self.diffuse_gases();

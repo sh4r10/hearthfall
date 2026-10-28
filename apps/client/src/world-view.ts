@@ -296,14 +296,7 @@ export class WorldView {
     this.embers.frustumCulled = false;
     this.scene.add(this.embers);
 
-    for (let i = 0; i < frame.colonists.length / COLONIST_STRIDE; i++) {
-      const model = makeModel('survivor', i);
-      model.scale.setScalar(model.userData.flat ? 1 : 1.25);
-      const part = (name: string) => model.getObjectByName(name)!;
-      const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
-      this.scene.add(model);
-      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i });
-    }
+    this.addSurvivors(frame);
 
     const first = frame.buildings.indexOf(Building.Hearth);
     if (first >= 0) {
@@ -803,9 +796,26 @@ export class WorldView {
     }
   }
 
+  /** One view per sim colonist; refugees join mid-game, so this runs every frame. */
+  private addSurvivors(frame: Frame) {
+    for (let i = this.survivors.length; i < frame.colonists.length / COLONIST_STRIDE; i++) {
+      const model = makeModel('survivor', i);
+      model.scale.setScalar(model.userData.flat ? 1 : 1.25);
+      const part = (name: string) => model.getObjectByName(name)!;
+      const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
+      this.scene.add(model);
+      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i };
+      const o = i * COLONIST_STRIDE;
+      this.cellToWorld(frame.colonists[o], frame.colonists[o + 1], s.pos);
+      s.pos.y -= 0.5;
+      this.survivors.push(s);
+    }
+  }
+
   applyFrame(frame: Frame, _ticksPerSecond: number) {
     const first = !this.latest;
     if (first) this.setup(frame);
+    else this.addSurvivors(frame);
     this.latest = frame;
 
     if (!this.lastElements || frame.elements.some((e, i) => e !== this.lastElements![i])) {

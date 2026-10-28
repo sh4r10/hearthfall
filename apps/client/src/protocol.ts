@@ -51,6 +51,7 @@ export const EVENT_DEATH = 1;
 export const EVENT_SHADE_ATTACK = 2;
 /** A building fell because its floor went; the event's colonist field is the Building number. */
 export const EVENT_COLLAPSE = 3;
+export const EVENT_ARRIVAL = 4;
 /** Shade states, matching sim::SHADE_*. */
 export const SHADE_DRIFTING = 0;
 export const SHADE_ATTACKING = 1;

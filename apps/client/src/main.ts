@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -168,6 +168,9 @@ function announce(frame: Frame) {
     } else if (kind === EVENT_SHADE_ATTACK) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
       glyph = 'shade';
+    } else if (kind === EVENT_ARRIVAL) {
+      logLine(`<b>${name}</b> followed the firelight down to you.`, 'people', 'info');
+      continue;
     } else if (kind === EVENT_COLLAPSE) {
       logLine(`A <b>${BUILDING_NAMES[who] ?? 'building'}</b> lost its floor and fell. What could be salvaged is back in the stockpile.`, 'deconstruct', 'warn');
       continue;
@@ -200,7 +203,7 @@ const TUTORIAL: { text: string; tool?: Tool; done: (f: Frame) => boolean }[] = [
     done: (f) => { for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) return true; return false; } },
   { text: 'Shades come out of the dark at night. <b>Build a lamp</b> in a tunnel to keep them out of it.', tool: 'lamp',
     done: (f) => f.buildings.includes(Building.Lamp) || hasBuildJob(f, Building.Lamp) },
-  { text: 'Tired survivors work slowly. <b>Build a bed</b> inside the light.', tool: 'bed',
+  { text: 'Tired survivors work slowly, and refugees only join a colony with a spare bed. <b>Build a bed</b> inside the light.', tool: 'bed',
     done: (f) => f.buildings.includes(Building.Bed) || hasBuildJob(f, Building.Bed) },
   { text: 'Keep everyone in the light and the fire fed, and <b>get through the first night</b>.',
     done: (f) => f.tick >= DAY_TICKS },
@@ -232,7 +235,7 @@ function tutorialStep(frame: Frame) {
   if (!TUTORIAL[step].done(frame)) return;
   step++;
   if (step >= TUTORIAL.length) {
-    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Now dig down: the Deep Hearth is five layers below.</p>';
+    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Keep a spare bed and food ready: from day 3, refugees follow the firelight down to you. The Deep Hearth is five layers below.</p>';
     setTimeout(endTutorial, 8000);
   } else showStep();
 }
