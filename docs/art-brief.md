@@ -35,7 +35,7 @@ Reference points:
 | Fire and warmth | `#fff3d0` `#ffc24a` `#ff7a1f` `#c2452f` |
 | Cold and danger | `#9cc4e4` `#5f7fa8` |
 | Survivor clothing | muted wools: `#6a4a3a` `#3e5566` `#56603e` `#70553a`, plus one bright scarf or patch each |
-| UI accent | ember `#f0a04b` on near-black `#0e0c0b` |
+| UI accent | ice `#7cc4ff` on `#0b1016` |
 
 ## Survivors
 

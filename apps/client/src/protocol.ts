@@ -36,6 +36,10 @@ export type FromWorker = Frame;
 export const COLONIST_STRIDE = 14;
 export const JOB_STRIDE = 6;
 export const EVENT_STRIDE = 3;
+/** Event kinds, matching sim::EVENT_*. */
+export const EVENT_DEATH = 1;
+/** Colonist.cause, the 14th colonist field. */
+export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'suffocated' };
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;

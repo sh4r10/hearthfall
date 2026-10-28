@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, COLONIST_STRIDE, DAY_TICKS, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -67,7 +67,7 @@ function start() {
   const title = $('title');
   title.classList.add('leaving');
   setTimeout(() => (title.hidden = true), 900);
-  for (const id of ['top', 'roster', 'toolbar', 'hint']) $(id).hidden = false;
+  for (const id of ['top', 'roster', 'toolbar', 'hint', 'log']) $(id).hidden = false;
   worker = new SimWorker();
   worker.onerror = (e) => console.error('sim worker failed:', e.message);
   worker.onmessage = onFrame;
@@ -133,9 +133,31 @@ function renderRoster(frame: Frame) {
   });
 }
 
+// --- Event log -----------------------------------------------------------------
+
+const log = $('log');
+let lastEventTick = -1;
+/** Announces new sim events (deaths so far) in the log; each line fades after a while. */
+function announce(frame: Frame) {
+  for (let i = 0; i < frame.events.length; i += EVENT_STRIDE) {
+    const [tick, kind, who] = [frame.events[i], frame.events[i + 1], frame.events[i + 2]];
+    if (tick <= lastEventTick) continue;
+    lastEventTick = tick;
+    if (kind !== EVENT_DEATH) continue;
+    const cause = CAUSES[frame.colonists[who * COLONIST_STRIDE + 13]] ?? 'died';
+    const line = document.createElement('li');
+    line.className = 'panel';
+    line.innerHTML = `${icon('skull', 16)}<span><b>${NAMES[who % NAMES.length]}</b> ${cause} on day ${Math.floor(tick / DAY_TICKS) + 1}.</span>`;
+    log.prepend(line);
+    setTimeout(() => line.classList.add('fade'), 8000);
+    setTimeout(() => line.remove(), 9000);
+  }
+}
+
 function onFrame(event: MessageEvent<FromWorker>) {
   const frame = event.data;
   world.applyFrame(frame, TICKS_PER_SECOND);
+  announce(frame);
   const total = frame.colonists.length / COLONIST_STRIDE;
   let alive = 0;
   for (let i = 0; i < total; i++) if (frame.colonists[i * COLONIST_STRIDE + 3] !== 5) alive++;
