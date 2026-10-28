@@ -1,0 +1,7 @@
+[package]
+name = "sim"
+version = "0.1.0"
+edition = "2021"
+description = "Deterministic colony simulation core. Renderer-agnostic: used by the web client (via sim-wasm), the server verifier, and potentially a Godot GDExtension."
+
+[dependencies]

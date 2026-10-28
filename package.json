@@ -1,0 +1,10 @@
+{
+  "name": "hearthfall",
+  "private": true,
+  "scripts": {
+    "build:sim": "wasm-pack build crates/sim-wasm --target web --release",
+    "dev": "pnpm build:sim && pnpm --filter client dev",
+    "build": "pnpm build:sim && pnpm --filter client build",
+    "test": "cargo test --workspace && pnpm --filter client typecheck"
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hearthfall</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div class="title">Hearthfall</div>
+      <div id="stats"></div>
+      <div class="tools">
+        <button data-tool="dig" class="active">Dig (1)</button>
+        <button data-tool="diffuser">Oxygen diffuser (2)</button>
+      </div>
+      <div class="tools">
+        <button data-overlay="none" class="active">No overlay</button>
+        <button data-overlay="oxygen">Oxygen (O)</button>
+        <button data-overlay="co2">CO₂ (C)</button>
+        <button data-overlay="temperature">Heat (T)</button>
+      </div>
+      <div class="hint">Drag to pan, scroll to zoom, right-drag to rotate. Click to use the tool.</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
