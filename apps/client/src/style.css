@@ -57,3 +57,23 @@ kbd { font: 700 10px var(--body); color: var(--muted); border: 1px solid var(--e
   text-shadow: 0 0 30px rgba(156, 196, 228, 0.5);
 }
 @media (max-width: 640px) { #hint { display: none; } }
+
+#roster {
+  position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(64px + env(safe-area-inset-top, 0px));
+  width: 230px; display: flex; flex-direction: column; gap: 8px;
+  max-height: calc(100% - 160px); overflow-y: auto;
+}
+.survivor { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 9px 11px; }
+.survivor header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.survivor h3 { margin: 0; font: 700 15px var(--display); letter-spacing: 0.06em; color: var(--ink); }
+.survivor select { font: 500 12px var(--body); color: var(--ember); background: #1c1612; border: 1px solid var(--edge); border-radius: 4px; padding: 2px 4px; }
+.survivor .doing { margin: 3px 0 6px; font-size: 12px; color: var(--muted); font-style: italic; }
+.survivor.dead { opacity: 0.5; }
+.needs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.need { display: flex; flex-direction: column; gap: 2px; }
+.need span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.need i { display: block; height: 5px; border-radius: 3px; background: #2a221b; overflow: hidden; }
+.need b { display: block; height: 100%; background: #c99a5b; border-radius: 3px; transition: width 0.3s; }
+.need.low b { background: #d9b04a; }
+.need.bad b { background: var(--frost); }
+@media (max-width: 760px) { #roster { width: 180px; } .needs { grid-template-columns: 1fr; } }

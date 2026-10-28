@@ -1,6 +1,6 @@
 # Hearthfall
 
-A side-on browser colony-survival game. The sun has dimmed, the surface has frozen, and a handful of survivors dig into the rock with the last of their fire. Keep the hearths burning, dig coal for fuel, and get through the nights. See [docs/story.md](docs/story.md). Solo, co-op and competitive multiplayer with a leaderboard are planned.
+A side-on browser colony-survival game. The sun has dimmed, the surface has frozen, and a handful of survivors dig into the rock with the last of their fire. Keep the hearths burning, dig coal for fuel, and get through the nights. See [docs/design.md](docs/design.md). Solo, co-op and competitive multiplayer with a leaderboard are planned.
 
 ## Layout
 
@@ -23,7 +23,7 @@ pnpm dev          # builds the sim to WebAssembly and starts Vite
 
 Add `?seed=123` to the URL to play a specific map.
 
-Controls: drag to pan, scroll to zoom, click to use the tool. `1` dig, `2` ladder, `3` hearth, `4` oxygen diffuser. `O`, `C` and `T` toggle the oxygen, CO2 and heat overlays.
+Controls: drag to pan, scroll to zoom, click (or shift-drag) to mark orders that survivors carry out. `1` dig, `2` ladder, `3` hearth, `4` mushroom bed, `5` oxygen diffuser, `X` cancel. `O`, `C` and `T` toggle the oxygen, CO2 and heat overlays.
 
 ## Tests
 

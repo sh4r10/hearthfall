@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { fbm, hash2 } from './noise';
 
 function canvas(w: number, h: number) {
   const c = document.createElement('canvas');
@@ -12,57 +11,6 @@ function toTexture(c: HTMLCanvasElement, srgb = true) {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
-  return t;
-}
-
-/**
- * Greyscale stone detail for block faces: lumpy shading, cracks and grit.
- * Each block is tinted per instance, so one texture serves rock, dirt and coal.
- */
-export function blockTexture(): THREE.Texture {
-  const size = 128;
-  const [c, g] = canvas(size, size);
-  const img = g.createImageData(size, size);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      let s = 0.72 + (fbm(u * 6, v * 6, 4, 3) - 0.5) * 0.5;
-      const crack = Math.abs(fbm(u * 4 + 9, v * 4, 3, 8) - 0.5);
-      if (crack < 0.018) s *= 0.55;
-      s *= 0.9 + hash2(x, y, 1) * 0.2;
-      // Darken toward the edges so neighbouring blocks read as separate stones.
-      const edge = Math.min(u, v, 1 - u, 1 - v);
-      if (edge < 0.06) s *= 0.7 + edge * 5;
-      const i = (y * size + x) * 4;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.min(255, s * 255);
-      img.data[i + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return toTexture(c);
-}
-
-/** Dark, rough rock for the back wall of the caves. Tiles seamlessly enough at this scale. */
-export function backWallTexture(): THREE.Texture {
-  const size = 256;
-  const [c, g] = canvas(size, size);
-  const img = g.createImageData(size, size);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = x / size, v = y / size;
-      const n = fbm(u * 8, v * 8, 5, 21);
-      const strata = Math.sin((v * 22 + fbm(u * 3, v * 3, 2, 4) * 6) * Math.PI) * 0.06;
-      const s = 0.32 + (n - 0.5) * 0.35 + strata + hash2(x, y, 9) * 0.05;
-      const i = (y * size + x) * 4;
-      img.data[i] = s * 150;
-      img.data[i + 1] = s * 128;
-      img.data[i + 2] = s * 110;
-      img.data[i + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  const t = toTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
 
@@ -144,4 +92,120 @@ export function survivorTexture(coat: string, scarf: string): THREE.Texture {
   // Scarf
   outline(scarf, () => { g.roundRect(48, 78, 46, 14, 7); g.roundRect(46, 84, 12, 30, 5); });
   return toTexture(c);
+}
+
+const INK = '#16110d';
+
+function sprite(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void) {
+  const [c, g] = canvas(w, h);
+  g.lineJoin = g.lineCap = 'round';
+  g.strokeStyle = INK;
+  g.lineWidth = 5;
+  draw(g);
+  return toTexture(c);
+}
+
+/** One cell of ladder, 64x64, meant to tile vertically. */
+export function ladderTexture() {
+  return sprite(64, 64, (g) => {
+    g.fillStyle = '#8a6440';
+    for (const x of [12, 46]) {
+      g.fillRect(x, 0, 7, 64);
+      g.strokeRect(x, -4, 7, 72);
+    }
+    for (const y of [10, 32, 54]) {
+      g.fillRect(14, y - 3, 36, 7);
+      g.strokeRect(14, y - 3, 36, 7);
+    }
+  });
+}
+
+export function diffuserTexture() {
+  return sprite(64, 64, (g) => {
+    g.fillStyle = '#4c7f86';
+    g.beginPath();
+    g.roundRect(10, 16, 44, 44, 8);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#9fe6de';
+    g.beginPath();
+    g.roundRect(20, 26, 24, 10, 4);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#d6f5f1';
+    for (const [x, y, r] of [[22, 10, 4], [34, 6, 3], [42, 12, 3]] as const) {
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+}
+
+export function mushroomTexture() {
+  return sprite(64, 64, (g) => {
+    g.fillStyle = '#5a4030';
+    g.beginPath();
+    g.roundRect(4, 46, 56, 16, 5);
+    g.fill();
+    g.stroke();
+    for (const [x, h, r, col] of [[16, 22, 11, '#b8a1d9'], [36, 30, 14, '#9b83c4'], [52, 18, 8, '#c9b5e6']] as const) {
+      g.fillStyle = '#e8dccb';
+      g.fillRect(x - 3, 48 - h, 6, h);
+      g.strokeRect(x - 3, 48 - h, 6, h);
+      g.fillStyle = col;
+      g.beginPath();
+      g.ellipse(x, 48 - h, r, r * 0.6, 0, Math.PI, 0);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+  });
+}
+
+/** Ring of stones and crossed logs under the flame. */
+export function hearthTexture() {
+  return sprite(96, 64, (g) => {
+    g.fillStyle = '#4a3020';
+    g.save();
+    g.translate(48, 44);
+    for (const a of [-0.35, 0.35]) {
+      g.save();
+      g.rotate(a);
+      g.beginPath();
+      g.roundRect(-28, -5, 56, 10, 5);
+      g.fill();
+      g.stroke();
+      g.restore();
+    }
+    g.restore();
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle = i % 2 ? '#6f6861' : '#57524d';
+      g.beginPath();
+      g.ellipse(10 + i * 15.2, 54, 9, 7, 0, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+  });
+}
+
+/** Pickaxe icon for dig orders. */
+export function digIconTexture() {
+  return sprite(64, 64, (g) => {
+    g.lineWidth = 9;
+    g.beginPath();
+    g.moveTo(18, 50);
+    g.lineTo(42, 18);
+    g.stroke();
+    g.strokeStyle = '#b07a46';
+    g.lineWidth = 5;
+    g.stroke();
+    g.strokeStyle = INK;
+    g.lineWidth = 9;
+    g.beginPath();
+    g.arc(42, 30, 20, -2.4, -0.5);
+    g.stroke();
+    g.strokeStyle = '#d9d4cc';
+    g.lineWidth = 5;
+    g.stroke();
+  });
 }

@@ -1,6 +1,6 @@
 //! Thin wasm-bindgen wrapper around the `sim` crate for the web client.
 
-use sim::{Building, Command};
+use sim::{Building, Command, Role};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -8,6 +8,11 @@ pub struct WebSim {
     sim: sim::Sim,
     queued: Vec<Command>,
 }
+
+/// Values per colonist in [`WebSim::colonists`].
+pub const COLONIST_STRIDE: usize = 13;
+/// Values per job in [`WebSim::jobs`].
+pub const JOB_STRIDE: usize = 6;
 
 #[wasm_bindgen]
 impl WebSim {
@@ -20,12 +25,26 @@ impl WebSim {
         self.queued.push(Command::Dig { x, y });
     }
 
-    pub fn build_diffuser(&mut self, x: u32, y: u32) {
-        self.queued.push(Command::Build { x, y, building: Building::OxygenDiffuser });
+    /// `building` uses the numbering of `sim::Building`.
+    pub fn build(&mut self, x: u32, y: u32, building: u8) {
+        let building = match building {
+            1 => Building::OxygenDiffuser,
+            2 => Building::Ladder,
+            3 => Building::Hearth,
+            4 => Building::MushroomBed,
+            _ => return,
+        };
+        self.queued.push(Command::Build { x, y, building });
     }
 
-    pub fn build_hearth(&mut self, x: u32, y: u32) {
-        self.queued.push(Command::Build { x, y, building: Building::Hearth });
+    pub fn cancel(&mut self, x: u32, y: u32) {
+        self.queued.push(Command::Cancel { x, y });
+    }
+
+    pub fn set_role(&mut self, colonist: u32, role: u8) {
+        if let Some(role) = Role::from_u8(role) {
+            self.queued.push(Command::SetRole { colonist, role });
+        }
     }
 
     /// Runs one tick with every command queued since the last step.
@@ -46,16 +65,16 @@ impl WebSim {
         self.sim.tick
     }
 
-    pub fn fuel(&self) -> i32 {
-        self.sim.fuel
+    pub fn coal(&self) -> i32 {
+        self.sim.coal
+    }
+
+    pub fn food(&self) -> i32 {
+        self.sim.food
     }
 
     pub fn is_night(&self) -> bool {
         self.sim.is_night()
-    }
-
-    pub fn light(&self) -> Vec<u8> {
-        self.sim.light.clone()
     }
 
     pub fn state_hash(&self) -> u64 {
@@ -70,6 +89,14 @@ impl WebSim {
         self.sim.buildings.iter().map(|&b| b as u8).collect()
     }
 
+    pub fn hearth_fuel(&self) -> Vec<i32> {
+        self.sim.hearth_fuel.clone()
+    }
+
+    pub fn light(&self) -> Vec<u8> {
+        self.sim.light.clone()
+    }
+
     pub fn oxygen(&self) -> Vec<i32> {
         self.sim.oxygen.clone()
     }
@@ -82,8 +109,37 @@ impl WebSim {
         self.sim.temperature.clone()
     }
 
-    /// Flat `[x, y, breath, warmth, ...]`.
+    /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, breath,
+    /// warmth, energy, fullness, mood, sleep quality (needs out of 10000),
+    /// then the job's x and y (-1 if none) and its kind.
     pub fn colonists(&self) -> Vec<i32> {
-        self.sim.colonists.iter().flat_map(|c| [c.x as i32, c.y as i32, c.breath, c.warmth]).collect()
+        let s = &self.sim;
+        s.colonists
+            .iter()
+            .flat_map(|c| {
+                let job = c.job.and_then(|id| s.jobs.iter().find(|j| j.id == id));
+                [
+                    c.x as i32, c.y as i32, c.role as i32, c.activity as i32,
+                    c.breath, c.warmth, c.energy, c.fullness, c.mood, c.sleep_quality,
+                    job.map_or(-1, |j| j.x as i32), job.map_or(-1, |j| j.y as i32), job.map_or(-1, |j| j.kind.code() as i32),
+                ]
+            })
+            .collect()
+    }
+
+    /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel),
+    /// building, progress percent, claimed (0 or 1).
+    pub fn jobs(&self) -> Vec<i32> {
+        let s = &self.sim;
+        s.jobs
+            .iter()
+            .flat_map(|j| {
+                let building = match j.kind {
+                    sim::JobKind::Build(b) => b as i32,
+                    _ => 0,
+                };
+                [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32]
+            })
+            .collect()
     }
 }

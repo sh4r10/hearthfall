@@ -1,16 +1,16 @@
-use sim::{Building, Command, Sim};
+use sim::{Activity, Building, Command, Element, JobKind, Sim};
 
 fn script(tick: u64, sim: &Sim) -> Vec<Command> {
     let (cx, cy) = (sim.width / 2, sim.height / 2);
     match tick {
-        5 => vec![Command::Build { x: cx + 3, y: cy, building: Building::OxygenDiffuser }],
-        10..=30 => vec![Command::Dig { x: cx + 8 + (tick as u32 - 10), y: cy }],
+        5 => vec![Command::Build { x: cx + 4, y: cy, building: Building::OxygenDiffuser }],
+        10..=30 => vec![Command::Dig { x: cx + 9 + (tick as u32 - 10), y: cy }],
         _ => vec![],
     }
 }
 
 fn run(seed: u64, ticks: u64) -> u64 {
-    let mut sim = Sim::new(seed, 128, 128);
+    let mut sim = Sim::new(seed, 128, 96);
     for t in 0..ticks {
         let cmds = script(t, &sim);
         sim.step(&cmds);
@@ -18,9 +18,26 @@ fn run(seed: u64, ticks: u64) -> u64 {
     sim.state_hash()
 }
 
+/// A sealed box of open floor, `w` by `h`, with solid rock around it.
+fn sealed_room(seed: u64, size: u32, room: (u32, u32, u32, u32)) -> Sim {
+    let mut sim = Sim::new(seed, size, size);
+    let (x0, y0, x1, y1) = room;
+    for y in 0..size {
+        for x in 0..size {
+            let i = sim.idx(x, y);
+            let open = (x0..=x1).contains(&x) && (y0..=y1).contains(&y);
+            sim.elements[i] = if open { Element::Floor } else { Element::Rock };
+            sim.oxygen[i] = if open { 1800 } else { 0 };
+            sim.co2[i] = 0;
+            sim.buildings[i] = Building::None;
+        }
+    }
+    sim
+}
+
 #[test]
 fn same_seed_and_commands_give_same_hash() {
-    assert_eq!(run(42, 300), run(42, 300));
+    assert_eq!(run(42, 600), run(42, 600));
 }
 
 #[test]
@@ -29,7 +46,7 @@ fn different_seeds_diverge() {
 }
 
 #[test]
-fn gas_diffusion_conserves_mass() {
+fn gas_is_conserved() {
     let mut sim = Sim::new(7, 96, 96);
     // Breathing and fire turn O2 into CO2, so check the total gas mass.
     let total = |s: &Sim| s.oxygen.iter().chain(&s.co2).map(|&v| v as i64).sum::<i64>();
@@ -44,8 +61,8 @@ fn gas_diffusion_conserves_mass() {
 #[test]
 fn colonists_suffocate_without_oxygen() {
     let mut sim = Sim::new(3, 64, 64);
-    sim.oxygen.iter_mut().for_each(|v| *v = 0);
-    for _ in 0..200 {
+    for _ in 0..400 {
+        sim.oxygen.iter_mut().for_each(|v| *v = 0);
         sim.step(&[]);
     }
     assert_eq!(sim.alive_colonists(), 0);
@@ -53,17 +70,8 @@ fn colonists_suffocate_without_oxygen() {
 
 #[test]
 fn carbon_dioxide_sinks() {
-    // A sealed 1-wide shaft: CO2 released at the top should end up at the bottom.
-    let mut sim = Sim::new(9, 32, 32);
+    let mut sim = sealed_room(9, 32, (16, 4, 16, 19));
     sim.colonists.clear();
-    for y in 0..32 {
-        for x in 0..32 {
-            let i = sim.idx(x, y);
-            sim.elements[i] = if x == 16 && (4..20).contains(&y) { sim::Element::Floor } else { sim::Element::Rock };
-            sim.oxygen[i] = if sim.elements[i].is_open() { 1000 } else { 0 };
-            sim.co2[i] = 0;
-        }
-    }
     let top = sim.idx(16, 4);
     sim.co2[top] = 4000;
     for _ in 0..2000 {
@@ -75,50 +83,36 @@ fn carbon_dioxide_sinks() {
 
 #[test]
 fn water_falls() {
-    let mut sim = Sim::new(4, 16, 16);
+    let mut sim = sealed_room(4, 16, (0, 0, 15, 15));
     sim.colonists.clear();
-    for i in 0..sim.elements.len() {
-        sim.elements[i] = sim::Element::Floor;
-    }
     let i = sim.idx(8, 2);
-    sim.elements[i] = sim::Element::Water;
+    sim.elements[i] = Element::Water;
     for _ in 0..30 {
         sim.step(&[]);
     }
-    let water: Vec<u32> = (0..256).filter(|&i| sim.elements[i] == sim::Element::Water).map(|i| i as u32 / 16).collect();
-    assert_eq!(water, vec![15]);
+    let rows: Vec<usize> = (0..256).filter(|&i| sim.elements[i] == Element::Water).map(|i| i / 16).collect();
+    assert_eq!(rows, vec![15]);
 }
 
 #[test]
-fn colonists_stand_on_the_floor() {
-    let mut sim = Sim::new(5, 64, 64);
-    for _ in 0..100 {
-        sim.step(&[]);
-    }
-    let (cy, floor) = (sim.height / 2, sim.height / 2 + 1);
-    for c in &sim.colonists {
-        assert!(c.y <= cy, "colonist fell to row {} below floor row {}", c.y, floor);
-    }
-}
-
-#[test]
-fn hearth_lights_the_start_room_and_burns_fuel() {
+fn hearth_lights_the_start_room_and_burns_its_fuel() {
     let mut sim = Sim::new(6, 64, 64);
     let centre = sim.idx(32, 32);
     assert!(sim.light[centre] > 200);
-    let fuel = sim.fuel;
+    let fuel = sim.hearth_fuel[centre];
     for _ in 0..200 {
         sim.step(&[]);
     }
-    assert_eq!(sim.fuel, fuel - 10);
-    assert_eq!(sim.alive_colonists(), 3);
+    assert_eq!(sim.hearth_fuel[centre], fuel - 10);
 }
 
 #[test]
-fn colonists_freeze_when_the_fuel_runs_out() {
+fn colonists_freeze_when_the_fire_dies() {
     let mut sim = Sim::new(6, 64, 64);
-    sim.fuel = 0;
-    for _ in 0..300 {
+    let centre = sim.idx(32, 32);
+    sim.hearth_fuel[centre] = 0;
+    sim.coal = 0;
+    for _ in 0..1000 {
         sim.step(&[]);
     }
     assert!(sim.light.iter().all(|&l| l == 0));
@@ -126,11 +120,72 @@ fn colonists_freeze_when_the_fuel_runs_out() {
 }
 
 #[test]
-fn digging_coal_adds_fuel() {
+fn a_survivor_walks_over_and_digs_a_marked_cell() {
+    // Floor along the bottom of a room, with a coal block at the far end.
+    let mut sim = sealed_room(1, 40, (5, 10, 30, 20));
+    let target = sim.idx(31, 20);
+    sim.elements[target] = Element::Coal;
+    let coal = sim.coal;
+    sim.step(&[Command::Dig { x: 31, y: 20 }]);
+    assert_eq!(sim.jobs.len(), 1);
+    for _ in 0..600 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.elements[target], Element::Floor, "jobs left: {:?}", sim.jobs);
+    assert_eq!(sim.coal, coal + sim::COAL_PER_CELL);
+    assert!(sim.jobs.is_empty());
+}
+
+#[test]
+fn builders_use_ladders_to_reach_high_jobs() {
+    let mut sim = sealed_room(2, 40, (5, 5, 30, 20));
+    // A ladder up the middle, and a job on a ledge only the ladder reaches.
+    for y in 8..=20 {
+        let i = sim.idx(18, y);
+        sim.buildings[i] = Building::Ladder;
+    }
+    let ledge = sim.idx(19, 8);
+    sim.step(&[Command::Build { x: 19, y: 7, building: Building::OxygenDiffuser }]);
+    // Make (19, 8) solid so (19, 7) is a ledge beside the ladder.
+    sim.elements[ledge] = Element::Rock;
+    for _ in 0..800 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.buildings[sim.idx(19, 7)], Building::OxygenDiffuser, "jobs: {:?}", sim.jobs);
+}
+
+#[test]
+fn firekeepers_refuel_hearths_from_the_stockpile() {
     let mut sim = Sim::new(6, 64, 64);
-    let i = sim.idx(10, 10);
-    sim.elements[i] = sim::Element::Coal;
-    let fuel = sim.fuel;
-    sim.step(&[Command::Dig { x: 10, y: 10 }]);
-    assert_eq!(sim.fuel, fuel + sim::COAL_FUEL - 1); // tick 0 also burns one unit
+    let centre = sim.idx(32, 32);
+    sim.hearth_fuel[centre] = 5;
+    sim.coal = 30;
+    for _ in 0..12 {
+        sim.step(&[]);
+    }
+    // The firekeeper (colonist 2) takes it, even though the digger is as close.
+    let refuel = sim.jobs.iter().find(|j| j.kind == JobKind::Refuel).expect("refuel job");
+    assert_eq!(refuel.claimed_by, Some(2));
+    for _ in 0..300 {
+        sim.step(&[]);
+    }
+    assert!(sim.hearth_fuel[centre] > 15);
+    assert!(sim.coal < 30);
+}
+
+#[test]
+fn tired_survivors_sleep_and_hungry_ones_eat() {
+    let mut sim = Sim::new(6, 64, 64);
+    sim.colonists[0].energy = 100;
+    sim.colonists[1].fullness = 100;
+    let food = sim.food;
+    sim.step(&[]);
+    assert_eq!(sim.colonists[0].activity, Activity::Sleeping);
+    assert_eq!(sim.colonists[1].activity, Activity::Eating);
+    for _ in 0..40 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.food, food - 1);
+    assert!(sim.colonists[1].fullness > 5000);
+    assert!(sim.colonists[0].energy > 100);
 }

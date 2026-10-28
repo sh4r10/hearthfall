@@ -14,12 +14,15 @@
       <div class="brand">Hearthfall</div>
       <div id="stats"></div>
     </header>
-    <nav id="toolbar" aria-label="Tools">
+    <aside id="roster" aria-label="Survivors"></aside>
+    <nav id="toolbar" aria-label="Orders">
       <div class="group">
         <button data-tool="dig" class="active"><kbd>1</kbd>Dig</button>
         <button data-tool="ladder"><kbd>2</kbd>Ladder</button>
-        <button data-tool="hearth"><kbd>3</kbd>Hearth</button>
-        <button data-tool="diffuser"><kbd>4</kbd>Oxygen</button>
+        <button data-tool="hearth" title="Costs 8 coal"><kbd>3</kbd>Hearth</button>
+        <button data-tool="mushroom" title="Grows food, but only in the dark"><kbd>4</kbd>Mushrooms</button>
+        <button data-tool="diffuser"><kbd>5</kbd>Oxygen</button>
+        <button data-tool="cancel"><kbd>X</kbd>Cancel</button>
       </div>
       <div class="group">
         <button data-overlay="none" class="active">View</button>
@@ -28,7 +31,7 @@
         <button data-overlay="temperature"><kbd>T</kbd>Heat</button>
       </div>
     </nav>
-    <p id="hint">Dig black coal seams for fuel. Survivors won't leave the light, and the cold kills in the dark. Drag to pan, scroll to zoom.</p>
+    <p id="hint">Click to mark orders and your survivors will carry them out. Shift-drag marks many cells. Dig the black coal seams for fuel. Drag to pan, scroll to zoom.</p>
     <div id="banner" hidden>The last fire has gone out.</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -41,6 +41,8 @@ pub enum Building {
     Ladder = 2,
     /// Burns fuel to light and warm the area around it.
     Hearth = 3,
+    /// Grows food, but only in the dark.
+    MushroomBed = 4,
 }
 
 /// Gas masses are in milligrams per cell, temperatures in centi-kelvin.
