@@ -14,21 +14,14 @@ mod rng;
 mod shades;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_AIR, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
+pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
 };
-pub use world::{Building, Element, START_OXYGEN_MG, START_TEMP_CK};
-
-/// Oxygen a colonist breathes in (and CO2 breathed out) per tick, in mg.
-pub const BREATH_MG: i32 = 12;
-/// Oxygen a diffuser adds to its cell per tick, in mg.
-pub const DIFFUSER_MG: i32 = 120;
-/// Below this much oxygen in their cell a colonist starts suffocating.
-pub const SUFFOCATE_BELOW_MG: i32 = 300;
+pub use world::{Building, Element, START_TEMP_CK};
 
 /// Ticks per full day. The last 40% of each day is night.
 pub const DAY_TICKS: u64 = 1200;
@@ -46,8 +39,6 @@ pub const LIGHT_RADIUS_NIGHT: i32 = 8;
 /// How far lamp light reaches, by day and by night.
 pub const LAMP_RADIUS_DAY: i32 = 4;
 pub const LAMP_RADIUS_NIGHT: i32 = 3;
-/// A hearth needs this much oxygen in its cell to stay lit.
-pub const HEARTH_MIN_OXYGEN_MG: i32 = 150;
 /// Below this light level a cell counts as dark and colonists get cold.
 pub const DARK_BELOW: u8 = 40;
 /// How many recent events [`Sim::events`] keeps.
@@ -103,8 +94,6 @@ pub struct Sim {
     pub hearth_fuel: Vec<i32>,
     /// Priority each hearth's refuel errands get, indexed by cell.
     pub refuel_priority: Vec<u8>,
-    pub oxygen: Vec<i32>,
-    pub co2: Vec<i32>,
     pub temperature: Vec<i32>,
     /// Light level per cell, 0..=255. Derived from hearths and lamps each tick.
     pub light: Vec<u8>,
@@ -124,15 +113,14 @@ pub struct Sim {
     pub events: Vec<Event>,
     next_job_id: u32,
     rng: Rng,
+    /// Snapshot buffer for heat conduction, so the result is order-independent.
     scratch: Vec<i32>,
-    scratch2: Vec<i32>,
 }
 
 impl Sim {
     pub fn new(seed: u64, width: u32, height: u32) -> Self {
         let elements = world::generate(seed, width, height);
         let n = elements.len();
-        let oxygen = elements.iter().map(|e| if e.is_open() { START_OXYGEN_MG } else { 0 }).collect();
         let (cx, cy) = (width / 2, height / 2);
         // Esk and Mara. Everyone else follows the firelight down later.
         let roles = [Role::Digger, Role::Firekeeper];
@@ -152,8 +140,6 @@ impl Sim {
             buildings,
             hearth_fuel,
             refuel_priority: vec![DEFAULT_PRIORITY; n],
-            oxygen,
-            co2: vec![0; n],
             temperature: vec![START_TEMP_CK; n],
             light: vec![0; n],
             firelight: vec![0; n],
@@ -167,7 +153,6 @@ impl Sim {
             next_job_id: 1,
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
-            scratch2: vec![0; n],
         };
         sim.update_light();
         sim
@@ -235,7 +220,6 @@ impl Sim {
         self.refugees_tick();
         self.shades_tick();
         self.colonists_tick();
-        self.diffuse_gases();
         self.conduct_heat();
         self.tick += 1;
     }
@@ -287,12 +271,8 @@ impl Sim {
         let grow = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS - 1;
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
-                Building::OxygenDiffuser => self.oxygen[i] += DIFFUSER_MG,
                 Building::Hearth if self.hearth_lit(i) => {
-                    // Fire eats oxygen and gives off CO2 and heat.
-                    let burned = self.oxygen[i].min(8);
-                    self.oxygen[i] -= burned;
-                    self.co2[i] += burned;
+                    // Fire gives off heat.
                     self.temperature[i] += 150;
                     if burn {
                         self.hearth_fuel[i] -= 1;
@@ -329,8 +309,6 @@ impl Sim {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
             eat(&self.hearth_fuel[i].to_le_bytes());
             eat(&[self.refuel_priority[i]]);
-            eat(&self.oxygen[i].to_le_bytes());
-            eat(&self.co2[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());
         }
         for c in &self.colonists {

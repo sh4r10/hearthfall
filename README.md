@@ -6,7 +6,7 @@ A side-on browser colony-survival game. The sun has dimmed, the surface has froz
 
 | Path | What it is |
 |---|---|
-| `crates/sim` | Deterministic simulation core in Rust (map generation, gas and water with gravity, heat, hearth light, colonists). Integer-only maths and a seeded RNG, so the same seed and commands always produce the same state hash. Not tied to any renderer, so it can also run on the server or in Godot via GDExtension. |
+| `crates/sim` | Deterministic simulation core in Rust (map generation, water with gravity, heat, hearth light, colonists). Integer-only maths and a seeded RNG, so the same seed and commands always produce the same state hash. Not tied to any renderer, so it can also run on the server or in Godot via GDExtension. |
 | `crates/sim-wasm` | wasm-bindgen wrapper that exposes the sim to the browser. |
 | `apps/client` | TypeScript + Three.js client: side-on, painted sprites and a terrain shader in a 3D scene, with a low-poly fallback (`src/models.ts` registry). Art is made by Codex on the `art/codex` branch and brought into `apps/client/art/` by `scripts/import-codex-art.py`. The sim runs in a Web Worker at a fixed 10 ticks per second; the renderer interpolates between ticks. `pnpm --filter client build:single` packs it into one HTML file. |
 
@@ -23,7 +23,7 @@ pnpm dev          # builds the sim to WebAssembly and starts Vite
 
 Add `?seed=123` to the URL to play a specific map, and `&play` to skip the title screen.
 
-Controls: drag to pan, scroll to zoom, click (or shift-drag) to mark orders that survivors carry out. `1` dig, `2` ladder, `3` hearth, `4` mushroom bed, `5` oxygen diffuser, `X` cancel. `O`, `C` and `T` toggle the oxygen, CO2 and heat overlays.
+Controls: drag to pan, scroll to zoom, click (or shift-drag) to mark orders that survivors carry out. `1` dig, `2` ladder, `3` hearth, `4` mushroom bed, `6` lamp, `7` bed, `D` remove, `X` cancel. `W` toggles the warmth view.
 
 ## Tests
 

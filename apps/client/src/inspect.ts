@@ -13,8 +13,8 @@ const REFUEL_BELOW = 20;
 /** What a survivor is up to, in a few words. Shared with the roster cards. */
 export function doing(c: ArrayLike<number>) {
   const activity = ACTIVITIES[c[3]];
-  const job = c[12] >= 0 ? JOB_NAMES[c[12]] : '';
-  return activity === 'Dead' ? (CAUSES[c[13]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
+  const job = c[11] >= 0 ? JOB_NAMES[c[11]] : '';
+  return activity === 'Dead' ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
     : activity === 'Walking' && job ? `Heading off ${job}`
     : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
     : activity === 'Sleeping' ? 'Asleep'
@@ -29,7 +29,7 @@ export function needBar(label: string, value: number, name: string) {
 }
 
 export const NEEDS: [label: string, offset: number, icon: string][] = [
-  ['Warmth', 5, 'warmth'], ['Breath', 4, 'breath'], ['Energy', 6, 'energy'], ['Food', 7, 'food'], ['Mood', 8, 'mood'], ['Sleep', 9, 'sleep'],
+  ['Warmth', 4, 'warmth'], ['Energy', 5, 'energy'], ['Food', 6, 'food'], ['Mood', 7, 'mood'], ['Sleep', 8, 'sleep'],
 ];
 
 const seconds = (ticks: number, tps: number) => {
@@ -119,7 +119,7 @@ export class Inspector {
       const lit = f.light[i] > 0 && fuel > 0;
       title = 'Hearth';
       glyph = 'hearth';
-      status = lit ? 'Burning' : fuel > 0 ? 'Out: no air to burn' : 'Out of coal';
+      status = lit ? 'Burning' : 'Out of coal';
       const pct = Math.round((fuel / HEARTH_CAPACITY) * 100);
       body =
         `<div class="meter ${pct < 25 ? 'bad' : pct < 50 ? 'low' : ''}"><i><b style="width:${pct}%"></b></i></div>` +
@@ -150,8 +150,6 @@ export class Inspector {
         (growing ? '' : '<p class="note"><em>Mushrooms shun firelight. Move it further from the hearth.</em></p>');
     } else if (b === Building.Ladder) {
       title = 'Ladder'; glyph = 'ladder'; status = 'Survivors climb it';
-    } else if (b === Building.OxygenDiffuser) {
-      title = 'Oxygen diffuser'; glyph = 'diffuser'; status = 'Adding fresh air';
     } else if (b === Building.Cairn) {
       let dead = -1;
       for (let s = 0; s < f.colonists.length / COLONIST_STRIDE; s++) {
@@ -159,14 +157,14 @@ export class Inspector {
         if (f.colonists[o] === x && f.colonists[o + 1] === y && f.colonists[o + 3] === 5) dead = s;
       }
       title = 'Cairn'; glyph = 'skull';
-      status = dead >= 0 ? `${this.names[dead % this.names.length]} ${CAUSES[f.colonists[dead * COLONIST_STRIDE + 13]] ?? 'died'} here` : 'Someone fell here';
+      status = dead >= 0 ? `${this.names[dead % this.names.length]} ${CAUSES[f.colonists[dead * COLONIST_STRIDE + 12]] ?? 'died'} here` : 'Someone fell here';
     } else {
       const e = f.elements[i];
       const what: Record<number, [string, string, string]> = {
         [Element.Coal]: ['Coal seam', 'coal', 'Digging it gives 4 coal.'],
         [Element.Rock]: ['Rock', 'stone', 'Digging it gives 3 stone.'],
         [Element.Dirt]: ['Dirt', 'stone', 'Digging it gives 1 stone.'],
-        [Element.Water]: ['Water', 'breath', 'Flows down and pools. Survivors can\'t walk through it.'],
+        [Element.Water]: ['Water', 'depth', 'Flows down and pools. Survivors can\'t walk through it.'],
       };
       const w = what[e];
       if (w) [title, glyph, status] = w;

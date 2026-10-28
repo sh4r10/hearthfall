@@ -6,7 +6,7 @@
 use sim::{reach, Activity, Building, Command, Rng, Sim};
 
 const MAPS: [(&str, u64); 3] = [("Hearth Hollow", 7), ("The Long Gallery", 1234), ("Frostbite", 99_999)];
-const BUILDS: [Building; 6] = [Building::Ladder, Building::Hearth, Building::MushroomBed, Building::OxygenDiffuser, Building::Lamp, Building::Bed];
+const BUILDS: [Building; 5] = [Building::Ladder, Building::Hearth, Building::MushroomBed, Building::Lamp, Building::Bed];
 
 fn main() {
     let days: u64 = std::env::args().nth(1).and_then(|d| d.parse().ok()).unwrap_or(3);

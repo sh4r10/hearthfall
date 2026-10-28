@@ -3,7 +3,7 @@ use sim::{Activity, Building, Command, Element, JobKind, Sim};
 fn script(tick: u64, sim: &Sim) -> Vec<Command> {
     let (cx, cy) = (sim.width / 2, sim.height / 2);
     match tick {
-        5 => vec![Command::Build { x: cx + 4, y: cy, building: Building::OxygenDiffuser }],
+        5 => vec![Command::Build { x: cx + 4, y: cy, building: Building::Lamp }],
         10..=30 => vec![Command::Dig { x: cx + 9 + (tick as u32 - 10), y: cy }],
         _ => vec![],
     }
@@ -27,8 +27,6 @@ fn sealed_room(seed: u64, size: u32, room: (u32, u32, u32, u32)) -> Sim {
             let i = sim.idx(x, y);
             let open = (x0..=x1).contains(&x) && (y0..=y1).contains(&y);
             sim.elements[i] = if open { Element::Floor } else { Element::Rock };
-            sim.oxygen[i] = if open { 1800 } else { 0 };
-            sim.co2[i] = 0;
             sim.buildings[i] = Building::None;
         }
     }
@@ -43,43 +41,6 @@ fn same_seed_and_commands_give_same_hash() {
 #[test]
 fn different_seeds_diverge() {
     assert_ne!(run(1, 50), run(2, 50));
-}
-
-#[test]
-fn gas_is_never_created() {
-    let mut sim = Sim::new(7, 96, 96);
-    // Breathing and fire turn O2 into CO2 and the walls soak a little CO2 up,
-    // so the total gas mass can only fall, and never below zero.
-    let total = |s: &Sim| s.oxygen.iter().chain(&s.co2).map(|&v| v as i64).sum::<i64>();
-    let before = total(&sim);
-    for _ in 0..200 {
-        sim.step(&[]);
-    }
-    assert!(total(&sim) <= before);
-    assert!(sim.oxygen.iter().chain(&sim.co2).all(|&v| v >= 0));
-}
-
-#[test]
-fn colonists_suffocate_without_oxygen() {
-    let mut sim = Sim::new(3, 64, 64);
-    for _ in 0..400 {
-        sim.oxygen.iter_mut().for_each(|v| *v = 0);
-        sim.step(&[]);
-    }
-    assert_eq!(sim.alive_colonists(), 0);
-}
-
-#[test]
-fn carbon_dioxide_sinks() {
-    let mut sim = sealed_room(9, 32, (16, 4, 16, 19));
-    sim.colonists.clear();
-    let top = sim.idx(16, 4);
-    sim.co2[top] = 4000;
-    for _ in 0..2000 {
-        sim.step(&[]);
-    }
-    let bottom = sim.idx(16, 19);
-    assert!(sim.co2[bottom] > sim.co2[top] * 3, "bottom {} top {}", sim.co2[bottom], sim.co2[top]);
 }
 
 #[test]
@@ -171,11 +132,11 @@ fn builders_use_ladders_to_reach_high_jobs() {
     // Make (19, 8) solid so (19, 7) is a ledge beside the ladder.
     let ledge = sim.idx(19, 8);
     sim.elements[ledge] = Element::Rock;
-    sim.step(&[Command::Build { x: 19, y: 7, building: Building::OxygenDiffuser }]);
+    sim.step(&[Command::Build { x: 19, y: 7, building: Building::Lamp }]);
     for _ in 0..800 {
         sim.step(&[]);
     }
-    assert_eq!(sim.buildings[sim.idx(19, 7)], Building::OxygenDiffuser, "jobs: {:?}", sim.jobs);
+    assert_eq!(sim.buildings[sim.idx(19, 7)], Building::Lamp, "jobs: {:?}", sim.jobs);
 }
 
 #[test]
@@ -539,36 +500,6 @@ fn the_set_maps_let_a_colony_through_two_nights_untouched() {
 }
 
 #[test]
-fn survivors_step_out_of_stale_air_and_a_shaft_clears() {
-    // A deep shaft under a sealed room, its bottom full of carbon dioxide.
-    let mut sim = sealed_room(5, 64, (20, 20, 44, 20));
-    let hearth = sim.idx(33, 20); // beside the shaft, so its light reaches the bottom and nobody flees the dark instead
-    sim.buildings[hearth] = Building::Hearth;
-    sim.hearth_fuel[hearth] = 40;
-    for y in 21..=30 {
-        let i = sim.idx(32, y);
-        sim.elements[i] = Element::Floor;
-        sim.buildings[i] = Building::Ladder;
-        sim.oxygen[i] = 0;
-        sim.co2[i] = 1800;
-    }
-    sim.colonists.truncate(1);
-    sim.colonists[0].x = 32;
-    sim.colonists[0].y = 30;
-    let mut left_for_air = false;
-    for _ in 0..1500 {
-        sim.step(&[]);
-        if sim.colonists[0].heading == sim::HEADING_AIR {
-            left_for_air = true;
-        }
-    }
-    assert!(left_for_air, "never went looking for air");
-    assert!(sim.colonists[0].alive(), "died in the shaft of cause {}", sim.colonists[0].cause);
-    let bottom = sim.idx(32, 30);
-    assert!(sim.co2[bottom] < 900, "the shaft still holds {} mg of CO2", sim.co2[bottom]);
-}
-
-#[test]
 fn work_only_happens_beside_the_job() {
     let mut sim = sealed_room(12, 64, (10, 30, 54, 30));
     sim.colonists.truncate(1);
@@ -589,6 +520,7 @@ fn work_only_happens_beside_the_job() {
     assert_eq!(sim.buildings[sim.idx(40, 30)], Building::Bed, "the bed was never built: {:?}", sim.jobs);
 }
 
+#[test]
 fn deconstruct_takes_a_building_down_and_salvages_it() {
     let mut sim = Sim::new(7, 128, 96);
     let (cx, cy) = (sim.width / 2, sim.height / 2);

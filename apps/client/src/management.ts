@@ -88,7 +88,7 @@ export class PriorityBrush {
 // --- Stuck orders --------------------------------------------------------------------
 
 const BUILDING_WORDS: Record<number, string> = {
-  [Building.OxygenDiffuser]: 'oxygen diffuser', [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
+  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
   [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed',
 };
 

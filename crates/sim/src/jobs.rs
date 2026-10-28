@@ -58,7 +58,6 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::Ladder => (0, 1),
         Building::MushroomBed => (0, 2),
         Building::Bed => (0, 3),
-        Building::OxygenDiffuser => (2, 6),
         Building::None | Building::Cairn => (0, 0),
     }
 }
@@ -279,9 +278,6 @@ impl Sim {
                     _ => {}
                 }
                 self.elements[i] = Element::Floor;
-                // Rock holds air in its pores: a fresh cut breathes, so a shaft
-                // isn't a vacuum that stale air rushes into.
-                self.oxygen[i] = crate::START_OXYGEN_MG;
             }
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);

@@ -9,15 +9,15 @@ import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
 import { terrainMaterial } from './terrain-shader';
-import { AIR_SCALE, OVERLAY_MODE, overlayMaterial } from './overlay-shader';
+import { overlayMaterial } from './overlay-shader';
 import './sprites';
 import { BED_TOP, type SurvivorAnim } from './sprites';
 
-export type Overlay = 'none' | 'warmth' | 'air';
+export type Overlay = 'none' | 'warmth';
 
 // Side-on low-poly 3D, seen from the front. The sim grid lies in the XY plane
 // (sim y grows downwards, world y upwards) and z points at the camera:
-//   back wall (z -0.75) -> rock lumps (around 0) -> buildings and survivors (0) -> gas haze -> markers
+//   back wall (z -0.75) -> rock lumps (around 0) -> buildings and survivors (0) -> markers
 // Hearths are real point lights with shadows. The sim's light field darkens
 // everything it does not reach, so the picture always matches the rules.
 
@@ -125,7 +125,6 @@ interface Marker {
 
 const BUILDING_MODELS: Record<number, string> = {
   [Building.Ladder]: 'ladder',
-  [Building.OxygenDiffuser]: 'diffuser',
   [Building.MushroomBed]: 'mushroom-bed',
   [Building.Hearth]: 'hearth',
   [Building.Cairn]: 'cairn',
@@ -181,7 +180,6 @@ export class WorldView {
   private maskTex?: THREE.DataTexture;
   private waterTex?: THREE.DataTexture;
   private terrainShader?: THREE.ShaderMaterial;
-  private gasTex!: THREE.DataTexture;
   private fieldTex!: THREE.DataTexture;
   private marksTex!: THREE.DataTexture;
   private overlayShader!: THREE.ShaderMaterial;
@@ -281,7 +279,6 @@ export class WorldView {
     this.shadeTarget = new Float32Array(n).fill(DARKEST);
 
     this.lightTex = this.gridTexture();
-    this.gasTex = this.gridTexture();
     if (PAINTED) {
       this.maskTex = this.gridTexture();
       this.waterTex = this.gridTexture();
@@ -291,13 +288,6 @@ export class WorldView {
       ground.position.z = -0.1; // just behind the sprites standing in the play plane
       this.scene.add(ground);
     }
-    const haze = new THREE.Mesh(
-      new THREE.PlaneGeometry(this.width, this.height),
-      new THREE.MeshBasicMaterial({ map: this.gasTex, transparent: true, depthWrite: false }),
-    );
-    haze.position.z = 0.55;
-    haze.renderOrder = 2;
-    this.scene.add(haze);
     this.fieldTex = this.gridTexture();
     this.marksTex = this.gridTexture();
     this.overlayShader = overlayMaterial(this.fieldTex, this.marksTex, this.width, this.height);
@@ -814,7 +804,7 @@ export class WorldView {
     }
   }
 
-  // --- Light, gas and frames -------------------------------------------------
+  // --- Light and frames -------------------------------------------------------
 
   private computeShade(frame: Frame) {
     const { width: w, height: h } = this;
@@ -854,39 +844,19 @@ export class WorldView {
     this.lightTex.needsUpdate = true;
   }
 
-  /** CO2 hangs low as a faint murk in the plain view. */
-  private paintGas(frame: Frame) {
-    const gas = this.gasTex.image.data as Uint8Array;
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const c = y * this.width + x;
-        const i = this.texIndex(x, y);
-        const t = frame.elements[c] === Element.Floor && this.overlay === 'none' ? Math.min(frame.co2[c] / 2500, 1) : 0;
-        gas[i] = 110; gas[i + 1] = 120; gas[i + 2] = 60; gas[i + 3] = t * 90;
-      }
-    }
-    this.gasTex.needsUpdate = true;
-  }
-
   /** Fills the map view's field texture; see overlay-shader.ts for the channels. */
   private paintField(frame: Frame) {
     if (this.overlay === 'none') return;
     const field = this.fieldTex.image.data as Uint8Array;
     const marks = this.marksTex.image.data as Uint8Array;
-    const warmth = this.overlay === 'warmth';
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const c = y * this.width + x;
         const i = this.texIndex(x, y);
         const open = frame.elements[c] === Element.Floor;
-        if (warmth) {
-          field[i] = frame.firelight[c];
-          field[i + 1] = frame.light[c];
-          field[i + 2] = frame.nightFirelight[c];
-        } else {
-          field[i] = Math.min(frame.oxygen[c] / AIR_SCALE, 1) * 255;
-          field[i + 1] = field[i + 2] = 0;
-        }
+        field[i] = frame.firelight[c];
+        field[i + 1] = frame.light[c];
+        field[i + 2] = frame.nightFirelight[c];
         field[i + 3] = open ? 255 : 0;
         marks[i] = frame.elements[c] === Element.Coal ? 255 : 0;
       }
@@ -894,16 +864,12 @@ export class WorldView {
     this.fieldTex.needsUpdate = true;
     this.marksTex.needsUpdate = true;
     const u = this.overlayShader.uniforms;
-    u.uMode.value = OVERLAY_MODE[this.overlay];
     u.uForecast.value = frame.night ? 0 : 1;
   }
 
   setOverlay(overlay: Overlay) {
     this.overlay = overlay;
-    if (this.latest) {
-      this.paintGas(this.latest);
-      this.paintField(this.latest);
-    }
+    if (this.latest) this.paintField(this.latest);
   }
 
   /** One view per sim colonist; refugees join mid-game, so this runs every frame. */
@@ -940,20 +906,19 @@ export class WorldView {
     }
     this.computeShade(frame);
     if (first) this.shade.set(this.shadeTarget);
-    this.paintGas(frame);
     this.paintField(frame);
     this.updateMarkers(frame);
 
     this.survivors.forEach((s, i) => {
       const o = i * COLONIST_STRIDE;
-      const [x, y, , activity, , warmth] = frame.colonists.subarray(o, o + 6);
+      const [x, y, , activity, warmth] = frame.colonists.subarray(o, o + 5);
       this.cellToWorld(x, y, s.target);
       s.target.y -= 0.5;
       if (first) s.pos.copy(s.target);
       s.activity = activity;
-      s.job = frame.colonists[o + 12];
+      s.job = frame.colonists[o + 11];
       // Face the work while at it.
-      const jobX = frame.colonists[o + 10];
+      const jobX = frame.colonists[o + 9];
       if (activity === 2 && jobX >= 0 && jobX !== x) s.facing = Math.sign(jobX - x);
       s.cell = y * this.width + x;
       s.warmth = warmth;

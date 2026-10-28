@@ -1,7 +1,4 @@
-//! Environment: light, water, gases and heat.
-
-/// Fraction of a walled cell's carbon dioxide the walls take each tick.
-const CO2_SCRUB_DIV: i32 = 400;
+//! Environment: light, water and heat.
 
 use crate::{Building, Element, Sim, DARK_BELOW, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
@@ -41,11 +38,11 @@ impl Sim {
     }
 
     pub(crate) fn hearth_lit(&self, i: usize) -> bool {
-        self.buildings[i] == Building::Hearth && self.hearth_fuel[i] > 0 && self.oxygen[i] >= crate::HEARTH_MIN_OXYGEN_MG
+        self.buildings[i] == Building::Hearth && self.hearth_fuel[i] > 0
     }
 
     /// Water falls into open cells below, and flows sideways towards drops.
-    /// Moving water swaps places with the gas it displaces, so mass is conserved.
+    /// Moving water swaps places with the open cell it fills, taking its heat along.
     pub(crate) fn water_tick(&mut self) {
         let (w, h) = (self.width as i32, self.height as i32);
         let mut moved = vec![false; self.elements.len()];
@@ -66,59 +63,8 @@ impl Sim {
                 if let Some((tx, ty)) = target {
                     let j = self.idx(tx as u32, ty as u32);
                     self.elements.swap(i, j);
-                    self.oxygen.swap(i, j);
-                    self.co2.swap(i, j);
                     self.temperature.swap(i, j);
                     moved[j] = true;
-                }
-            }
-        }
-    }
-
-    pub(crate) fn diffuse_gases(&mut self) {
-        diffuse_gas(self.width, self.height, &self.elements, &mut self.oxygen, &mut self.scratch);
-        diffuse_gas(self.width, self.height, &self.elements, &mut self.co2, &mut self.scratch);
-        self.settle_gases();
-        self.scrub_co2();
-    }
-
-    /// Damp cave walls soak up a little carbon dioxide, so stale air in a dead
-    /// end thins out over a few minutes instead of lingering forever. Only CO2
-    /// touching dirt or rock goes, and only a sliver of it per tick.
-    fn scrub_co2(&mut self) {
-        let (w, h) = (self.width as usize, self.height as usize);
-        for y in 0..h {
-            for x in 0..w {
-                let i = y * w + x;
-                if !self.elements[i].is_open() || self.co2[i] < CO2_SCRUB_DIV {
-                    continue;
-                }
-                let walled = [x.checked_sub(1).map(|nx| y * w + nx), (x + 1 < w).then(|| i + 1), y.checked_sub(1).map(|ny| ny * w + x), (y + 1 < h).then(|| i + w)]
-                    .into_iter()
-                    .flatten()
-                    .any(|j| matches!(self.elements[j], Element::Dirt | Element::Rock));
-                if walled {
-                    self.co2[i] -= self.co2[i] / CO2_SCRUB_DIV;
-                }
-            }
-        }
-    }
-
-    /// Carbon dioxide is heavier than oxygen: let it sink by trading places
-    /// with oxygen in the cell below. Both gases are conserved.
-    fn settle_gases(&mut self) {
-        let (w, h) = (self.width as usize, self.height as usize);
-        self.scratch.copy_from_slice(&self.oxygen);
-        self.scratch2.copy_from_slice(&self.co2);
-        for y in 0..h - 1 {
-            for x in 0..w {
-                let (above, below) = (y * w + x, (y + 1) * w + x);
-                if self.elements[above].is_open() && self.elements[below].is_open() {
-                    let flow = self.scratch2[above].min(self.scratch[below]) / 8;
-                    self.co2[above] -= flow;
-                    self.co2[below] += flow;
-                    self.oxygen[below] -= flow;
-                    self.oxygen[above] += flow;
                 }
             }
         }
@@ -172,33 +118,6 @@ fn flood_light(width: u32, height: u32, elements: &[Element], sources: &[usize],
             if dist[j] > d + 1 {
                 dist[j] = d + 1;
                 queue.push_back(j);
-            }
-        }
-    }
-}
-
-/// Mass-conserving gas exchange between open neighbours. Fluxes are computed
-/// from a snapshot so the result does not depend on iteration order.
-fn diffuse_gas(width: u32, height: u32, elements: &[Element], gas: &mut [i32], snapshot: &mut [i32]) {
-    let (w, h) = (width as usize, height as usize);
-    snapshot.copy_from_slice(gas);
-    for y in 0..h {
-        for x in 0..w {
-            let i = y * w + x;
-            if !elements[i].is_open() {
-                continue;
-            }
-            for j in [if x + 1 < w { Some(i + 1) } else { None }, if y + 1 < h { Some(i + w) } else { None }]
-                .into_iter()
-                .flatten()
-            {
-                if elements[j].is_open() {
-                    // Dividing by 5 caps a cell's total outflow at 4/5 of its
-                    // mass, so gas never goes negative.
-                    let flux = (snapshot[i] - snapshot[j]) / 5;
-                    gas[i] -= flux;
-                    gas[j] += flux;
-                }
             }
         }
     }
