@@ -10,29 +10,46 @@
   </head>
   <body>
     <canvas id="game"></canvas>
-    <header id="top">
+    <div id="night-veil" aria-hidden="true"></div>
+
+    <section id="title" aria-label="Main menu">
+      <div class="title-art"></div>
+      <div class="title-inner">
+        <p class="kicker">The sun dimmed. The surface froze.</p>
+        <h1>Hearthfall</h1>
+        <p class="lede">Lead a handful of survivors into the warm dark under the ice. Dig for coal, keep the hearth burning, and get everyone through the night.</p>
+        <div class="title-actions">
+          <button id="play" class="primary">Light the first hearth</button>
+          <button id="how" class="quiet" aria-expanded="false" aria-controls="howto">How to play</button>
+        </div>
+        <ul id="howto" hidden>
+          <li><b>You give orders, survivors carry them out.</b> Pick a tool, then click the rock. Shift-drag to mark many cells.</li>
+          <li><b>Coal is fuel.</b> Dig the black seams. Your firekeeper feeds the hearth.</li>
+          <li><b>Light is safety.</b> Out of the light, survivors freeze. Nights shrink the light.</li>
+          <li><b>Mushrooms grow only in the dark,</b> so you'll have to build beyond the fire.</li>
+          <li>Drag to look around, scroll to zoom.</li>
+        </ul>
+      </div>
+    </section>
+
+    <header id="top" hidden>
       <div class="brand">Hearthfall</div>
-      <div id="stats"></div>
+      <div id="clock" class="panel" aria-label="Time of day"><div class="dial"><i></i></div><div class="clock-text"></div></div>
+      <div id="stats" class="panel"></div>
     </header>
-    <aside id="roster" aria-label="Survivors"></aside>
-    <nav id="toolbar" aria-label="Orders">
-      <div class="group">
-        <button data-tool="dig" class="active"><kbd>1</kbd>Dig</button>
-        <button data-tool="ladder"><kbd>2</kbd>Ladder</button>
-        <button data-tool="hearth" title="Costs 8 coal"><kbd>3</kbd>Hearth</button>
-        <button data-tool="mushroom" title="Grows food, but only in the dark"><kbd>4</kbd>Mushrooms</button>
-        <button data-tool="diffuser"><kbd>5</kbd>Oxygen</button>
-        <button data-tool="cancel"><kbd>X</kbd>Cancel</button>
-      </div>
-      <div class="group">
-        <button data-overlay="none" class="active">View</button>
-        <button data-overlay="oxygen"><kbd>O</kbd>O₂</button>
-        <button data-overlay="co2"><kbd>C</kbd>CO₂</button>
-        <button data-overlay="temperature"><kbd>T</kbd>Heat</button>
-      </div>
+    <aside id="roster" aria-label="Survivors" hidden></aside>
+    <div id="hint" class="panel" hidden></div>
+    <nav id="toolbar" class="panel" aria-label="Orders" hidden>
+      <div class="group" id="tools"></div>
+      <div class="divider"></div>
+      <div class="group" id="overlays"></div>
     </nav>
-    <p id="hint">Click to mark orders and your survivors will carry them out. Shift-drag marks many cells. Dig the black coal seams for fuel. Drag to pan, scroll to zoom.</p>
-    <div id="banner" hidden>The last fire has gone out.</div>
+    <div id="tooltip" role="tooltip" hidden></div>
+    <section id="gameover" class="panel" hidden>
+      <h2>The last fire has gone out.</h2>
+      <p class="summary"></p>
+      <button class="primary" id="again">Start a new colony</button>
+    </section>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

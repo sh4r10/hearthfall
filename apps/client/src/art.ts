@@ -3,10 +3,10 @@ import * as THREE from 'three';
 // Real art lives in apps/client/art/. Vite inlines what's there at build time,
 // so the single-file demo carries it too. Missing files fall back to the
 // code-drawn placeholders.
-const files = import.meta.glob('../art/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const files = import.meta.glob('../art/*.{png,jpg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
 export function artUrl(name: string): string | undefined {
-  return files[`../art/${name}.png`];
+  return files[`../art/${name}.png`] ?? files[`../art/${name}.jpg`];
 }
 
 const loader = new THREE.TextureLoader();

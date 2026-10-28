@@ -2,14 +2,14 @@
 
 How Hearthfall looks, for anyone adding a model, effect or piece of UI. Read [design.md](design.md) first for the world and the game.
 
-**Approach (decided 2026-10-28):** everything in the world is low-poly 3D built in code from simple shapes (boxes, cylinders, cones, icosahedra), flat shaded, lit by real firelight with shadows and a bloom pass, and seen side-on. There are no image files. Every model comes from one registry in `apps/client/src/models.ts`, so any piece can later be replaced by a hand-made model (glTF) or a sprite by registering a new factory under the same name. The renderer is `apps/client/src/world-view.ts`.
+**Approach (updated 2026-10-28):** the world is **painted 2D art standing in a side-on 3D scene**. Painted sprites (from AI images, cleaned up) stand as flat cards in the play plane; the caves are one shader that fills smooth, ink-outlined terrain shapes with painted rock, dirt, coal and back-wall textures; fire is an animated flame sprite with embers and bloom. The sim's light field tints everything, so the dark is dark and firelight is warm. Every model comes from one registry (`apps/client/src/models.ts`): painted sprites are registered in `apps/client/src/sprites.ts` under the same names as the low-poly code-built models, and replace them whenever the image exists in `apps/client/art/`. Without the images the game falls back to the low-poly look. The renderer is `apps/client/src/world-view.ts`; the art pipeline is `scripts/process-art.py`.
 
 ## The feel
 
 A frozen world, survived underground by firelight. The caves are cold, blue-grey and heavy. Every warm colour in the frame comes from fire, and the people huddled near it. The mood is close and worn but not grim: the survivors are scrappy and a little funny, like Oxygen Not Included's duplicants, and the world is chunky and toy-like rather than realistic.
 
 Reference points:
-- **Keepfall (keepfall.oshh.dk):** code-built low-poly models, flat shading, emissive glows, real shadows, bloom.
+- **Keepfall (keepfall.oshh.dk):** the fallback low-poly look: code-built models, flat shading, emissive glows, real shadows, bloom.
 - **Oxygen Not Included:** side-on cutaway, chunky readable buildings, characters built from parts.
 - **Darkest Dungeon (lighting only):** firelight against deep darkness.
 

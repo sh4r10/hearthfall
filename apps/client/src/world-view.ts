@@ -7,6 +7,9 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Building, COLONIST_STRIDE, Element, JOB_STRIDE, STAT_MAX, type Frame } from './protocol';
 import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
+import { artUrl } from './art';
+import { terrainMaterial } from './terrain-shader';
+import './sprites';
 
 export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
 
@@ -19,6 +22,8 @@ export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
 const FOV = 35;
 const SHADOW_LIGHTS = 4;
 const DARKEST = 0.24;
+/** With painted terrain textures the caves are drawn by one shader; without, as low-poly rock. */
+const PAINTED = !!artUrl('rock');
 
 const GradingShader = {
   uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uNight: { value: 0 } },
@@ -75,6 +80,7 @@ interface Survivor {
 
 interface Marker {
   object: THREE.Object3D;
+  flat?: boolean;
   bar: THREE.Mesh;
   seen: boolean;
 }
@@ -120,6 +126,8 @@ export class WorldView {
   private shade!: Float32Array;
   private shadeTarget!: Float32Array;
   private lightTex!: THREE.DataTexture;
+  private maskTex?: THREE.DataTexture;
+  private terrainShader?: THREE.ShaderMaterial;
   private gasTex!: THREE.DataTexture;
   private latest?: Frame;
   private lastElements?: Uint8Array;
@@ -132,6 +140,7 @@ export class WorldView {
   private playPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private ghostMaterial = new THREE.MeshBasicMaterial({ color: '#8fb8ff', transparent: true, opacity: 0.35, depthWrite: false });
   private barMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b' });
+  private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false });
   private readonly glowTex = glowTexture();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -139,8 +148,8 @@ export class WorldView {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
+    this.renderer.toneMapping = PAINTED ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = PAINTED ? 1.05 : 1.2;
     this.scene.background = new THREE.Color('#020304');
     this.scene.add(this.terrain, this.buildings, this.markerGroup);
 
@@ -209,6 +218,13 @@ export class WorldView {
 
     this.lightTex = this.gridTexture();
     this.gasTex = this.gridTexture();
+    if (PAINTED) {
+      this.maskTex = this.gridTexture();
+      this.terrainShader = terrainMaterial(this.maskTex, this.lightTex, this.width, this.height);
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), this.terrainShader);
+      ground.position.z = -0.1; // just behind the sprites standing in the play plane
+      this.scene.add(ground);
+    }
     const haze = new THREE.Mesh(
       new THREE.PlaneGeometry(this.width, this.height),
       new THREE.MeshBasicMaterial({ map: this.gasTex, transparent: true, depthWrite: false }),
@@ -232,7 +248,7 @@ export class WorldView {
 
     for (let i = 0; i < frame.colonists.length / COLONIST_STRIDE; i++) {
       const model = makeModel('survivor', i);
-      model.scale.setScalar(1.25);
+      model.scale.setScalar(model.userData.flat ? 1 : 1.25);
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
@@ -271,6 +287,22 @@ export class WorldView {
   }
 
   private rebuildTerrain(elements: Uint8Array) {
+    if (this.maskTex) {
+      // Painted terrain: just update the material mask the shader reads.
+      const mask = this.maskTex.image.data as Uint8Array;
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const e = elements[y * this.width + x], i = this.texIndex(x, y);
+          mask[i] = e === Element.Rock ? 255 : 0;
+          mask[i + 1] = e === Element.Dirt ? 255 : 0;
+          mask[i + 2] = e === Element.Coal ? 255 : 0;
+          mask[i + 3] = 0;
+        }
+      }
+      this.maskTex.needsUpdate = true;
+      this.updateWater(elements);
+      return;
+    }
     for (const { mesh } of this.instanced) mesh.dispose();
     this.terrain.clear();
     this.instanced = [];
@@ -532,10 +564,12 @@ export class WorldView {
   private ghost(building: number) {
     const model = makeModel(BUILDING_MODELS[building]);
     model.traverse((o) => {
-      if (o instanceof THREE.Mesh) {
-        o.material = this.ghostMaterial;
-        o.castShadow = false;
-      }
+      if (!(o instanceof THREE.Mesh)) return;
+      const map = (o.material as THREE.MeshBasicMaterial).map;
+      // Sprites keep their picture, washed out in blue; models become a blue silhouette.
+      o.material = map ? new THREE.MeshBasicMaterial({ map, color: '#9fc3ff', transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }) : this.ghostMaterial;
+      o.userData.lit = false;
+      o.castShadow = false;
     });
     if (building === Building.Hearth) model.scale.setScalar(1.3);
     return model;
@@ -553,10 +587,16 @@ export class WorldView {
         this.cellToWorld(x, y, p);
         const object = kind === 0 ? makeModel('dig-marker') : this.ghost(building);
         object.position.set(p.x, kind === 0 ? p.y : p.y - 0.5, kind === 0 ? 0.75 : 0);
+        if (kind === 0) {
+          // A faint ember square marks the cell itself.
+          const square = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), this.digMaterial);
+          square.position.set(0, 0, -0.7);
+          object.add(square);
+        }
         const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), this.barMaterial);
         bar.position.set(p.x, p.y - 0.42, 0.8);
         this.markerGroup.add(object, bar);
-        marker = { object, bar, seen: true };
+        marker = { object, bar, seen: true, flat: kind !== 0 };
         this.markers.set(key, marker);
       }
       marker.seen = true;
@@ -679,8 +719,49 @@ export class WorldView {
 
   // --- Animation -------------------------------------------------------------
 
+  /** Painted puppet: front view when standing about, side view walking and working. */
+  private animateFlatSurvivor(s: Survivor, k: number, t: number, i: number) {
+    const { model, parts } = s;
+    model.position.lerpVectors(s.from, s.to, k);
+    const moving = s.from.distanceToSquared(s.to) > 0.01 && k < 1;
+    const front = model.getObjectByName('front')!, side = model.getObjectByName('side')!;
+    const lying = s.activity === 3 || s.activity === 5;
+    const walking = moving || s.activity === 1;
+    side.visible = walking || s.activity === 2 || lying;
+    front.visible = !side.visible;
+    model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
+    model.scale.set(1, 1, 1);
+    side.rotation.z = 0;
+    let swing = 0;
+    if (lying) {
+      model.rotation.z = Math.PI / 2;
+      model.position.y += 0.2;
+      model.position.x -= 0.55 * s.facing;
+      if (s.activity === 3) model.scale.x = 1 + Math.sin(t * 2 + i) * 0.03;
+    } else if (walking) {
+      const phase = t * 11 + i * 1.7;
+      swing = Math.sin(phase) * 0.45;
+      model.position.y += Math.abs(Math.sin(phase)) * 0.05;
+      side.rotation.z = -0.05;
+    } else if (s.activity === 2) {
+      // Hacking at the rock: lean in and spring back.
+      const hit = Math.pow(Math.max(Math.sin(t * 7 + i), 0), 3);
+      side.rotation.z = -0.05 - hit * 0.22;
+      swing = 0.15;
+    } else {
+      const breathe = Math.sin(t * 2.2 + i) * 0.015;
+      model.scale.set(1 - breathe * 0.5, 1 + breathe, 1);
+      const cold = 1 - s.warmth / STAT_MAX;
+      if (cold > 0.4) model.position.x += Math.sin(t * 50 + i) * 0.012 * cold;
+      if (s.activity === 4) model.position.y += Math.abs(Math.sin(t * 5 + i)) * 0.03; // munching
+    }
+    parts.legL.rotation.z = swing;
+    parts.legR.rotation.z = -swing;
+  }
+
   private animateSurvivor(s: Survivor, k: number, t: number, i: number) {
     const { model, parts } = s;
+    if (model.userData.flat) return this.animateFlatSurvivor(s, k, t, i);
     model.position.lerpVectors(s.from, s.to, k);
     const moving = s.from.distanceToSquared(s.to) > 0.01 && k < 1;
     const lying = s.activity === 3 || s.activity === 5;
@@ -722,6 +803,32 @@ export class WorldView {
     parts.armF.rotation.z = armF;
     parts.armB.rotation.z = armB;
     parts.head.rotation.z = headTilt;
+  }
+
+  /** Brightness of the sim's light field at a world position, smoothly interpolated. */
+  private shadeAt(wx: number, wy: number) {
+    const gx = Math.min(Math.max(wx + this.width / 2 - 0.5, 0), this.width - 1.001);
+    const gy = Math.min(Math.max(this.height / 2 - wy - 0.5, 0), this.height - 1.001);
+    const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    const at = (x: number, y: number) => this.shade[y * this.width + x];
+    const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+    const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+    return top * (1 - fy) + bottom * fy;
+  }
+
+  /** Tint painted sprites by the light where they stand, and run their own animations. */
+  private lightSprites(t: number) {
+    const p = new THREE.Vector3();
+    const tint = (root: THREE.Object3D) => root.traverse((o) => {
+      o.userData.animate?.(t);
+      if (!(o instanceof THREE.Mesh) || !o.userData.lit) return;
+      o.getWorldPosition(p);
+      const s = this.shadeAt(p.x, p.y + 0.4) * (o.userData.shade ?? 1);
+      const warm = THREE.MathUtils.smoothstep(s, 0.3, 1);
+      (o.material as THREE.MeshBasicMaterial).color.setRGB(s * (0.8 + warm * 0.4), s * (0.9 + warm * 0.12), s * (1.1 - warm * 0.32));
+    });
+    tint(this.buildings);
+    for (const s of this.survivors) tint(s.model);
   }
 
   private updateEmbers(dt: number, t: number) {
@@ -769,9 +876,11 @@ export class WorldView {
         const bubbles = b.getObjectByName('bubbles');
         bubbles?.children.forEach((bubble, j) => { bubble.position.y = 0.7 + ((t * 0.4 + j * 0.25) % 1) * 0.5; });
       }
-      for (const marker of this.markers.values()) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
+      for (const marker of this.markers.values()) if (!marker.flat) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
       const k = Math.min((performance.now() - this.frameTime) / this.frameInterval, 1);
       this.survivors.forEach((s, i) => this.animateSurvivor(s, k, t, i));
+      this.lightSprites(t);
+      if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;
     }
 
     const dist = this.view.span / 2 / Math.tan(THREE.MathUtils.degToRad(FOV / 2));

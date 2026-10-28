@@ -1,6 +1,6 @@
 # Art prompts: batch 1
 
-The first batch of AI image prompts for Hearthfall. The in-game world is now low-poly 3D built in code (see [art-brief.md](art-brief.md)), so these are kept for the story intro, UI icons, marketing art and sprite experiments.
+AI image prompts for Hearthfall. Batch 1 is done and in the game (cleaned up by `scripts/process-art.py`). Batch 2 fills the gaps. See [art-brief.md](art-brief.md) for the full style guide.
 
 ## How to use these
 
@@ -38,3 +38,22 @@ The first batch of AI image prompts for Hearthfall. The in-game world is now low
 **#11 Oxygen diffuser.** (style block) A small scrap-built machine that releases oxygen: a teal metal canister with riveted panels, a little pressure gauge, a vent on top with small air bubbles rising. Side view, taller than wide. Isolated on a plain light grey background.
 
 **#12 Story intro, scene 1.** (style block, but change "video game asset" to "wide painted illustration") A small town at midday, but the sun is pale and weak, the light cold and blue-tinged. People in coats glance up at the sky uneasily. 16:9, cinematic.
+
+## Batch 2: what's still missing
+
+Attach the character sheet (#1) as a reference for #13 to #16. Use the same style block.
+
+**#13 Interface icons.** (style block) A sheet of 16 small game interface icons in a 4 × 4 grid, each a simple bold silhouette with the same ink outline, readable at 32 px, warm amber on a plain light grey background: a pickaxe, a red X, a wooden ladder, a campfire, a glowing mushroom, a teal oxygen canister with bubbles, a lump of coal, a ration of mushrooms, two people, a flame (warmth), lungs or a breath cloud (breath), a lightning bolt (energy), a bowl (food), a smiling face (mood), "Zz" (sleep), a skull.
+
+**#14 Survivor digging.** (style block, #1 attached) The same survivor from the side, facing right, swinging a pickaxe overhead at rock in front of them. Three frames in a row: raised, mid-swing, impact. Full body, same size and proportions as the sheet. Plain light grey background.
+
+**#15 Survivor asleep and eating.** (style block, #1 attached) Two poses of the same survivor, side by side: curled up asleep on the ground under their coat, and sitting cross-legged eating from a small bowl of mushrooms. Same size and proportions. Plain light grey background.
+
+**#16 Pickaxe.** (style block) A single worn pickaxe with a wooden handle and a chipped iron head, side view, isolated on a plain light grey background.
+
+**#17 to #21 Story intro, scenes 2 to 6.** (style block, but change "video game asset" to "wide painted illustration", #12 attached for style) 16:9, cinematic, one at a time:
+- **#17** Frozen fields under a weak, pale sun, people in winter coats looking up at it.
+- **#18** A long line of survivors walking through deep snow at dusk, carrying lanterns and pots of embers.
+- **#19** The line descending into a mine entrance in a cliff, warm light spilling from inside.
+- **#20** Underground: the first hearth being lit, faces lit warm against blue darkness.
+- **#21** Title card: a lone hearth glowing in a vast dark cave, room above for the word "Hearthfall".

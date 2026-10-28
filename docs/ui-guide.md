@@ -18,6 +18,8 @@ Defined in `apps/client/src/style.css` and reused everywhere:
 | `--void` | `#050608` | Page background |
 | `--panel` | `rgba(14, 12, 11, 0.82)` | Panel fill |
 | `--edge` | `#3b2f24` | Panel borders, dividers |
+| `--edge-hi` | `#5a4532` | Key badges, tooltips, portraits |
+| `--panel-hi` | `rgba(42, 33, 25, 0.9)` | Top of the panel gradient |
 | `--ink` | `#eadfcb` | Main text |
 | `--muted` | `#a3968a` | Labels, hints, secondary text |
 | `--ember` | `#f0a04b` | Active state, accent, healthy bars |
@@ -32,15 +34,19 @@ Defined in `apps/client/src/style.css` and reused everywhere:
 
 ## Components
 
-- **Panel:** `--panel` fill, 1 px `--edge` border, 8 px radius. No drop shadows.
-- **Button:** transparent until hovered. Active is an `--ember` border and text on a faint ember tint.
-- **Need bar:** 5 px tall, rounded. Ember when fine, amber under 50%, frost under 25%.
-- **Survivor card:** name (display face), role picker, one italic line saying what they're doing, then the need bars in two columns.
-- **Banner:** large display text centred on screen, frost-coloured, for run-ending moments only.
+- **Panel (`.panel`):** a vertical gradient from `--panel-hi` to `--panel`, 1 px `--edge` border, 10 px radius, a faint warm inner highlight along the top edge, and a light backdrop blur. No drop shadows.
+- **Button:** transparent until hovered. Active is an ember border and text on a faint ember tint with a soft glow. **Primary** buttons (title screen, game over) are solid ember with dark display text.
+- **Tool button:** a 22 px line icon over a short label, with the key in a small `kbd` badge in the corner and the cost (if any) under it. Hovering shows a tooltip: bold name, then one plain sentence.
+- **Icons:** line icons from `apps/client/src/icons.ts`, 24 px grid, `currentColor`, 1.8 px stroke. Painted icons can replace them by name later.
+- **Need bar:** a 14 px icon and a 6 px bar. Ember when fine, amber under 50%, frost under 25%.
+- **Survivor card:** round portrait, name (display face), role picker, one italic line saying what they're doing, then the need bars in two columns. The card border turns frost when any need is under 25%.
+- **Game over:** a centred panel with a frost display heading, one line on how long the colony lasted, and a primary button to start again.
 
 ## Layout
 
-- Top bar: title and colony stats (day, time to night, coal, food, survivors).
+- Title screen: the story illustration full-bleed, slowly drifting, darkened towards the bottom left where the title, one paragraph and the buttons sit.
+- Top bar: title, a day clock (a dial that is amber by day and blue by night, plus "Night in Ns"), and a stats panel (coal, food, survivors) that pulses frost when one runs low.
 - Right edge: survivor roster.
-- Bottom centre: order tools and view overlays.
-- Bottom left: a one-line contextual hint. Hidden on narrow screens.
+- Bottom centre: one toolbar panel, order tools then a divider then view overlays.
+- Bottom left, above the toolbar: a hint for the selected tool. Hidden on narrow screens.
+- At night a faint frost vignette creeps in at the screen edges.
