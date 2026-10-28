@@ -1,0 +1,7 @@
+{
+  "id": "building-lens-bench-idle",
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nEdit target reference building. Remove the ENTIRE person, hands, boots, apron and hair. Leave ONLY the unattended plank bench, treadle grinding wheel, small vice holding teal crystal and mechanism. Wheel motionless. No sparks. No people or body parts anywhere. Keep remaining structural pixels, footprint and outline unchanged. Real transparent background. Clean ink and flat muted fills. Exactly one unattended building, no people, no comparison sheet.",
+  "path": "/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-d8626448-9f87-41c4-8aa3-3257d245b559.png",
+  "tries": 2,
+  "group": "mechanics"
+}

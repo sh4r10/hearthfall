@@ -1,0 +1,8 @@
+{
+  "id": "building-lens-bench-working",
+  "path": "/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-6d7cef11-d2be-42a5-840e-742dd983f5c5.png",
+  "prompt": "Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.\nEdit this unattended lens-grinder bench to WORKING state. NO PEOPLE: no worker, no hands, no feet, no body parts. Same bench, same structure, exact silhouette and position. Change ONLY grinding wheel: add TWO simple ink motion lines and three tiny flat teal crystal chips. No glow, no blur, no fire. Keep small vice holding teal crystal and all planks exactly unchanged. Real transparent background.",
+  "tries": 2,
+  "group": "mechanics",
+  "base": "building-lens-bench-idle"
+}

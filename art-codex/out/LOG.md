@@ -920,3 +920,480 @@ Hand-drawn 2D game art for a side-on underground survival game. Clean, confident
 Tobin (the builder, see CHARACTERS.md). Stepping from the floor onto a ladder, side view turning to back view: frame 1 standing facing right with a hand on a rail, frame 2 one boot on the bottom rung, frame 3 both feet on, seen from behind. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame. Paint them on the batch 3 ladder (buildings/ladder-middle.png) as a guide, then remove the ladder so only the survivor remains.
 Generate all frames in one image so they match. The ladder rails sit at x=112 and x=208, so mittens and boots land on them.
 The same character as the reference, same proportions, same colours. Reference1 exact character turnaround; reference2 ladder positioning guide ONLY. Deliver 3 complete evenly spaced figures in ONE horizontal transparent strip. REMOVE ALL LADDER PIXELS from final art; survivor only. Same scale and head size as standing model: head105px, body250px within each320x320cell. Top of heady54, lowest booty304. Mittens, never fingers. No hands or arms above top of hat; upper mitten can grip beside head, lower mitten at chest. Rails atx112 and208. Keep torso centredx160 across frames. One knee raised alternating, boots land on rails. Never enlarge head to fill canvas. No separate props.
+
+## Batch 3: mechanics
+
+### building-coke-oven-off
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3fcf6ffa-7c02-49b1-b145-902fcbb9e229.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A squat clay kiln for baking coal into coke: a domed clay body with an iron door at the front and a short stack. on: the door seams and the stack mouth glow orange (painted flat). State: off.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-coke-oven-on
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9930fd8b-969e-4a99-8457-b368017caeb7.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A squat clay kiln for baking coal into coke: a domed clay body with an iron door at the front and a short stack. on: the door seams and the stack mouth glow orange (painted flat). State: on.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-crate-empty
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-fb20a7fa-430c-4bb1-b876-0f1345cbeb30.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A storage crate of nailed planks. empty: open and empty. half: some coal and stones. full: overflowing. State: empty.
+Deliver exactly ONE asset, not a comparison sheet. 192x192 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-crate-full
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-03eaa6d8-39d8-4467-9a5c-a9866a46622b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A storage crate of nailed planks. empty: open and empty. half: some coal and stones. full: overflowing. State: full.
+Deliver exactly ONE asset, not a comparison sheet. 192x192 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-crate-half
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-c6615cdd-c63e-473d-a558-721cba38e521.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A storage crate of nailed planks. empty: open and empty. half: some coal and stones. full: overflowing. State: half.
+Deliver exactly ONE asset, not a comparison sheet. 192x192 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-crystal-lamp-off
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-898e3144-d2b0-47d6-b5ee-b47553abf284.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The lamp upgrade: the same wooden post and cross-arm as the batch 1 lamp, the lantern now holding a cut teal crystal lens. on: the lens painted bright cool white (no glow halo). State: off.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-crystal-lamp-on
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-88c26e6c-ad21-40c5-8068-fb400dd96e56.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The lamp upgrade: the same wooden post and cross-arm as the batch 1 lamp, the lantern now holding a cut teal crystal lens. on: the lens painted bright cool white (no glow halo). State: on.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-door-closed
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-80de350a-2f16-4595-8ace-577c8b2e67be.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A rough plank door in a timber frame with iron straps. open: the door swung to the side, frame empty. State: closed.
+Deliver exactly ONE asset, not a comparison sheet. 192x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-door-open
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-4d9e7d8e-7038-42c8-91f9-6edf4b93e4d0.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A rough plank door in a timber frame with iron straps. open: the door swung to the side, frame empty. State: open.
+Deliver exactly ONE asset, not a comparison sheet. 192x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-hearth-grate
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e0156fa5-ed56-4011-a850-73ae620b02cc.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The better-burner upgrade of the batch 1 hearth: exactly the same stone ring, footprint and outline as building-hearth, with black iron fire-bars laid across the pit. No flame (separate).
+Deliver exactly ONE asset, not a comparison sheet. 384x160 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-heater-off
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-ce9e8ee3-7933-468e-beb7-5c68db65d8c2.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+An iron stove heater with a grille front and a chimney stub. on: grille glowing orange (painted). State: off.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-heater-on
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-d140329a-501a-45c5-bab7-f1c2f96f5736.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+An iron stove heater with a grille front and a chimney stub. on: grille glowing orange (painted). State: on.
+Deliver exactly ONE asset, not a comparison sheet. 192x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-kitchen-cooking
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5990454b-3f7a-4de7-b01a-f0596f0d4671.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A cooking pot hung from a tripod over a small stone fire ring. cooking: steam curls and a low painted flame under the pot. State: cooking.
+Deliver exactly ONE asset, not a comparison sheet. 384x320 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-kitchen-off
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-fa3407f6-ee65-45d6-b70e-482d8af2b0d2.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target reference building. COLD OFF STATE. Remove ALL flames, embers, steam and orange illumination. Leave unlit dark wood logs in the stone ring and a cold pot hanging on the identical tripod. No steam, no fire, no light. Keep remaining structural pixels, footprint and outline unchanged. Real transparent background. Clean ink and flat muted fills. Exactly one unattended building, no people, no comparison sheet.
+
+### building-lens-bench-idle
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-d8626448-9f87-41c4-8aa3-3257d245b559.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target reference building. Remove the ENTIRE person, hands, boots, apron and hair. Leave ONLY the unattended plank bench, treadle grinding wheel, small vice holding teal crystal and mechanism. Wheel motionless. No sparks. No people or body parts anywhere. Keep remaining structural pixels, footprint and outline unchanged. Real transparent background. Clean ink and flat muted fills. Exactly one unattended building, no people, no comparison sheet.
+
+### building-lens-bench-working
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-6d7cef11-d2be-42a5-840e-742dd983f5c5.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit this unattended lens-grinder bench to WORKING state. NO PEOPLE: no worker, no hands, no feet, no body parts. Same bench, same structure, exact silhouette and position. Change ONLY grinding wheel: add TWO simple ink motion lines and three tiny flat teal crystal chips. No glow, no blur, no fire. Keep small vice holding teal crystal and all planks exactly unchanged. Real transparent background.
+
+### building-medbay-empty
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3f53c5cb-6faf-40bb-9271-f5391c03623b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A medical cot: white-grey sheet, a red cross stitched on a hanging cloth, bandages and a bottle on a crate beside it. State: empty.
+Deliver exactly ONE asset, not a comparison sheet. 384x160 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-smelter-off
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-31f0624b-48ec-4eaf-b76a-b4549e72ec79.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target reference building. COLD OFF STATE. Remove ALL smoke, flames, embers and orange light. Chimney clear, tap hole dark cold grey inside, leather bellows fully expanded. Same stone furnace, same framing and exact position. Keep remaining structural pixels, footprint and outline unchanged. Real transparent background. Clean ink and flat muted fills. Exactly one unattended building, no people, no comparison sheet.
+
+### building-smelter-on
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9d187b3f-dfd7-4eb6-b7db-b12df962c37a.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A stone bloomery for smelting iron: a round stone furnace with a clay chimney, leather bellows on the left side, a tap hole at the bottom front. on: the tap hole glows, the bellows are squeezed, a little smoke at the chimney. State: on.
+Deliver exactly ONE asset, not a comparison sheet. 384x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-stockpile-stone-full
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-2554717b-9acf-41b0-ad35-0484ed3c5889.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The stockpile pallet from batch 1 (same outline and stake) piled with grey rubble stone instead of coal. half: a low heap. full: a big heap. State: full.
+Deliver exactly ONE asset, not a comparison sheet. 384x128 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-stockpile-stone-half
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8340bd2e-bd5c-4850-805d-5b00a0cf3b61.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The stockpile pallet from batch 1 (same outline and stake) piled with grey rubble stone instead of coal. half: a low heap. full: a big heap. State: half.
+Deliver exactly ONE asset, not a comparison sheet. 384x128 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-water-pump-off
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-23e72284-e96a-4bc0-8504-a27492391476.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A hand pump on a tank with a spout. on: a stream at the spout. State: off.
+Deliver exactly ONE asset, not a comparison sheet. 384x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### building-water-pump-on
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e451587a-a5dc-4fd4-9202-aab0a53dfda4.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A hand pump on a tank with a spout. on: a stream at the spout. State: on.
+Deliver exactly ONE asset, not a comparison sheet. 384x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### building-workbench-idle
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-77d0a9f5-63a5-44f7-8351-f66028141972.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target reference building. IDLE STATE. Extinguish the small oil lamp: remove the flame and make the glass clear cold grey. Keep every other object, plank, vice, paper, book and tool identical. No people. Keep remaining structural pixels, footprint and outline unchanged. Real transparent background. Clean ink and flat muted fills. Exactly one unattended building, no people, no comparison sheet.
+
+### building-workbench-working
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-231614e2-2477-42b8-964d-7d379cae2941.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A research workbench: heavy planks, a vice, scattered tools, scraps of paper, a small oil lamp. working: lamp lit, papers spread out. State: working.
+Deliver exactly ONE asset, not a comparison sheet. 384x384 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light. Edit the reference to this state. Keep exact outside silhouette, structure, footprint, framing and position; change only the functional part described. Do not invent extra objects.
+
+### esk-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-136b9d67-5f78-47c6-9a05-1c645a1c9dd5.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Esk (the digger, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+### item-coal-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-a686e8aa-0dcb-4921-b2ee-63c14b218423.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A small heap of coal lumps on the ground, the hauled-and-dropped version of the coal chunk, five or six lumps. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-coke-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-67ac8e54-9270-4841-bb07-c754e2046413.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A neat stack of grey-black coke briquettes, rounded rectangles with a dull sheen, stacked three high. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-crystal-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-162da3dc-f3a8-410a-be35-f1471f029b15.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A small heap of pale teal crystal shards (#7fd1c8 #c8f0ea), each a clean faceted shape. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-iron-bar-stack
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f90b78a8-d101-46fb-ab58-68fdeb752e85.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Three small iron ingots stacked in a little pyramid, dark grey metal with a pale highlight edge. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-iron-ore-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3f823cec-aba8-4f08-aa78-100dc39b9a0d.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A small heap of rust-red iron ore lumps (#8a4a2c #b8693a) with dull metallic flecks. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-scrap-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-fd8c92b6-56a0-4931-8dbb-f7a4932f9054.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A small heap of scrap: bent pipe, a gear, rusty plates. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-stone-chunk
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-eecabc48-7f80-4237-8f79-a008656eff18.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A single fist-sized rough grey stone (#5a5b5f #7a7873), a few flat faces, one chip. The stone resource, carried and stockpiled like coal. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### item-stone-pile
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-ab4e5c7c-b7ed-4de5-9e1b-f1d7ae39b687.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A small heap of grey rubble stones. Sitting on the ground at the bottom of the canvas.
+Deliver exactly ONE asset, not a comparison sheet. 96x96 canvas, real transparent background, no floor or cast shadow. Centre the object, base touching bottom edge with0-3px margin. Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### mara-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-62fea10c-53e7-4fd9-be5a-443c879ded5c.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Mara (the firekeeper, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+### ostra-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e14d6c1d-5378-43f9-83b8-e5967d55608a.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Ostra (the elder, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+### pim-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5aaca21f-390f-4fbe-b0b3-7d2ccdb47af9.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Pim (the scavenger, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+### prop-crowbar
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8dae30b1-fc4c-481d-ace3-77e08fb6fa89.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+A short iron crowbar for taking buildings apart: a bent claw at the top end, a strip of cloth wrapped at the grip, worn paint. Used for the deconstruct marker too, so it must read at 40 px. Held: the grip point is exactly at (172, 238). The handle points straight up from it and the whole tool reaches no more than 100 px above the grip, so it stays inside the frame when swung.
+Deliver exactly ONE asset, not a comparison sheet. 320x320 canvas, real transparent background, no floor or cast shadow.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.
+
+### ruta-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-b92b4274-e552-4f8e-b0af-c649c81b6cc7.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Ruta (the medic, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.
+
+### tex-backwall-1
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-db993866-fba6-4564-bbf0-432beee3c544.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable cave back wall, very low contrast, soft strata, background only. Layer 1 back wall: cold blue-brown.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-backwall-2
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7a7b1ae5-76fe-4b8d-ba9f-d7a77567fd9d.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable cave back wall, very low contrast, soft strata, background only. Layer 2 back wall: grey-brown with faint gravel.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-backwall-3
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-db6354f5-4a69-4a92-8a58-4394dfcbb771.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable cave back wall, very low contrast, soft strata, background only. Layer 3 back wall: dark slate with faint columns.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-crystal
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-0b263859-48ed-44c5-964e-8662ff93d446.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Rock with clusters of pale teal crystals (#7fd1c8 #c8f0ea), each crystal a clean faceted shape. One tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-deep-rock
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-84ebb7df-23e9-4c64-a75e-3731f355829b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Deep basalt: dark slate (#2a2c33 #3a3d46) in tall angular columns. One tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-gravel
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-456aebf4-29d0-4d19-8fe1-f9d0d7f85f0c.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Loose gravel: rounded grey-brown pebbles of three sizes, packed tight. One tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-ice
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-06ef4e2a-8fa5-45c2-b2d4-a25c51b22616.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Ice: pale blue blocks (#9cc4e4 #5f7fa8 #e4f1fb) with straight fracture lines and a few trapped bubbles. One tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tex-iron-ore
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3fa15f99-5e24-44e7-855d-3df00e839634.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Rock with rust-red and orange iron ore veins (#8a4a2c #b8693a) and dull metallic flecks. One tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.
+Deliver exactly ONE asset, not a comparison sheet. 512x512 canvas, fully opaque square texture filling every pixel.  Muted palette: ink#2a1c14 wood#8a6440 metal#6f7a80 brass#b08d4a teal#3f7f7a rock#5a5b5f. Flat graphic shapes, outer4px/inner2px lines at192px scale. At most one seam or chip per component. No fine scratches, no realistic material texture, no volumetric light.  Seamless in both directions, no vignette, no edge border, no centre landmark, uniform density.
+
+### tobin-pose-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f6bdec24-aa94-470f-90d0-692e4294ddcc.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Tobin (the builder, see CHARACTERS.md). Side view facing right, standing and leaning over a waist-high workbench (not painted: leave the bench out, the game draws it). Frame 1 reading, frame 2 turning a page with the near mitten, frame 3 nodding and making a note. Body and feet stay put; only the arms, head and page move. Same scale as the turnaround: the head is exactly as wide and tall as in the turnaround's side view, so nothing grows or shrinks when the game switches from walking to this pose. A seated figure is about 0.7 of the standing height, a kneeling one about 0.75, a lying one about 0.35; never stretch a pose to fill the frame.
+The same character as the reference, same proportions, same colours. Three equally spaced full-body figures in one horizontal strip on transparent background. Same105px head and250px standing scale, groundy304,320x320 cells. Hands are simple mittens, never visible fingers. Feet and body completely fixed across3frames, movement only near mitten and head. Reading and handling a small loose sheet of paper held at waist height. DO NOT paint a bench, lamp or other furniture. Do not enlarge head or shoulders. Flat muted palette exactly matching model. Hat/head and coat/body proportions copied from turnaround.

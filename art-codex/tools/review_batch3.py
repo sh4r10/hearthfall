@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Write scale comparisons and animation previews for the Batch 3 art review."""
 from pathlib import Path
+import json
 from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parents[1]/'out'
@@ -33,11 +34,26 @@ def icons():
     sheet.save(OUT/'contact-batch3-icons-20px.png')
 
 
+def buildings():
+    specs = json.loads((OUT.parent/'assets.json').read_text())['assets']
+    rows = [a for a in specs if a['batch'] == 3 and a['id'].startswith('building-') and 'ladder' not in a['id'] and (OUT.parent.parent/a['path']).exists()]
+    sheet = Image.new('RGB',(5*200,((len(rows)+4)//5)*220),'#3d3f45')
+    draw = ImageDraw.Draw(sheet)
+    for i,a in enumerate(rows):
+        im = Image.open(OUT.parent.parent/a['path']).convert('RGBA')
+        im.thumbnail((192,192),Image.Resampling.LANCZOS)
+        x,y=(i%5)*200,(i//5)*220
+        sheet.paste(im,(x+(192-im.width)//2,y+192-im.height),im)
+        draw.text((x+4,y+198),a['id'][9:],fill='white')
+    sheet.save(OUT/'contact-batch3-buildings.png')
+
+
 if __name__ == '__main__':
     comparison('eat')
     comparison('collapse', ('esk','mara','ostra','pim','ruta'))
     comparison('dead', ('esk','mara'))
     icons()
+    buildings()
     for pose in ('climb-up','climb-down','ladder-on','ladder-off','research'):
         if all((OUT/'characters'/name/'poses'/f'{pose}.png').exists() for name in NAMES):
             comparison(pose)

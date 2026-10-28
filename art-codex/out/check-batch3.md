@@ -1,34 +1,57 @@
 # Art check
 
 Filters: batch=3 id=* character=*  
-**31 pass, 0 warn, 0 fail, 94 missing**
+**79 pass, 0 warn, 0 fail, 46 missing**
 
 | id | status | problems |
 |---|---|---|
 | `esk-pose-climb-up` | PASS |  |
 | `esk-pose-climb-down` | PASS |  |
 | `esk-pose-ladder-on` | PASS |  |
+| `esk-pose-research` | PASS |  |
 | `esk-pose-ladder-off` | PASS |  |
 | `mara-pose-climb-up` | PASS |  |
 | `mara-pose-climb-down` | PASS |  |
 | `mara-pose-ladder-on` | PASS |  |
+| `mara-pose-research` | PASS |  |
 | `mara-pose-ladder-off` | PASS |  |
 | `tobin-pose-climb-up` | PASS |  |
 | `tobin-pose-climb-down` | PASS |  |
 | `tobin-pose-ladder-on` | PASS |  |
+| `tobin-pose-research` | PASS |  |
 | `tobin-pose-ladder-off` | PASS |  |
 | `ostra-pose-climb-up` | PASS |  |
 | `ostra-pose-climb-down` | PASS |  |
 | `ostra-pose-ladder-on` | PASS |  |
+| `ostra-pose-research` | PASS |  |
 | `ostra-pose-ladder-off` | PASS |  |
 | `pim-pose-climb-up` | PASS |  |
 | `pim-pose-climb-down` | PASS |  |
 | `pim-pose-ladder-on` | PASS |  |
+| `pim-pose-research` | PASS |  |
 | `pim-pose-ladder-off` | PASS |  |
 | `ruta-pose-climb-up` | PASS |  |
 | `ruta-pose-climb-down` | PASS |  |
 | `ruta-pose-ladder-on` | PASS |  |
+| `ruta-pose-research` | PASS |  |
 | `ruta-pose-ladder-off` | PASS |  |
+| `prop-crowbar` | PASS |  |
+| `item-stone-pile` | PASS |  |
+| `item-coal-pile` | PASS |  |
+| `item-iron-ore-pile` | PASS |  |
+| `item-crystal-pile` | PASS |  |
+| `item-coke-pile` | PASS |  |
+| `item-iron-bar-stack` | PASS |  |
+| `item-stone-chunk` | PASS |  |
+| `item-scrap-pile` | PASS |  |
+| `tex-ice` | PASS |  |
+| `tex-gravel` | PASS |  |
+| `tex-deep-rock` | PASS |  |
+| `tex-iron-ore` | PASS |  |
+| `tex-crystal` | PASS |  |
+| `tex-backwall-1` | PASS |  |
+| `tex-backwall-2` | PASS |  |
+| `tex-backwall-3` | PASS |  |
 | `building-ladder-top` | PASS |  |
 | `building-ladder-middle` | PASS |  |
 | `building-ladder-bottom` | PASS |  |
@@ -36,57 +59,34 @@ Filters: batch=3 id=* character=*
 | `building-ladder-peg-dirt-right` | PASS |  |
 | `building-ladder-peg-rock-left` | PASS |  |
 | `building-ladder-peg-rock-right` | PASS |  |
+| `building-stockpile-stone-half` | PASS |  |
+| `building-stockpile-stone-full` | PASS |  |
+| `building-coke-oven-off` | PASS |  |
+| `building-coke-oven-on` | PASS |  |
+| `building-smelter-off` | PASS |  |
+| `building-smelter-on` | PASS |  |
+| `building-lens-bench-idle` | PASS |  |
+| `building-lens-bench-working` | PASS |  |
+| `building-hearth-grate` | PASS |  |
+| `building-crystal-lamp-off` | PASS |  |
+| `building-crystal-lamp-on` | PASS |  |
+| `building-workbench-idle` | PASS |  |
+| `building-workbench-working` | PASS |  |
+| `building-crate-empty` | PASS |  |
+| `building-crate-half` | PASS |  |
+| `building-crate-full` | PASS |  |
+| `building-kitchen-off` | PASS |  |
+| `building-kitchen-cooking` | PASS |  |
+| `building-medbay-empty` | PASS |  |
+| `building-door-closed` | PASS |  |
+| `building-door-open` | PASS |  |
+| `building-heater-off` | PASS |  |
+| `building-heater-on` | PASS |  |
+| `building-water-pump-off` | PASS |  |
+| `building-water-pump-on` | PASS |  |
 
-## Missing (94)
+## Missing (46)
 
-- `esk-pose-research` -> `art-codex/out/characters/esk/poses/research.png`
-- `mara-pose-research` -> `art-codex/out/characters/mara/poses/research.png`
-- `tobin-pose-research` -> `art-codex/out/characters/tobin/poses/research.png`
-- `ostra-pose-research` -> `art-codex/out/characters/ostra/poses/research.png`
-- `pim-pose-research` -> `art-codex/out/characters/pim/poses/research.png`
-- `ruta-pose-research` -> `art-codex/out/characters/ruta/poses/research.png`
-- `prop-crowbar` -> `art-codex/out/props/crowbar.png`
-- `item-stone-pile` -> `art-codex/out/items/stone-pile.png`
-- `item-coal-pile` -> `art-codex/out/items/coal-pile.png`
-- `item-iron-ore-pile` -> `art-codex/out/items/iron-ore-pile.png`
-- `item-crystal-pile` -> `art-codex/out/items/crystal-pile.png`
-- `item-coke-pile` -> `art-codex/out/items/coke-pile.png`
-- `item-iron-bar-stack` -> `art-codex/out/items/iron-bar-stack.png`
-- `item-stone-chunk` -> `art-codex/out/items/stone-chunk.png`
-- `item-scrap-pile` -> `art-codex/out/items/scrap-pile.png`
-- `tex-ice` -> `art-codex/out/terrain/ice.png`
-- `tex-gravel` -> `art-codex/out/terrain/gravel.png`
-- `tex-deep-rock` -> `art-codex/out/terrain/deep-rock.png`
-- `tex-iron-ore` -> `art-codex/out/terrain/iron-ore.png`
-- `tex-crystal` -> `art-codex/out/terrain/crystal.png`
-- `tex-backwall-1` -> `art-codex/out/terrain/backwall-1.png`
-- `tex-backwall-2` -> `art-codex/out/terrain/backwall-2.png`
-- `tex-backwall-3` -> `art-codex/out/terrain/backwall-3.png`
-- `building-stockpile-stone-half` -> `art-codex/out/buildings/stockpile-stone-half.png`
-- `building-stockpile-stone-full` -> `art-codex/out/buildings/stockpile-stone-full.png`
-- `building-coke-oven-off` -> `art-codex/out/buildings/coke-oven-off.png`
-- `building-coke-oven-on` -> `art-codex/out/buildings/coke-oven-on.png`
-- `building-smelter-off` -> `art-codex/out/buildings/smelter-off.png`
-- `building-smelter-on` -> `art-codex/out/buildings/smelter-on.png`
-- `building-lens-bench-idle` -> `art-codex/out/buildings/lens-bench-idle.png`
-- `building-lens-bench-working` -> `art-codex/out/buildings/lens-bench-working.png`
-- `building-hearth-grate` -> `art-codex/out/buildings/hearth-grate.png`
-- `building-crystal-lamp-off` -> `art-codex/out/buildings/crystal-lamp-off.png`
-- `building-crystal-lamp-on` -> `art-codex/out/buildings/crystal-lamp-on.png`
-- `building-workbench-idle` -> `art-codex/out/buildings/workbench-idle.png`
-- `building-workbench-working` -> `art-codex/out/buildings/workbench-working.png`
-- `building-crate-empty` -> `art-codex/out/buildings/crate-empty.png`
-- `building-crate-half` -> `art-codex/out/buildings/crate-half.png`
-- `building-crate-full` -> `art-codex/out/buildings/crate-full.png`
-- `building-kitchen-off` -> `art-codex/out/buildings/kitchen-off.png`
-- `building-kitchen-cooking` -> `art-codex/out/buildings/kitchen-cooking.png`
-- `building-medbay-empty` -> `art-codex/out/buildings/medbay-empty.png`
-- `building-door-closed` -> `art-codex/out/buildings/door-closed.png`
-- `building-door-open` -> `art-codex/out/buildings/door-open.png`
-- `building-heater-off` -> `art-codex/out/buildings/heater-off.png`
-- `building-heater-on` -> `art-codex/out/buildings/heater-on.png`
-- `building-water-pump-off` -> `art-codex/out/buildings/water-pump-off.png`
-- `building-water-pump-on` -> `art-codex/out/buildings/water-pump-on.png`
 - `creature-heat-leech-crawl` -> `art-codex/out/creatures/heat-leech/crawl.png`
 - `creature-heat-leech-latch` -> `art-codex/out/creatures/heat-leech/latch.png`
 - `creature-heat-leech-feed` -> `art-codex/out/creatures/heat-leech/feed.png`
