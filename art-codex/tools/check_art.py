@@ -29,7 +29,11 @@ MANIFEST_PREFIX = "art-codex/out/"
 OPAQUE = 128          # alpha at/above this counts as content
 CLEAR = 16            # alpha below this counts as transparent
 # assets allowed to touch given edges (t=top b=bottom l=left r=right) besides bottom-centre's bottom
-EDGE_OK = {"building-ladder": "tb", "creature-deep-thing-limb-reach": "l"}
+EDGE_OK = {"building-ladder": "tb", "creature-deep-thing-limb-reach": "l",
+           "building-ladder-top": "b", "building-ladder-middle": "tb",
+           "building-ladder-bottom": "tb",
+           "building-ladder-peg-dirt-left": "l", "building-ladder-peg-dirt-right": "r",
+           "building-ladder-peg-rock-left": "l", "building-ladder-peg-rock-right": "r"}
 SOFT_FX = ("fx-", "water-surface")       # pale, soft by design: halo check only warns
 CHAR_KINDS = ("pose", "anim")
 
@@ -470,6 +474,16 @@ def check_asset(path, a, rig, airborne):
         return r, img
     has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
     rgba = img.convert("RGBA")
+    if a['id'] in ('building-ladder-top', 'building-ladder-middle', 'building-ladder-bottom'):
+        # x112/x208 are character-frame coordinates. The centred 192px tile
+        # begins at x64 in a 320px frame, so its rail centres are x48/x144.
+        rails = (48, 144)
+        rows = (H-1,) if a['id'].endswith('-top') else (0,) if a['id'].endswith('-bottom') else (0,H-1)
+        alpha = np.asarray(rgba.getchannel('A'))
+        for y in rows:
+            for x in rails:
+                r.check((alpha[y, x-2:x+3] >= OPAQUE).all(),
+                        f'rail at x={x} does not continue through join row y={y}')
     if a["alpha"]:
         r.check(img.mode == "RGBA", f"mode {img.mode}, must be RGBA")
         frames = frames_of(rgba, a) if a["frames"] > 1 else [rgba]

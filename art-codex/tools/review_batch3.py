@@ -8,7 +8,7 @@ NAMES = ('esk', 'mara', 'tobin', 'ostra', 'pim', 'ruta')
 
 
 def comparison(pose, names=NAMES):
-    n = 4 if pose == 'collapse' else 3 if pose == 'eat' else 1
+    n = Image.open(OUT/'characters'/names[0]/'poses'/f'{pose}.png').width//320
     sheet = Image.new('RGBA', ((n+1)*320, len(names)*320), (100,100,100,255))
     draw = ImageDraw.Draw(sheet)
     for row, name in enumerate(names):
@@ -38,3 +38,15 @@ if __name__ == '__main__':
     comparison('collapse', ('esk','mara','ostra','pim','ruta'))
     comparison('dead', ('esk','mara'))
     icons()
+    for pose in ('climb-up','climb-down','ladder-on','ladder-off','research'):
+        if all((OUT/'characters'/name/'poses'/f'{pose}.png').exists() for name in NAMES):
+            comparison(pose)
+            for name in NAMES:
+                path = OUT/'characters'/name/'poses'/f'{pose}.png'
+                strip = Image.open(path).convert('RGBA')
+                frames = []
+                for x in range(0,strip.width,320):
+                    cell = Image.new('RGBA',(320,320),(100,100,100,255))
+                    cell.alpha_composite(strip.crop((x,0,x+320,320)))
+                    frames.append(cell.convert('RGB'))
+                frames[0].save(path.with_suffix('.gif'),save_all=True,append_images=frames[1:],duration=166,loop=0)

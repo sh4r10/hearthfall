@@ -1,43 +1,50 @@
 # Art check
 
 Filters: batch=3 id=* character=*  
-**0 pass, 0 warn, 0 fail, 125 missing**
+**31 pass, 0 warn, 0 fail, 94 missing**
 
 | id | status | problems |
 |---|---|---|
+| `esk-pose-climb-up` | PASS |  |
+| `esk-pose-climb-down` | PASS |  |
+| `esk-pose-ladder-on` | PASS |  |
+| `esk-pose-ladder-off` | PASS |  |
+| `mara-pose-climb-up` | PASS |  |
+| `mara-pose-climb-down` | PASS |  |
+| `mara-pose-ladder-on` | PASS |  |
+| `mara-pose-ladder-off` | PASS |  |
+| `tobin-pose-climb-up` | PASS |  |
+| `tobin-pose-climb-down` | PASS |  |
+| `tobin-pose-ladder-on` | PASS |  |
+| `tobin-pose-ladder-off` | PASS |  |
+| `ostra-pose-climb-up` | PASS |  |
+| `ostra-pose-climb-down` | PASS |  |
+| `ostra-pose-ladder-on` | PASS |  |
+| `ostra-pose-ladder-off` | PASS |  |
+| `pim-pose-climb-up` | PASS |  |
+| `pim-pose-climb-down` | PASS |  |
+| `pim-pose-ladder-on` | PASS |  |
+| `pim-pose-ladder-off` | PASS |  |
+| `ruta-pose-climb-up` | PASS |  |
+| `ruta-pose-climb-down` | PASS |  |
+| `ruta-pose-ladder-on` | PASS |  |
+| `ruta-pose-ladder-off` | PASS |  |
+| `building-ladder-top` | PASS |  |
+| `building-ladder-middle` | PASS |  |
+| `building-ladder-bottom` | PASS |  |
+| `building-ladder-peg-dirt-left` | PASS |  |
+| `building-ladder-peg-dirt-right` | PASS |  |
+| `building-ladder-peg-rock-left` | PASS |  |
+| `building-ladder-peg-rock-right` | PASS |  |
 
-## Missing (125)
+## Missing (94)
 
-- `esk-pose-climb-up` -> `art-codex/out/characters/esk/poses/climb-up.png`
-- `esk-pose-climb-down` -> `art-codex/out/characters/esk/poses/climb-down.png`
-- `esk-pose-ladder-on` -> `art-codex/out/characters/esk/poses/ladder-on.png`
 - `esk-pose-research` -> `art-codex/out/characters/esk/poses/research.png`
-- `esk-pose-ladder-off` -> `art-codex/out/characters/esk/poses/ladder-off.png`
-- `mara-pose-climb-up` -> `art-codex/out/characters/mara/poses/climb-up.png`
-- `mara-pose-climb-down` -> `art-codex/out/characters/mara/poses/climb-down.png`
-- `mara-pose-ladder-on` -> `art-codex/out/characters/mara/poses/ladder-on.png`
 - `mara-pose-research` -> `art-codex/out/characters/mara/poses/research.png`
-- `mara-pose-ladder-off` -> `art-codex/out/characters/mara/poses/ladder-off.png`
-- `tobin-pose-climb-up` -> `art-codex/out/characters/tobin/poses/climb-up.png`
-- `tobin-pose-climb-down` -> `art-codex/out/characters/tobin/poses/climb-down.png`
-- `tobin-pose-ladder-on` -> `art-codex/out/characters/tobin/poses/ladder-on.png`
 - `tobin-pose-research` -> `art-codex/out/characters/tobin/poses/research.png`
-- `tobin-pose-ladder-off` -> `art-codex/out/characters/tobin/poses/ladder-off.png`
-- `ostra-pose-climb-up` -> `art-codex/out/characters/ostra/poses/climb-up.png`
-- `ostra-pose-climb-down` -> `art-codex/out/characters/ostra/poses/climb-down.png`
-- `ostra-pose-ladder-on` -> `art-codex/out/characters/ostra/poses/ladder-on.png`
 - `ostra-pose-research` -> `art-codex/out/characters/ostra/poses/research.png`
-- `ostra-pose-ladder-off` -> `art-codex/out/characters/ostra/poses/ladder-off.png`
-- `pim-pose-climb-up` -> `art-codex/out/characters/pim/poses/climb-up.png`
-- `pim-pose-climb-down` -> `art-codex/out/characters/pim/poses/climb-down.png`
-- `pim-pose-ladder-on` -> `art-codex/out/characters/pim/poses/ladder-on.png`
 - `pim-pose-research` -> `art-codex/out/characters/pim/poses/research.png`
-- `pim-pose-ladder-off` -> `art-codex/out/characters/pim/poses/ladder-off.png`
-- `ruta-pose-climb-up` -> `art-codex/out/characters/ruta/poses/climb-up.png`
-- `ruta-pose-climb-down` -> `art-codex/out/characters/ruta/poses/climb-down.png`
-- `ruta-pose-ladder-on` -> `art-codex/out/characters/ruta/poses/ladder-on.png`
 - `ruta-pose-research` -> `art-codex/out/characters/ruta/poses/research.png`
-- `ruta-pose-ladder-off` -> `art-codex/out/characters/ruta/poses/ladder-off.png`
 - `prop-crowbar` -> `art-codex/out/props/crowbar.png`
 - `item-stone-pile` -> `art-codex/out/items/stone-pile.png`
 - `item-coal-pile` -> `art-codex/out/items/coal-pile.png`
@@ -55,13 +62,6 @@ Filters: batch=3 id=* character=*
 - `tex-backwall-1` -> `art-codex/out/terrain/backwall-1.png`
 - `tex-backwall-2` -> `art-codex/out/terrain/backwall-2.png`
 - `tex-backwall-3` -> `art-codex/out/terrain/backwall-3.png`
-- `building-ladder-top` -> `art-codex/out/buildings/ladder-top.png`
-- `building-ladder-middle` -> `art-codex/out/buildings/ladder-middle.png`
-- `building-ladder-bottom` -> `art-codex/out/buildings/ladder-bottom.png`
-- `building-ladder-peg-dirt-left` -> `art-codex/out/buildings/ladder-peg-dirt-left.png`
-- `building-ladder-peg-dirt-right` -> `art-codex/out/buildings/ladder-peg-dirt-right.png`
-- `building-ladder-peg-rock-left` -> `art-codex/out/buildings/ladder-peg-rock-left.png`
-- `building-ladder-peg-rock-right` -> `art-codex/out/buildings/ladder-peg-rock-right.png`
 - `building-stockpile-stone-half` -> `art-codex/out/buildings/stockpile-stone-half.png`
 - `building-stockpile-stone-full` -> `art-codex/out/buildings/stockpile-stone-full.png`
 - `building-coke-oven-off` -> `art-codex/out/buildings/coke-oven-off.png`
