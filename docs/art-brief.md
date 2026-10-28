@@ -42,6 +42,7 @@ Reference points:
 - Proportions about 2.5 heads tall: big head, short body, stubby limbs, as in ONI. About 1.3 cells tall in the world.
 - Winter layers: hooded coats with fur trim, scarves, mittens, patched trousers, heavy boots. Each person is recognisable by their hood, scarf colour and one accessory (goggles, a beanie, a bandage).
 - **Built from parts** for puppet animation. The `survivor` model has pivots named `legL`, `legR` (hips), `armF`, `armB` (shoulders), `head`, and a `tool` (a pick in the front hand). Coat and scarf colours come from the variant number.
+- **Sleeping and dead:** separate models, not the standing survivor turned on its side. `survivor-sleeping` is a bedroll (a low blanket mound in the coat colour, about 0.9 × 0.32 × 0.5, named `blanket` so it can breathe, and a rolled `pillow` at the +x end) with the head poking out on the pillow: the painted version shows the top of the front view leaning back. `survivor-dead` lies flat on its back along x, head towards +x, about 1.3 long, darkened (`userData.shade = 0.6`) and scattered with pale ice shards (`frost`). Both take the survivor's variant.
 - **Animations:** done now: idle breathing, shivering and hugging self when cold, walk, work (swinging the pick), eat, sleep and dead (lying down). Still to do: climb ladder, build, carry, celebrate.
 
 ## Terrain
@@ -74,6 +75,7 @@ Each is a registered model. Planned buildings are listed with their footprint; t
 | Spike trap | 1 × 1 | |
 | Brazier | 1 × 2 | |
 | Crossbow turret | 2 × 2 | Separate rotating bow. |
+| Grave cairn | 1 × 1 | Done (`cairn`, code-built). A pile of grey stones, about 0.7 wide and 0.5 tall, with a stick and a scrap of the dead survivor's scarf colour tied near its top. |
 
 ## Creatures
 
