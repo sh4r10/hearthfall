@@ -12,7 +12,7 @@ const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
 const NAMES = ['Esk', 'Mara', 'Tobin', 'Ostra', 'Pim', 'Ruta', 'Juno', 'Wren']; // the cast in the art brief, in art order
 const NEEDS: [label: string, offset: number, icon: string][] = [
-  ['Warmth', 5, 'warmth'], ['Breath', 4, 'breath'], ['Energy', 6, 'energy'], ['Food', 7, 'food'], ['Mood', 8, 'mood'], ['Sleep', 9, 'sleep'],
+  ['Warmth', 4, 'warmth'], ['Energy', 5, 'energy'], ['Food', 6, 'food'], ['Mood', 7, 'mood'], ['Sleep', 8, 'sleep'],
 ];
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
@@ -20,9 +20,8 @@ interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: 
 const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
   { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
-  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', building: Building.Hearth },
+  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal.', building: Building.Hearth },
   { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
-  { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back where the fire has used it up. Fresh-cut rock breathes and walls slowly soak up smoke, so most shafts clear on their own.', building: Building.OxygenDiffuser },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
@@ -33,7 +32,6 @@ const HINTS: Record<Tool, string> = {
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
-  diffuser: '<b>Oxygen:</b> place where the Air view shows a room going stale. Survivors step out of bad air by themselves and go back once they can breathe.',
   lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
   deconstruct: '<b>Remove:</b> click a building, or shift-drag a box over several. A survivor takes each down and salvages half its cost.',
@@ -138,9 +136,9 @@ function renderRoster(frame: Frame) {
     const dead = activity === 'Dead';
     card.classList.toggle('dead', dead);
     card.classList.toggle('struggling', !dead && NEEDS.some(([, o]) => c[o] < STAT_MAX / 4));
-    const job = c[12] >= 0 ? JOB_NAMES[c[12]] : '';
+    const job = c[11] >= 0 ? JOB_NAMES[c[11]] : '';
     card.querySelector('.doing')!.textContent =
-      dead ? (CAUSES[c[13]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
+      dead ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
       : activity === 'Walking' && job ? `Heading off ${job}`
       : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
       : activity === 'Sleeping' ? 'Asleep'
@@ -163,7 +161,7 @@ function announce(frame: Frame) {
     const name = NAMES[who % NAMES.length];
     let text: string, glyph: string;
     if (kind === EVENT_DEATH) {
-      text = `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 13]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}.`;
+      text = `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 12]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}.`;
       glyph = 'skull';
     } else if (kind === EVENT_SHADE_ATTACK) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
@@ -191,7 +189,7 @@ function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' =
 
 const views = new MapViews(NAMES, logLine);
 const BUILDING_NAMES: Record<number, string> = {
-  [Building.OxygenDiffuser]: 'oxygen diffuser', [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
+  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
   [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed',
 };
 
@@ -310,8 +308,6 @@ $('tools').innerHTML = TOOLS.map((t) =>
 $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
-// The diffuser only matters once the air does; it opens with the Air view.
-(document.querySelector('[data-tool="diffuser"]') as HTMLElement).hidden = true;
 
 document.querySelectorAll<HTMLElement>('[data-tip]').forEach((el) => {
   el.addEventListener('pointerenter', () => {
@@ -349,9 +345,9 @@ document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
   const key = e.key.toLowerCase();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
-  const overlays: Record<string, Overlay> = { w: 'warmth', o: 'air', escape: 'none' };
+  const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
 });
 

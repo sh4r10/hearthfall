@@ -22,15 +22,13 @@ function sendFrame(s: WebSim) {
     firelight: s.firelight(),
     nightFirelight: s.night_firelight(),
     hearthFuel: s.hearth_fuel(),
-    oxygen: s.oxygen(),
-    co2: s.co2(),
     temperature: s.temperature(),
     colonists: s.colonists(),
     jobs: s.jobs(),
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.oxygen, frame.co2, frame.temperature, frame.colonists, frame.jobs, frame.events, frame.shades].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.temperature, frame.colonists, frame.jobs, frame.events, frame.shades].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -61,7 +59,6 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       ladder: () => s.build(x, y, Building.Ladder),
       hearth: () => s.build(x, y, Building.Hearth),
       mushroom: () => s.build(x, y, Building.MushroomBed),
-      diffuser: () => s.build(x, y, Building.OxygenDiffuser),
       lamp: () => s.build(x, y, Building.Lamp),
       bed: () => s.build(x, y, Building.Bed),
     })[msg.tool]();

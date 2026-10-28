@@ -3,7 +3,7 @@ use crate::rng::hash2;
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
-    /// Open ground: walkable, gas can flow through it.
+    /// Open ground: walkable, light passes through it.
     Floor = 0,
     Dirt = 1,
     Rock = 2,
@@ -37,7 +37,8 @@ impl Element {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Building {
     None = 0,
-    OxygenDiffuser = 1,
+    // 1 was the oxygen diffuser, shelved with air. Numbers stay put so the
+    // client's Building enum and saved replays keep their meaning.
     Ladder = 2,
     /// Burns fuel to light and warm the area around it.
     Hearth = 3,
@@ -52,8 +53,7 @@ pub enum Building {
     Bed = 7,
 }
 
-/// Gas masses are in milligrams per cell, temperatures in centi-kelvin.
-pub const START_OXYGEN_MG: i32 = 2_400;
+/// Temperatures are in centi-kelvin.
 pub const START_TEMP_CK: i32 = 29_315; // 20 C
 
 /// Smooth integer value noise in 0..=255, cell size `1 << shift`.

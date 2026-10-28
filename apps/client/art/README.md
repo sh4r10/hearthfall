@@ -10,7 +10,7 @@ Art the game uses in place of the code-built fallbacks. Anything missing falls b
 | `flame.png` | Flame loop | 8 frames side by side. |
 | `ladder.png` | One ladder section | Tiles vertically. |
 | `mushroom-bed.png` | Mushroom bed, ready | `-seedling` and `-growing` are the earlier growth stages (not shown yet). |
-| `diffuser.png` | Oxygen diffuser, on | `diffuser-off.png` is the off state (not shown yet). |
+| `diffuser.png` | Oxygen diffuser, on | Unused: the diffuser was shelved with air (2026-10-28). `diffuser-off.png` is the off state. |
 | `cairn.png` | Grave cairn | |
 | `bed.png` | Cot | Sleepers are drawn on top of it. |
 | `lamp.png` | Lamp, lit | `lamp-off.png` is the unlit state (not shown yet). |

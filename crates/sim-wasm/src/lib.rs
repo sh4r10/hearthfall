@@ -10,7 +10,7 @@ pub struct WebSim {
 }
 
 /// Values per colonist in [`WebSim::colonists`].
-pub const COLONIST_STRIDE: usize = 14;
+pub const COLONIST_STRIDE: usize = 13;
 /// Values per job in [`WebSim::jobs`].
 pub const JOB_STRIDE: usize = 6;
 /// Values per event in [`WebSim::events`].
@@ -32,7 +32,6 @@ impl WebSim {
     /// `building` uses the numbering of `sim::Building`.
     pub fn build(&mut self, x: u32, y: u32, building: u8) {
         let building = match building {
-            1 => Building::OxygenDiffuser,
             2 => Building::Ladder,
             3 => Building::Hearth,
             4 => Building::MushroomBed,
@@ -121,22 +120,14 @@ impl WebSim {
         self.sim.night_firelight()
     }
 
-    pub fn oxygen(&self) -> Vec<i32> {
-        self.sim.oxygen.clone()
-    }
-
-    pub fn co2(&self) -> Vec<i32> {
-        self.sim.co2.clone()
-    }
-
     pub fn temperature(&self) -> Vec<i32> {
         self.sim.temperature.clone()
     }
 
-    /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, breath,
-    /// warmth, energy, fullness, mood, sleep quality (needs out of 10000),
-    /// then the job's x and y (-1 if none) and its kind, then the cause of
-    /// death (0 alive, 1 froze, 2 suffocated, 3 taken by a Shade).
+    /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, warmth,
+    /// energy, fullness, mood, sleep quality (needs out of 10000), then the
+    /// job's x and y (-1 if none) and its kind, then the cause of death
+    /// (0 alive, 1 froze, 2 taken by a Shade).
     pub fn colonists(&self) -> Vec<i32> {
         let s = &self.sim;
         s.colonists
@@ -145,7 +136,7 @@ impl WebSim {
                 let job = c.job.and_then(|id| s.jobs.iter().find(|j| j.id == id));
                 [
                     c.x as i32, c.y as i32, c.role as i32, c.activity as i32,
-                    c.breath, c.warmth, c.energy, c.fullness, c.mood, c.sleep_quality,
+                    c.warmth, c.energy, c.fullness, c.mood, c.sleep_quality,
                     job.map_or(-1, |j| j.x as i32), job.map_or(-1, |j| j.y as i32), job.map_or(-1, |j| j.kind.code() as i32),
                     c.cause as i32,
                 ]
