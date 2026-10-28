@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_STRIDE, LAMP_COST, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -16,26 +16,28 @@ const NEEDS: [label: string, offset: number, icon: string][] = [
 ];
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
-interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; cost?: number }
+interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number }
 const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
-  { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.' },
-  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', cost: HEARTH_COST },
-  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food, but only in the dark, away from the fire.' },
-  { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back into a room the fire is choking.' },
-  { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', cost: LAMP_COST },
-  { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.' },
-  { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Remove orders you have marked.' },
+  { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
+  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', building: Building.Hearth },
+  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
+  { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back where the fire has used it up. Fresh-cut rock breathes and walls slowly soak up smoke, so most shafts clear on their own.', building: Building.OxygenDiffuser },
+  { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
+  { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
+  { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
+  { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag across many cells. Look for the black coal seams.',
+  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives stone. Digging under a building takes it down first.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
-  hearth: `<b>Hearth:</b> costs ${HEARTH_COST} coal. Light up a new part of the caves.`,
-  mushroom: '<b>Mushrooms:</b> place a bed outside the light. It grows food only in the dark.',
-  diffuser: '<b>Oxygen:</b> place in a room with stale air.',
-  lamp: `<b>Lamp:</b> costs ${LAMP_COST} coal. Light a tunnel so Shades keep out of it.`,
+  hearth: '<b>Hearth:</b> light up a new part of the caves.',
+  mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
+  diffuser: '<b>Oxygen:</b> place where the Air view shows a room going stale. Survivors step out of bad air by themselves and go back once they can breathe.',
+  lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
-  cancel: '<b>Cancel:</b> click or drag over orders to remove them.',
+  deconstruct: '<b>Remove:</b> click a building, or shift-drag a box over several. A survivor takes each down and salvages half its cost.',
+  cancel: '<b>Cancel:</b> click an order, or shift-drag a box over many. Right-click or right-drag cancels with any tool.',
 };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -166,6 +168,12 @@ function announce(frame: Frame) {
     } else if (kind === EVENT_SHADE_ATTACK) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
       glyph = 'shade';
+    } else if (kind === EVENT_ARRIVAL) {
+      logLine(`<b>${name}</b> followed the firelight down to you.`, 'people', 'info');
+      continue;
+    } else if (kind === EVENT_COLLAPSE) {
+      logLine(`A <b>${BUILDING_NAMES[who] ?? 'building'}</b> lost its floor and fell. What could be salvaged is back in the stockpile.`, 'deconstruct', 'warn');
+      continue;
     } else continue;
     logLine(text, glyph);
   }
@@ -182,6 +190,10 @@ function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' =
 }
 
 const views = new MapViews(NAMES, logLine);
+const BUILDING_NAMES: Record<number, string> = {
+  [Building.OxygenDiffuser]: 'oxygen diffuser', [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
+  [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed',
+};
 
 // --- First-night tutorial ------------------------------------------------------
 
@@ -191,7 +203,7 @@ const TUTORIAL: { text: string; tool?: Tool; done: (f: Frame) => boolean }[] = [
     done: (f) => { for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) return true; return false; } },
   { text: 'Shades come out of the dark at night. <b>Build a lamp</b> in a tunnel to keep them out of it.', tool: 'lamp',
     done: (f) => f.buildings.includes(Building.Lamp) || hasBuildJob(f, Building.Lamp) },
-  { text: 'Tired survivors work slowly. <b>Build a bed</b> inside the light.', tool: 'bed',
+  { text: 'Tired survivors work slowly, and refugees only join a colony with a spare bed. <b>Build a bed</b> inside the light.', tool: 'bed',
     done: (f) => f.buildings.includes(Building.Bed) || hasBuildJob(f, Building.Bed) },
   { text: 'Keep everyone in the light and the fire fed, and <b>get through the first night</b>.',
     done: (f) => f.tick >= DAY_TICKS },
@@ -223,7 +235,7 @@ function tutorialStep(frame: Frame) {
   if (!TUTORIAL[step].done(frame)) return;
   step++;
   if (step >= TUTORIAL.length) {
-    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Now dig down: the Deep Hearth is five layers below.</p>';
+    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Keep a spare bed and food ready: from day 3, refugees follow the firelight down to you. The Deep Hearth is five layers below.</p>';
     setTimeout(endTutorial, 8000);
   } else showStep();
 }
@@ -248,8 +260,10 @@ function renderDepth(frame: Frame) {
     `<div class="layers">${LAYERS.map((_, k) => `<i class="${k < layer ? 'done' : k === layer ? 'now' : ''}"></i>`).join('')}</div>`;
 }
 
+let last: Frame | undefined;
 function onFrame(event: MessageEvent<FromWorker>) {
   const frame = event.data;
+  last = frame;
   world.applyFrame(frame, TICKS_PER_SECOND);
   announce(frame);
   const total = frame.colonists.length / COLONIST_STRIDE;
@@ -264,6 +278,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
     `<b>Day ${day}</b><span>${icon(frame.night ? 'moon' : 'sun', 12)}${frame.night ? 'Dawn' : 'Night'} in ${untilChange}s</span>`;
   stats.innerHTML =
     stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
+    stat('stone', 'Stone', frame.stone, frame.stone < 2) +
     stat('food', 'Food', frame.food, frame.food < 5) +
     stat('people', 'Survivors', `${alive}/${total}`, alive < total);
   renderRoster(frame);
@@ -280,9 +295,18 @@ function onFrame(event: MessageEvent<FromWorker>) {
 
 // --- Tools ---------------------------------------------------------------------
 
+/** The coal and stone a building costs, as a small badge on its tool. */
+function costBadge(building?: number) {
+  const [coal, stone] = building !== undefined ? BUILD_COST[building] ?? [0, 0] : [0, 0];
+  if (!coal && !stone) return '';
+  const parts = [coal ? `${icon('coal', 10)}${coal}` : '', stone ? `${icon('stone', 10)}${stone}` : ''].filter(Boolean).join('');
+  const words = [coal ? `${coal} coal` : '', stone ? `${stone} stone` : ''].filter(Boolean).join(' and ');
+  return `<span class="cost" title="Costs ${words}">${parts}</span>`;
+}
+
 $('tools').innerHTML = TOOLS.map((t) =>
   `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
-    <kbd>${t.key}</kbd>${t.cost ? `<span class="cost" title="Costs ${t.cost} coal">${icon('coal', 10)}${t.cost}</span>` : ''}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
+    <kbd>${t.key}</kbd>${costBadge(t.building)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
 $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
@@ -325,21 +349,60 @@ document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
   const key = e.key.toLowerCase();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', x: 'cancel' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', o: 'air', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
 });
 
-// Drag pans, wheel zooms. A click (or a drag with shift held) places orders.
-let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; paint: boolean } | undefined;
+// Drag pans, wheel zooms. A click places an order. Shift-drag paints build
+// orders along the pointer, and draws a box for dig, remove and cancel.
+// Right-click and right-drag cancel with any tool.
+const BOX_TOOLS: Tool[] = ['dig', 'deconstruct', 'cancel'];
+const selectBox = $('select-box');
+let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; paint: boolean; box?: Tool } | undefined;
 const order = (e: PointerEvent) => {
   const cell = world.pickCell(e.clientX, e.clientY);
   if (cell) send({ type: 'command', tool, x: cell[0], y: cell[1] });
 };
+/** Whether `t` would do anything at cell i, so a box only sends orders that apply. */
+function applies(t: Tool, f: Frame, i: number) {
+  const x = i % f.width, y = Math.floor(i / f.width);
+  if (t === 'dig') {
+    const e = f.elements[i];
+    return e === Element.Dirt || e === Element.Rock || e === Element.Coal;
+  }
+  if (t === 'deconstruct') return f.buildings[i] !== Building.None && f.buildings[i] !== Building.Cairn;
+  for (let k = 0; k < f.jobs.length; k += JOB_STRIDE) {
+    if (f.jobs[k] === x && f.jobs[k + 1] === y && f.jobs[k + 2] !== JOB_REFUEL) return true;
+  }
+  return false;
+}
+function showBox(e: PointerEvent) {
+  if (!drag) return;
+  const [x0, x1] = [Math.min(drag.x, e.clientX), Math.max(drag.x, e.clientX)];
+  const [y0, y1] = [Math.min(drag.y, e.clientY), Math.max(drag.y, e.clientY)];
+  Object.assign(selectBox.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` });
+  selectBox.className = drag.box === 'cancel' || drag.box === 'deconstruct' ? 'danger' : '';
+  selectBox.hidden = false;
+}
+function applyBox(e: PointerEvent, t: Tool) {
+  const a = world.pickCell(drag!.x, drag!.y) ?? world.pickCell(e.clientX, e.clientY);
+  const b = world.pickCell(e.clientX, e.clientY) ?? a;
+  if (!a || !b || !last) return;
+  const f = last;
+  for (let y = Math.min(a[1], b[1]); y <= Math.max(a[1], b[1]); y++) {
+    for (let x = Math.min(a[0], b[0]); x <= Math.max(a[0], b[0]); x++) {
+      if (applies(t, f, y * f.width + x)) send({ type: 'command', tool: t, x, y });
+    }
+  }
+}
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
-  drag = { x: e.clientX, y: e.clientY, vx: world.view.x, vy: world.view.y, moved: false, paint: e.shiftKey };
+  const right = e.button === 2;
+  const box = right ? 'cancel' : e.shiftKey && BOX_TOOLS.includes(tool) ? tool : undefined;
+  drag = { x: e.clientX, y: e.clientY, vx: world.view.x, vy: world.view.y, moved: false, paint: e.shiftKey && !box, box };
   if (drag.paint) order(e);
 });
 canvas.addEventListener('pointermove', (e) => {
@@ -348,13 +411,16 @@ canvas.addEventListener('pointermove', (e) => {
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.hypot(dx, dy) > 5) drag.moved = true;
   if (!drag.moved) return;
+  if (drag.box) return showBox(e);
   const u = world.unitsPerPixel();
   world.view.x = drag.vx - dx * u;
   world.view.y = drag.vy + dy * u;
 });
 canvas.addEventListener('pointerup', (e) => {
-  if (drag && !drag.moved && !drag.paint) order(e);
+  if (drag?.box) applyBox(e, drag.box);
+  else if (drag && !drag.moved && !drag.paint) order(e);
   drag = undefined;
+  selectBox.hidden = true;
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();

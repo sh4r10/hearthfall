@@ -59,6 +59,9 @@ fn soak(seed: u64, run: u64, days: u64) -> Vec<String> {
         }
         sim.step(&commands);
         let t = sim.tick;
+        // Refugees join over time.
+        hanging.resize(sim.colonists.len(), 0);
+        last_y.extend(sim.colonists[last_y.len()..].iter().map(|c| c.y));
 
         for (c, col) in sim.colonists.iter().enumerate() {
             let (x, y) = (col.x as i32, col.y as i32);

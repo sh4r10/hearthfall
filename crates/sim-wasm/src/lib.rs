@@ -47,6 +47,10 @@ impl WebSim {
         self.queued.push(Command::Cancel { x, y });
     }
 
+    pub fn deconstruct(&mut self, x: u32, y: u32) {
+        self.queued.push(Command::Deconstruct { x, y });
+    }
+
     pub fn set_role(&mut self, colonist: u32, role: u8) {
         if let Some(role) = Role::from_u8(role) {
             self.queued.push(Command::SetRole { colonist, role });
@@ -73,6 +77,10 @@ impl WebSim {
 
     pub fn coal(&self) -> i32 {
         self.sim.coal
+    }
+
+    pub fn stone(&self) -> i32 {
+        self.sim.stone
     }
 
     pub fn food(&self) -> i32 {
@@ -145,8 +153,9 @@ impl WebSim {
             .collect()
     }
 
-    /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel),
-    /// building, progress percent, claimed (0 or 1).
+    /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
+    /// 3 deconstruct), building (to build, or to take down), progress percent,
+    /// claimed (0 or 1).
     pub fn jobs(&self) -> Vec<i32> {
         let s = &self.sim;
         s.jobs
@@ -154,6 +163,7 @@ impl WebSim {
             .flat_map(|j| {
                 let building = match j.kind {
                     sim::JobKind::Build(b) => b as i32,
+                    sim::JobKind::Deconstruct => s.buildings[s.idx(j.x, j.y)] as i32,
                     _ => 0,
                 };
                 [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32]
@@ -162,7 +172,8 @@ impl WebSim {
     }
 
     /// Flat, `EVENT_STRIDE` values each, oldest first: tick, kind (1 death,
-    /// 2 a Shade starts an attack), colonist index. Only the last 32 events are kept.
+    /// 2 a Shade starts an attack, 3 a building fell), colonist index (for 3,
+    /// the building number). Only the last 32 events are kept.
     pub fn events(&self) -> Vec<i32> {
         self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()
     }

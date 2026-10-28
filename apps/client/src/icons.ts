@@ -8,6 +8,7 @@ const paths: Record<string, string> = {
   mushroom: '<path d="M4 11a8 6 0 0 1 16 0Z"/><path d="M10 11v6a2 2 0 0 0 4 0v-6"/><path d="M4 20h16"/>',
   diffuser: '<rect x="7" y="9" width="10" height="11" rx="2"/><path d="M10 9V7h4v2"/><circle cx="10" cy="3.5" r="1.3"/><circle cx="14.5" cy="4.5" r="1"/>',
   cancel: '<path d="M6 6l12 12M18 6 6 18"/>',
+  deconstruct: '<path d="M14 4h5l1 4-5 1Z"/><path d="M15 9 5 19a1.4 1.4 0 0 1-2-2L13 7"/><path d="M15 14l5 5M18 14l-3 3"/>',
   view: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
   oxygen: '<circle cx="9" cy="14" r="5"/><circle cx="16.5" cy="7.5" r="3"/>',
   co2: '<path d="M3 17c3-2 5 2 9 0s6-2 9 0"/><path d="M3 12c3-2 5 2 9 0s6-2 9 0"/>',
@@ -26,6 +27,7 @@ const paths: Record<string, string> = {
   bed: '<path d="M3 18V8"/><path d="M3 12h18v6"/><path d="M3 15h18"/><path d="M7 12V9h5a3 3 0 0 1 3 3"/>',
   shade: '<path d="M12 3c-3.5 0-6 3-6 7v6c1.5-1 2.5 1 4 0s2.5 1 4 0 2.5 1 4 0v-6c0-4-2.5-7-6-7Z"/><path d="M9.5 10h.01M14.5 10h.01"/>',
   depth: '<path d="M12 3v14"/><path d="m7 12 5 5 5-5"/><path d="M4 21h16"/>',
+  stone: '<path d="M4 14 7 8l6-2 6 3 1 5-4 4H8Z"/><path d="m7 8 4 4 8-1M11 12l-3 7"/>',
   skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.2 4 3 5v3h8v-3c1.8-1 3-2.5 3-5a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.5"/><circle cx="14.5" cy="10.5" r="1.5"/>',
 };
 

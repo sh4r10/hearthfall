@@ -13,6 +13,7 @@ function sendFrame(s: WebSim) {
     width: s.width(),
     height: s.height(),
     coal: s.coal(),
+    stone: s.stone(),
     food: s.food(),
     night: s.is_night(),
     elements: s.elements(),
@@ -56,6 +57,7 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
     ({
       dig: () => s.dig(x, y),
       cancel: () => s.cancel(x, y),
+      deconstruct: () => s.deconstruct(x, y),
       ladder: () => s.build(x, y, Building.Ladder),
       hearth: () => s.build(x, y, Building.Hearth),
       mushroom: () => s.build(x, y, Building.MushroomBed),

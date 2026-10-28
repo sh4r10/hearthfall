@@ -94,6 +94,8 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
                 Element::Floor
             } else if START_SEAMS.iter().any(|s| s.contains(&(dx, dy))) {
                 Element::Coal
+            } else if (-8..=-2).contains(&dx) && dy == 2 {
+                Element::Rock // the first stone, under the floor on the left
             } else if dx.abs() <= 10 && (-7..=2).contains(&dy) {
                 Element::Dirt
             } else if n < 70 {

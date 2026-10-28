@@ -75,6 +75,10 @@ pub struct Colonist {
 pub const HEADING_NONE: u8 = 0;
 /// Going to the fire to warm up.
 pub const HEADING_WARM: u8 = 1;
+/// Stepping back out of stale air to breathe.
+pub const HEADING_AIR: u8 = 2;
+/// Below this breath a survivor leaves stale air for somewhere they can breathe.
+pub const BREATHLESS_BELOW: i32 = STAT_MAX / 2;
 /// Below this warmth a survivor drops what they are doing and goes to the fire.
 pub const COLD_BELOW: i32 = STAT_MAX * 4 / 10;
 /// A survivor warming up by the fire takes no work until this warm again.
@@ -298,6 +302,14 @@ impl Sim {
         let col = &self.colonists[c];
         let here = self.idx(col.x, col.y);
         // Needs come before errands.
+        if col.breath < BREATHLESS_BELOW && self.oxygen[here] < SUFFOCATE_BELOW_MG {
+            // Can't breathe here: back out to fresh air, whatever the job.
+            self.release_job(c);
+            if self.seek_air(c) {
+                return;
+            }
+        }
+        let col = &self.colonists[c];
         if col.warmth < COLD_BELOW && !self.is_warm(here) {
             // Too cold to carry on: back to the fire, whatever the job.
             self.release_job(c);
@@ -350,8 +362,8 @@ impl Sim {
                     return;
                 }
                 self.colonists[c].timer += 1;
-                // Someone still thawing out by the fire stays put.
-                let thawing = self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here);
+                // Someone still thawing out by the fire, or catching their breath, stays put.
+                let thawing = (self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here)) || self.colonists[c].breath < STAT_MAX * 9 / 10;
                 if !thawing && self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
                     return;
                 }
@@ -435,6 +447,25 @@ impl Sim {
             if !self.step_along(c) {
                 // The way changed under them; let the job go and choose again.
                 self.release_job(c);
+            }
+            return;
+        }
+
+        // Nothing left to walk, but not beside the job (a fall, or a path
+        // cleared for a need): find the way again, or let the job go.
+        let (jx, jy) = (self.jobs[k].x, self.jobs[k].y);
+        let col = &self.colonists[c];
+        if col.x.abs_diff(jx) > 1 || col.y.abs_diff(jy) > 1 {
+            let field = self.field_from(col.x, col.y);
+            match self.stand_cell(&field.dist, jx as i32, jy as i32) {
+                Some(stand) if stand != self.idx(col.x, col.y) => {
+                    let path = self.path_to(&field, stand);
+                    let col = &mut self.colonists[c];
+                    col.path = path;
+                    col.timer = 0;
+                    col.activity = Activity::Walking;
+                }
+                _ => self.release_job(c),
             }
             return;
         }
@@ -585,6 +616,31 @@ impl Sim {
         let col = &mut self.colonists[c];
         col.path = path;
         col.heading = heading;
+        col.timer = 0;
+        col.activity = Activity::Walking;
+        true
+    }
+
+    /// Head for the nearest cell with enough air to breathe. Returns false if
+    /// there is none in reach.
+    fn seek_air(&mut self, c: usize) -> bool {
+        let col = &self.colonists[c];
+        let field = self.field_from(col.x, col.y);
+        let mut best: Option<usize> = None;
+        for i in 0..self.oxygen.len() {
+            let d = field.dist[i];
+            if d != UNREACHED && d <= BED_REACH && self.oxygen[i] >= SUFFOCATE_BELOW_MG * 2 && best.map_or(true, |b| d < field.dist[b]) {
+                let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
+                if self.supported(x, y) {
+                    best = Some(i);
+                }
+            }
+        }
+        let Some(to) = best else { return false };
+        let path = self.path_to(&field, to);
+        let col = &mut self.colonists[c];
+        col.path = path;
+        col.heading = HEADING_AIR;
         col.timer = 0;
         col.activity = Activity::Walking;
         true

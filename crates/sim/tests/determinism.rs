@@ -46,16 +46,17 @@ fn different_seeds_diverge() {
 }
 
 #[test]
-fn gas_is_conserved() {
+fn gas_is_never_created() {
     let mut sim = Sim::new(7, 96, 96);
-    // Breathing and fire turn O2 into CO2, so check the total gas mass.
+    // Breathing and fire turn O2 into CO2 and the walls soak a little CO2 up,
+    // so the total gas mass can only fall, and never below zero.
     let total = |s: &Sim| s.oxygen.iter().chain(&s.co2).map(|&v| v as i64).sum::<i64>();
     let before = total(&sim);
     for _ in 0..200 {
         sim.step(&[]);
     }
-    assert_eq!(before, total(&sim));
-    assert!(sim.oxygen.iter().all(|&v| v >= 0));
+    assert!(total(&sim) <= before);
+    assert!(sim.oxygen.iter().chain(&sim.co2).all(|&v| v >= 0));
 }
 
 #[test]
@@ -186,9 +187,9 @@ fn firekeepers_refuel_hearths_from_the_stockpile() {
     for _ in 0..12 {
         sim.step(&[]);
     }
-    // The firekeeper (colonist 2) takes it, even though the digger is as close.
+    // The firekeeper (Mara, colonist 1) takes it, even though the digger is as close.
     let refuel = sim.jobs.iter().find(|j| j.kind == JobKind::Refuel).expect("refuel job");
-    assert_eq!(refuel.claimed_by, Some(2));
+    assert_eq!(refuel.claimed_by, Some(1));
     for _ in 0..300 {
         sim.step(&[]);
     }
@@ -291,12 +292,13 @@ fn lamps_light_cells_without_warming_them() {
 fn builders_build_lamps_for_coal() {
     let mut sim = sealed_room(11, 40, (5, 10, 30, 20));
     sim.coal = 3;
+    sim.stone = 1;
     sim.step(&[Command::Build { x: 12, y: 20, building: Building::Lamp }]);
     for _ in 0..400 {
         sim.step(&[]);
     }
     assert_eq!(sim.buildings[sim.idx(12, 20)], Building::Lamp, "jobs: {:?}", sim.jobs);
-    assert_eq!(sim.coal, 3 - sim::LAMP_COST);
+    assert_eq!((sim.coal, sim.stone), (3 - sim::LAMP_COST, 0));
 }
 
 #[test]
@@ -429,11 +431,22 @@ fn buildings_never_float() {
     // Nothing but a ladder goes up in mid-air.
     sim.step(&[Command::Build { x: 12, y: 15, building: Building::Bed }]);
     assert!(sim.jobs.is_empty());
-    // And the floor under a building can't be dug out.
+    // Digging out a building's floor takes the building down first, and the
+    // dig waits until it is.
     let lamp = sim.idx(12, 20);
     sim.buildings[lamp] = Building::Lamp;
     sim.step(&[Command::Dig { x: 12, y: 21 }]);
-    assert!(sim.jobs.is_empty());
+    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct && (j.x, j.y) == (12, 20)));
+    let dig = sim.jobs.iter().find(|j| j.kind == JobKind::Dig).unwrap().clone();
+    assert!(sim.holds_up_building(dig.x, dig.y));
+    // A bed whose floor goes anyway falls and is salvaged at once.
+    let bed = sim.idx(20, 20);
+    sim.buildings[bed] = Building::Bed;
+    let (stone, below) = (sim.stone, sim.idx(20, 21));
+    sim.elements[below] = Element::Floor;
+    sim.step(&[]);
+    assert_eq!(sim.buildings[bed], Building::None);
+    assert_eq!(sim.stone, stone + 2);
 }
 
 #[test]
@@ -513,4 +526,87 @@ fn the_set_maps_let_a_colony_through_two_nights_untouched() {
         }
         assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within two days with no orders given");
     }
+}
+
+#[test]
+fn survivors_step_out_of_stale_air_and_a_shaft_clears() {
+    // A deep shaft under a sealed room, its bottom full of carbon dioxide.
+    let mut sim = sealed_room(5, 64, (20, 20, 44, 20));
+    let hearth = sim.idx(33, 20); // beside the shaft, so its light reaches the bottom and nobody flees the dark instead
+    sim.buildings[hearth] = Building::Hearth;
+    sim.hearth_fuel[hearth] = 40;
+    for y in 21..=30 {
+        let i = sim.idx(32, y);
+        sim.elements[i] = Element::Floor;
+        sim.buildings[i] = Building::Ladder;
+        sim.oxygen[i] = 0;
+        sim.co2[i] = 1800;
+    }
+    sim.colonists.truncate(1);
+    sim.colonists[0].x = 32;
+    sim.colonists[0].y = 30;
+    let mut left_for_air = false;
+    for _ in 0..1500 {
+        sim.step(&[]);
+        if sim.colonists[0].heading == sim::HEADING_AIR {
+            left_for_air = true;
+        }
+    }
+    assert!(left_for_air, "never went looking for air");
+    assert!(sim.colonists[0].alive(), "died in the shaft of cause {}", sim.colonists[0].cause);
+    let bottom = sim.idx(32, 30);
+    assert!(sim.co2[bottom] < 900, "the shaft still holds {} mg of CO2", sim.co2[bottom]);
+}
+
+#[test]
+fn work_only_happens_beside_the_job() {
+    let mut sim = sealed_room(12, 64, (10, 30, 54, 30));
+    sim.colonists.truncate(1);
+    sim.colonists[0].x = 20;
+    sim.colonists[0].y = 30;
+    sim.step(&[Command::Build { x: 40, y: 30, building: Building::Bed }]);
+    for _ in 0..600 {
+        sim.step(&[]);
+        let c = &sim.colonists[0];
+        if c.activity == Activity::Working {
+            assert!(c.x.abs_diff(40) <= 1, "working on (40, 30) from ({}, {})", c.x, c.y);
+        }
+        // Knock them off course once: the path is gone but the job isn't.
+        if sim.tick == 20 {
+            sim.colonists[0].path.clear();
+        }
+    }
+    assert_eq!(sim.buildings[sim.idx(40, 30)], Building::Bed, "the bed was never built: {:?}", sim.jobs);
+}
+
+fn deconstruct_takes_a_building_down_and_salvages_it() {
+    let mut sim = Sim::new(7, 128, 96);
+    let (cx, cy) = (sim.width / 2, sim.height / 2);
+    let fire = sim.idx(cx, cy);
+    assert_eq!(sim.buildings[fire], Building::Hearth);
+    sim.step(&[Command::Deconstruct { x: cx, y: cy }]);
+    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct));
+    for _ in 0..400 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.buildings[fire], Building::None);
+    assert_eq!(sim.hearth_fuel[fire], 0);
+    assert!(sim.jobs.iter().all(|j| j.kind != JobKind::Deconstruct));
+}
+
+
+#[test]
+fn refugees_join_at_dawn_when_a_bed_and_food_are_spare() {
+    let mut sim = Sim::new(42, 160, 110);
+    assert_eq!(sim.colonists.len(), 2, "the colony starts with Esk and Mara");
+    let bed = sim.idx(84, 55);
+    sim.buildings[bed] = Building::Bed;
+    sim.food = 40;
+    for _ in 0..2 * sim::DAY_TICKS + 1 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.colonists.len(), 3, "nobody arrived at dawn of day 3");
+    assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_ARRIVAL && e.colonist == 2));
+    let c = &sim.colonists[2];
+    assert!(sim.is_warm(sim.idx(c.x, c.y)), "the refugee appeared in the dark");
 }

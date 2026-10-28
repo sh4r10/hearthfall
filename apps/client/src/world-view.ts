@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, Element, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, Element, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
 import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -183,6 +183,7 @@ export class WorldView {
   private ghostMaterial = new THREE.MeshBasicMaterial({ color: '#8fb8ff', transparent: true, opacity: 0.35, depthWrite: false });
   private barMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b' });
   private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false });
+  private removeMaterial = new THREE.MeshBasicMaterial({ color: '#ff6b6b', transparent: true, opacity: 0.2, depthWrite: false });
   private readonly glowTex = glowTexture();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -297,14 +298,7 @@ export class WorldView {
     this.embers.frustumCulled = false;
     this.scene.add(this.embers);
 
-    for (let i = 0; i < frame.colonists.length / COLONIST_STRIDE; i++) {
-      const model = makeModel('survivor', i);
-      model.scale.setScalar(model.userData.flat ? 1 : 1.25);
-      const part = (name: string) => model.getObjectByName(name)!;
-      const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
-      this.scene.add(model);
-      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, index: i });
-    }
+    this.addSurvivors(frame);
 
     const first = frame.buildings.indexOf(Building.Hearth);
     if (first >= 0) {
@@ -681,17 +675,18 @@ export class WorldView {
     const p = new THREE.Vector3();
     for (let k = 0; k < frame.jobs.length; k += JOB_STRIDE) {
       const [x, y, kind, building, progress] = frame.jobs.subarray(k, k + JOB_STRIDE);
-      if (kind === 2) continue; // refuelling happens on its own
+      if (kind === JOB_REFUEL) continue; // refuelling happens on its own
       const key = `${x},${y},${kind},${building}`;
       let marker = this.markers.get(key);
       if (!marker) {
         this.cellToWorld(x, y, p);
-        const object = kind === 0 ? makeModel('dig-marker') : this.ghost(building);
-        object.position.set(p.x, kind === 0 ? p.y : p.y - 0.5, kind === 0 ? 0.75 : 0);
-        if (kind === 0) {
-          // A faint ember square marks the cell itself. It stays square to the
-          // grid while the pickaxe above it rocks.
-          const square = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), this.digMaterial);
+        const icon = kind === JOB_DIG || kind === JOB_DECONSTRUCT;
+        const object = kind === JOB_BUILD ? this.ghost(building) : makeModel(kind === JOB_DIG ? 'dig-marker' : 'deconstruct-marker');
+        object.position.set(p.x, icon ? p.y : p.y - 0.5, icon ? 0.75 : 0);
+        if (icon) {
+          // A faint square marks the cell itself: ember to dig, red to take down.
+          // It stays square to the grid while the icon above it rocks.
+          const square = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), kind === JOB_DIG ? this.digMaterial : this.removeMaterial);
           square.position.set(p.x, p.y, 0.05);
           this.markerGroup.add(square);
           object.userData.square = square;
@@ -699,7 +694,7 @@ export class WorldView {
         const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.08), this.barMaterial);
         bar.position.set(p.x, p.y - 0.42, 0.8);
         this.markerGroup.add(object, bar);
-        marker = { object, bar, seen: true, flat: kind !== 0 };
+        marker = { object, bar, seen: true, flat: !icon };
         this.markers.set(key, marker);
       }
       marker.seen = true;
@@ -805,9 +800,26 @@ export class WorldView {
     }
   }
 
+  /** One view per sim colonist; refugees join mid-game, so this runs every frame. */
+  private addSurvivors(frame: Frame) {
+    for (let i = this.survivors.length; i < frame.colonists.length / COLONIST_STRIDE; i++) {
+      const model = makeModel('survivor', i);
+      model.scale.setScalar(model.userData.flat ? 1 : 1.25);
+      const part = (name: string) => model.getObjectByName(name)!;
+      const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
+      this.scene.add(model);
+      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, index: i };
+      const o = i * COLONIST_STRIDE;
+      this.cellToWorld(frame.colonists[o], frame.colonists[o + 1], s.pos);
+      s.pos.y -= 0.5;
+      this.survivors.push(s);
+    }
+  }
+
   applyFrame(frame: Frame, _ticksPerSecond: number) {
     const first = !this.latest;
     if (first) this.setup(frame);
+    else this.addSurvivors(frame);
     this.latest = frame;
 
     if (!this.lastElements || frame.elements.some((e, i) => e !== this.lastElements![i])) {
@@ -834,6 +846,9 @@ export class WorldView {
       if (first) s.pos.copy(s.target);
       s.activity = activity;
       s.job = frame.colonists[o + 12];
+      // Face the work while at it.
+      const jobX = frame.colonists[o + 10];
+      if (activity === 2 && jobX >= 0 && jobX !== x) s.facing = Math.sign(jobX - x);
       s.cell = y * this.width + x;
       s.warmth = warmth;
     });
