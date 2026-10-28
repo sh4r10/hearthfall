@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { terrainArt } from './art';
 
 // The whole cave is one quad. A per-cell material mask, sampled with linear
 // filtering and cut at a noisy threshold, turns the square grid into smooth,
@@ -17,6 +18,9 @@ export const terrainFragment = /* glsl */ `
   uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = water
   uniform sampler2D uLight;  // r = hearth light
   uniform vec2 uSize;        // grid size in cells
+  // Optional painted textures; the matching flag is 1.0 when one is loaded.
+  uniform sampler2D uRockTex, uDirtTex, uCoalTex, uWallTex;
+  uniform vec4 uHasArt;      // rock, dirt, coal, back wall
   uniform float uTime;
   varying vec2 vUv;
 
@@ -62,6 +66,9 @@ export const terrainFragment = /* glsl */ `
     vec3 dirt = mix(vec3(0.42, 0.28, 0.18), vec3(0.55, 0.38, 0.24), strata) * (0.85 + fine * 0.3);
     vec3 coal = vec3(0.11, 0.105, 0.12) * (0.8 + grain * 0.5);
     coal += vec3(0.5, 0.45, 0.35) * step(0.93, noise(cell * 6.0)) * 0.6; // glints
+    rock = mix(rock, texture2D(uRockTex, cell / 4.0).rgb, uHasArt.x);
+    dirt = mix(dirt, texture2D(uDirtTex, cell / 4.0).rgb, uHasArt.y);
+    coal = mix(coal, texture2D(uCoalTex, cell / 4.0).rgb, uHasArt.z);
     float wsum = max(solid, 0.001);
     vec3 solidColor = (rock * m.r + dirt * m.g + coal * m.b) / wsum;
     solidColor *= 0.55 + lambert * 0.75;
@@ -79,6 +86,7 @@ export const terrainFragment = /* glsl */ `
     near /= 8.0;
     vec3 wall = mix(vec3(0.16, 0.13, 0.11), vec3(0.23, 0.19, 0.16), fbm(cell * 0.6 + 7.0));
     wall *= 0.85 + noise(cell * 4.0) * 0.2;
+    wall = mix(wall, texture2D(uWallTex, cell / 8.0).rgb, uHasArt.w);
     wall *= 1.0 - smoothstep(0.0, 0.7, near) * 0.55;
 
     // Water pools in open space, with a bright surface line.
@@ -106,8 +114,21 @@ export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTextur
       uLight: { value: light },
       uSize: { value: new THREE.Vector2(width, height) },
       uTime: { value: 0 },
+      ...paintedTextures(),
     },
     vertexShader: terrainVertex,
     fragmentShader: terrainFragment,
   });
+}
+
+function paintedTextures() {
+  const blank = new THREE.Texture();
+  const [rock, dirt, coal, wall] = ['rock', 'dirt', 'coal', 'backwall'].map(terrainArt);
+  return {
+    uRockTex: { value: rock ?? blank },
+    uDirtTex: { value: dirt ?? blank },
+    uCoalTex: { value: coal ?? blank },
+    uWallTex: { value: wall ?? blank },
+    uHasArt: { value: new THREE.Vector4(rock ? 1 : 0, dirt ? 1 : 0, coal ? 1 : 0, wall ? 1 : 0) },
+  };
 }

@@ -9,6 +9,7 @@ import {
   diffuserTexture, digIconTexture, flameTexture, glowTexture, hearthTexture, ladderTexture, mushroomTexture, survivorTexture,
 } from './textures';
 import { terrainMaterial } from './terrain-shader';
+import { artTexture } from './art';
 
 export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
 
@@ -54,9 +55,9 @@ interface Survivor {
 }
 
 const BUILDING_TEXTURES: Record<number, () => THREE.Texture> = {
-  [Building.Ladder]: ladderTexture,
-  [Building.OxygenDiffuser]: diffuserTexture,
-  [Building.MushroomBed]: mushroomTexture,
+  [Building.Ladder]: () => artTexture('ladder', ladderTexture),
+  [Building.OxygenDiffuser]: () => artTexture('diffuser', diffuserTexture),
+  [Building.MushroomBed]: () => artTexture('mushroom-bed', mushroomTexture),
 };
 
 export class WorldView {
@@ -91,7 +92,7 @@ export class WorldView {
 
   private readonly glowTex = glowTexture();
   private readonly flameTex = flameTexture();
-  private readonly hearthTex = hearthTexture();
+  private readonly hearthTex = artTexture('hearth', hearthTexture);
   private readonly digTex = digIconTexture();
   private readonly buildingMaterials = new Map<number, THREE.SpriteMaterial>();
   private readonly ghostMaterials = new Map<number, THREE.SpriteMaterial>();
@@ -193,7 +194,7 @@ export class WorldView {
     const looks: [string, string][] = [['#6a4a3a', '#c2452f'], ['#3e5566', '#d9a441'], ['#56603e', '#8a5fa8'], ['#70553a', '#4f8fb0']];
     for (let i = 0; i < frame.colonists.length / COLONIST_STRIDE; i++) {
       const [coat, scarf] = looks[i % looks.length];
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: survivorTexture(coat, scarf), alphaTest: 0.4, depthTest: false }));
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: artTexture('survivor', () => survivorTexture(coat, scarf)), alphaTest: 0.4, depthTest: false }));
       sprite.center.set(0.5, 0.02);
       sprite.scale.set(0.9, 1.35, 1);
       sprite.renderOrder = 4;
