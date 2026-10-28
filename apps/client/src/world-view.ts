@@ -135,6 +135,7 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Cairn]: 'cairn',
   [Building.Lamp]: 'lamp',
   [Building.Bed]: 'bed',
+  [Building.Vent]: 'vent',
 };
 
 const ELEMENT_COLOURS: Record<number, string[]> = {
@@ -870,6 +871,7 @@ export class WorldView {
         field[i + 2] = frame.nightFirelight[c];
         field[i + 3] = open ? 255 : 0;
         marks[i] = frame.elements[c] === Element.Coal ? 255 : 0;
+        marks[i + 1] = frame.smoke[c];
       }
     }
     this.fieldTex.needsUpdate = true;

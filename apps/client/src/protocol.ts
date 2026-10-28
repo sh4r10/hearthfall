@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'bed';
+export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -34,6 +34,8 @@ export interface Frame {
   /** Priority each hearth's refuel errands get, by cell. */
   refuelPriority: Uint8Array;
   temperature: Int32Array;
+  /** Smoke per cell, 0..=255 (SMOKE_MAX in the sim); see WebSim::smoke. */
+  smoke: Uint8Array;
   /** Flat, COLONIST_STRIDE each; see WebSim::colonists in crates/sim-wasm. */
   colonists: Int32Array;
   /** Flat, JOB_STRIDE each; see WebSim::jobs. */
@@ -56,6 +58,9 @@ export const EVENT_SHADE_ATTACK = 2;
 /** A building fell because its floor went; the event's colonist field is the Building number. */
 export const EVENT_COLLAPSE = 3;
 export const EVENT_ARRIVAL = 4;
+export const EVENT_SMOKE = 5;
+/** A cell is smoky from this much smoke (SMOKY / SMOKE_MAX of 255). */
+export const SMOKY = 102;
 /** Shade states, matching sim::SHADE_*. */
 export const SHADE_DRIFTING = 0;
 export const SHADE_ATTACKING = 1;
@@ -71,7 +76,7 @@ export const DARK_BELOW = 40;
 
 // Mirror the enums in crates/sim/src/world.rs. Building 1 was the oxygen diffuser; the number stays unused.
 export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
-export const Building = { None: 0, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
+export const Building = { None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
 export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down'] as const;
@@ -92,6 +97,7 @@ export const BLOCK_REASONS: Record<number, string> = {
 export const BUILD_COST: Record<number, [number, number]> = {
   [Building.Hearth]: [8, 4],
   [Building.Lamp]: [2, 1],
+  [Building.Vent]: [0, 3],
   [Building.Ladder]: [0, 1],
   [Building.MushroomBed]: [0, 2],
   [Building.Bed]: [0, 3],

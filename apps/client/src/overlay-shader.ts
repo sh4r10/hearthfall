@@ -8,7 +8,7 @@ import { terrainVertex } from './terrain-shader';
 // buildings stay sharp on top of it.
 //
 // Warmth: r = hearth light, g = all light, b = hearth light tonight, a = open cell.
-// uMarks: r = coal, so the warmth view shows where the next fuel is.
+// uMarks: r = coal, so the warmth view shows where the next fuel is; g = smoke.
 
 const fragment = /* glsl */ `
   uniform sampler2D uField;
@@ -64,6 +64,16 @@ const fragment = /* glsl */ `
     col = mix(col, vec3(1.0, 0.72, 0.4), edge); a = max(a, edge * 0.95);
     float night = contour(f.b, DARK, 1.8) * open * uForecast * dashes();
     col = mix(col, vec3(0.78, 0.88, 1.0), night); a = max(a, night * 0.9);
+
+    // Smoke: a grey haze with drifting hatching where it is thick enough to matter.
+    float smoke = texture2D(uMarks, vUv).g;
+    float haze = smoothstep(0.15, 0.6, smoke) * open;
+    vec3 ASH = vec3(0.55, 0.55, 0.58);
+    col = mix(col, ASH, haze * 0.75); a = mix(a, 0.7, haze);
+    float wisps = hatch(7.0, -0.1) * haze * 0.5;
+    col = mix(col, ASH * 1.3, wisps);
+    float smokeEdge = contour(smoke, 0.4, 1.4) * open;
+    col = mix(col, vec3(0.8, 0.8, 0.82), smokeEdge); a = max(a, smokeEdge * 0.9);
 
     // Push the rock back so the open caves read. Coal stays visible as
     // glinting seams: it is what keeps the fire going.

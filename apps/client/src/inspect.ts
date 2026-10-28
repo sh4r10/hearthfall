@@ -3,7 +3,7 @@
 
 import {
   ACTIVITIES, BLOCK_REASONS, Building, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_REFUEL, JOB_STRIDE,
-  LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, STAT_MAX, type Frame, type ToWorker,
+  LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, SMOKY, STAT_MAX, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
 
@@ -11,13 +11,15 @@ import { icon } from './icons';
 const REFUEL_BELOW = 20;
 
 /** What a survivor is up to, in a few words. Shared with the roster cards. */
-export function doing(c: ArrayLike<number>) {
+export function doing(c: ArrayLike<number>, frame?: Frame) {
   const activity = ACTIVITIES[c[3]];
+  const smoky = !!frame && frame.smoke[c[1] * frame.width + c[0]] >= SMOKY;
   const job = c[11] >= 0 ? JOB_NAMES[c[11]] : '';
   return activity === 'Dead' ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
     : activity === 'Walking' && job ? `Heading off ${job}`
     : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
     : activity === 'Sleeping' ? 'Asleep'
+    : activity === 'Idle' && smoky ? 'Coughing in the smoke'
     : activity === 'Idle' ? 'Warming up by the fire'
     : activity;
 }

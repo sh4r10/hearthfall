@@ -486,14 +486,20 @@ fn a_colony_left_alone_survives_its_first_night() {
 }
 
 #[test]
-fn the_set_maps_let_a_colony_through_two_nights_untouched() {
+fn the_set_maps_let_a_colony_through_four_nights_untouched() {
     // The seeds behind the title screen's set maps (apps/client/src/main.ts).
+    // Nothing that builds up on its own (smoke, cold) may kill a colony that
+    // just sits by its fire for the first days.
     for seed in [7, 1234, 99_999] {
         let mut sim = Sim::new(seed, 160, 110);
-        for _ in 0..2 * sim::DAY_TICKS {
+        sim.coal = 200; // as if the player kept the digger busy; the fire itself is the player's job
+        for _ in 0..4 * sim::DAY_TICKS {
             sim.step(&[]);
+            if sim.tick == 2 * sim::DAY_TICKS {
+                assert!(!sim.smoke_warned, "seed {seed}: smoke got thick within two days");
+            }
         }
-        assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within two days with no orders given");
+        assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within four days with no orders given");
     }
 }
 
@@ -549,4 +555,34 @@ fn refugees_join_at_dawn_when_a_bed_and_food_are_spare() {
     assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_ARRIVAL && e.colonist == 2));
     let c = &sim.colonists[2];
     assert!(sim.is_warm(sim.idx(c.x, c.y)), "the refugee appeared in the dark");
+}
+
+#[test]
+fn smoke_pools_under_the_ceiling_and_a_vent_clears_it() {
+    // A tall sealed cave with a hearth on the floor.
+    let mut sim = sealed_room(9, 64, (24, 24, 40, 30));
+    let hearth = sim.idx(32, 30);
+    sim.buildings[hearth] = Building::Hearth;
+    sim.hearth_fuel[hearth] = 40;
+    sim.coal = 500;
+    for (c, x) in [(0, 28), (1, 36)] {
+        sim.colonists[c].x = x;
+        sim.colonists[c].y = 30;
+    }
+    for _ in 0..4 * sim::DAY_TICKS {
+        sim.step(&[]);
+    }
+    let (ceiling, floor) = (sim.idx(32, 24), sim.idx(28, 30));
+    assert!(sim.smoke[ceiling] > sim.smoke[floor], "smoke should rise: ceiling {} floor {}", sim.smoke[ceiling], sim.smoke[floor]);
+    assert!(sim.smoke_warned, "four days of one fire should get smoky");
+    assert!(sim.colonists.iter().all(|c| c.alive()), "smoke must never kill on its own");
+    // A vent above the fire swallows the column and drains the ceiling around it.
+    let beside = sim.idx(29, 24);
+    let before = sim.smoke[beside];
+    sim.buildings[ceiling] = Building::Vent;
+    for _ in 0..600 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.smoke[ceiling], 0);
+    assert!(sim.smoke[beside] < before / 2, "the ceiling should drain towards the vent: {} -> {}", before, sim.smoke[beside]);
 }

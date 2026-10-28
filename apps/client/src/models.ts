@@ -295,6 +295,19 @@ registerModel('cairn', (variant = 0) => {
 });
 
 /** A lamp: a post with a brass lantern whose glass glows; the renderer adds the light. */
+/** A vent: a stone-collared bore into the rock with a leather bellows at its foot. */
+registerModel('vent', () => {
+  const g = new THREE.Group();
+  const collar = mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.12, 8), mat('#5a5b5f'), 0, 0.06, 0);
+  const pipe = mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.8, 8), mat('#4a5258'), 0, 0.5, 0);
+  const bellows = mesh(new THREE.BoxGeometry(0.34, 0.18, 0.22), mat('#6b4a2f'), 0.22, 0.09, 0.05);
+  bellows.name = 'bellows';
+  const handle = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 5), mat('#8a6440'), 0.36, 0.26, 0.05);
+  handle.rotation.z = -0.6;
+  g.add(collar, pipe, bellows, handle);
+  return g;
+});
+
 registerModel('lamp', () => {
   const g = new THREE.Group();
   const post = mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.7, 6), mat('#6b4a2f'), 0, 0.35, 0);

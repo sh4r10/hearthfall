@@ -25,6 +25,7 @@ const paths: Record<string, string> = {
   bed: '<path d="M3 18V8"/><path d="M3 12h18v6"/><path d="M3 15h18"/><path d="M7 12V9h5a3 3 0 0 1 3 3"/>',
   shade: '<path d="M12 3c-3.5 0-6 3-6 7v6c1.5-1 2.5 1 4 0s2.5 1 4 0 2.5 1 4 0v-6c0-4-2.5-7-6-7Z"/><path d="M9.5 10h.01M14.5 10h.01"/>',
   depth: '<path d="M12 3v14"/><path d="m7 12 5 5 5-5"/><path d="M4 21h16"/>',
+  vent: '<path d="M12 21V9"/><path d="M8 9h8l-1-4H9Z"/><path d="M6 14c2-2 4 2 6 0s4-2 6 0"/><path d="M9 21h6"/>',
   stone: '<path d="M4 14 7 8l6-2 6 3 1 5-4 4H8Z"/><path d="m7 8 4 4 8-1M11 12l-3 7"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   priority: '<path d="M5 20v-5M12 20v-9M19 20V5"/>',
