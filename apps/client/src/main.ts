@@ -9,7 +9,7 @@ import SimWorker from './sim.worker.ts?worker&inline';
 const TICKS_PER_SECOND = 10;
 const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
-const NAMES = ['Mara', 'Tobin', 'Esk', 'Juno', 'Bram', 'Ilse', 'Corin', 'Wren'];
+const NAMES = ['Esk', 'Mara', 'Tobin', 'Ostra', 'Pim', 'Ruta', 'Juno', 'Wren']; // the cast in the art brief, in art order
 const NEEDS: [label: string, offset: number, icon: string][] = [
   ['Warmth', 5, 'warmth'], ['Breath', 4, 'breath'], ['Energy', 6, 'energy'], ['Food', 7, 'food'], ['Mood', 8, 'mood'], ['Sleep', 9, 'sleep'],
 ];
@@ -98,7 +98,7 @@ function renderRoster(frame: Frame) {
   const count = frame.colonists.length / COLONIST_STRIDE;
   if (roster.childElementCount !== count) {
     roster.innerHTML = Array.from({ length: count }, (_, i) => {
-      const portrait = artUrl(`survivor-${i % 2}-front`);
+      const portrait = artUrl(`survivor-${i % 2}-portrait`);
       return `
       <article class="survivor" data-i="${i}">
         <header>
