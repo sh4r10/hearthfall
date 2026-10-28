@@ -86,6 +86,9 @@ if (has('mushroom-bed')) registerModel('mushroom-bed', () => {
   m.position.y = -0.02;
   m.renderOrder = 3;
   g.add(m);
+  // 0 seedling, 1 growing, 2 ready; every state has the same outline.
+  const stages = ['mushroom-bed-seedling', 'mushroom-bed-growing', 'mushroom-bed'].map((n) => (has(n) ? texture(n) : texture('mushroom-bed')));
+  g.userData.stage = (n: number) => { (m.material as THREE.MeshBasicMaterial).map = stages[n]; };
   return g;
 });
 
@@ -179,6 +182,7 @@ function flipbook(name: string, frames: number, height: number, opts: { additive
  */
 export const SURVIVOR_ANIMS = {
   idle: 4, walk: 6, dig: 4, build: 3, carry: 6, climb: 4, celebrate: 3, cold: 3, sleep: 2, eat: 3, collapse: 4, dead: 1,
+  'sleep-back': 1,
 } as const;
 export type SurvivorAnim = keyof typeof SURVIVOR_ANIMS;
 const SURVIVOR_FRAME = 1.92; // world size of a frame: a standing survivor is about 1.5 tall
@@ -187,8 +191,12 @@ const FEET = (16 / 320) * SURVIVOR_FRAME;
 /** Lying down, a survivor is drawn smaller so they fit one cell, the size of a cot. */
 const LYING = 0.67;
 
+/** How many survivors have painted art; later refugees reuse them in turn. */
+let CAST = 0;
+while (has(`survivor-${CAST}-idle`)) CAST++;
+
 function survivorStrip(variant: number, anim: SurvivorAnim, scale = 1) {
-  const v = has(`survivor-${variant % 2}-idle`) ? variant % 2 : 0;
+  const v = variant % Math.max(CAST, 1);
   const book = flipbook(`survivor-${v}-${anim}`, SURVIVOR_ANIMS[anim], SURVIVOR_FRAME * scale);
   book.position.y = -FEET * scale;
   book.renderOrder = 6;
@@ -206,6 +214,15 @@ if (has('survivor-0-idle')) {
       book.userData.strip(`survivor-${v}-${anim}`, SURVIVOR_ANIMS[anim]);
       book.userData.frame(frame);
     };
+    // Frost creeping over a freezing survivor; the renderer sets its opacity.
+    if (has('frost-overlay')) {
+      const frost = card('frost-overlay', SURVIVOR_FRAME);
+      frost.name = 'frost';
+      frost.position.y = -FEET;
+      frost.renderOrder = 7;
+      (frost.material as THREE.MeshBasicMaterial).opacity = 0;
+      g.add(frost);
+    }
     for (const name of ['legL', 'legR', 'armF', 'armB', 'head', 'tool']) {
       const empty = new THREE.Group();
       empty.name = name;
@@ -218,8 +235,15 @@ if (has('survivor-0-idle')) {
   registerModel('survivor-sleeping', (variant = 0) => {
     const g = new THREE.Group();
     g.userData.flat = true;
-    const { book } = survivorStrip(variant, 'sleep', LYING);
-    book.userData.animate = (t: number) => book.userData.frame(t * 0.8 + variant * 0.7);
+    const { book, v } = survivorStrip(variant, 'sleep', LYING);
+    // Curled up on the ground, or flat on their back on a cot.
+    let onBed = false;
+    g.userData.bed = (bed: boolean) => {
+      if (bed === onBed || !has(`survivor-${v}-sleep-back`)) return;
+      onBed = bed;
+      book.userData.strip(`survivor-${v}-${bed ? 'sleep-back' : 'sleep'}`, bed ? 1 : SURVIVOR_ANIMS.sleep);
+    };
+    book.userData.animate = (t: number) => book.userData.frame(onBed ? 0 : t * 0.8 + variant * 0.7);
     g.add(book);
     return g;
   });
@@ -234,3 +258,49 @@ if (has('survivor-0-idle')) {
     return g;
   });
 }
+
+/**
+ * Effects: painted strips centred on their origin, played by the renderer
+ * through `userData.frame(n)`. Sizes follow the art (192 px per cell).
+ */
+export const EFFECTS = {
+  'debris-rock': 4, 'debris-dirt': 4, 'debris-coal': 4, 'smoke-puff': 4, 'breath-mist': 4, splash: 4, 'falling-water': 4,
+} as const;
+const EFFECT_HEIGHT: Record<keyof typeof EFFECTS, number> = {
+  'debris-rock': 128 * PX, 'debris-dirt': 128 * PX, 'debris-coal': 128 * PX, 'smoke-puff': 128 * PX,
+  'breath-mist': 64 * PX, splash: 96 * PX, 'falling-water': 1, // a stream fills its cell
+};
+for (const [name, frames] of Object.entries(EFFECTS) as [keyof typeof EFFECTS, number][]) {
+  if (!has(name)) continue;
+  registerModel(`fx-${name}`, () => {
+    const g = new THREE.Group();
+    const h = EFFECT_HEIGHT[name];
+    const book = flipbook(name, frames, h);
+    book.position.y = -h / 2;
+    book.renderOrder = 8;
+    g.add(book);
+    g.userData.frame = book.userData.frame;
+    return g;
+  });
+}
+
+/**
+ * Shades: painted smoke figures. `userData.play(anim, frame)` picks drift,
+ * lunge or recoil; the renderer fades the whole card in and out.
+ */
+export const SHADE_ANIMS = { drift: 4, lunge: 3, recoil: 3 } as const;
+export type ShadeAnim = keyof typeof SHADE_ANIMS;
+if (has('shade-drift')) registerModel('shade', () => {
+  const g = new THREE.Group();
+  g.userData.flat = true;
+  const book = flipbook('shade-drift', SHADE_ANIMS.drift, SURVIVOR_FRAME, { lit: false });
+  book.position.y = -FEET;
+  book.renderOrder = 6;
+  book.name = 'body';
+  g.add(book);
+  g.userData.play = (anim: ShadeAnim, frame: number) => {
+    book.userData.strip(`shade-${anim}`, SHADE_ANIMS[anim]);
+    book.userData.frame(frame);
+  };
+  return g;
+});

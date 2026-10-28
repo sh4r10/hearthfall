@@ -78,6 +78,7 @@ kbd {
 #title h1 {
   margin: 0 0 0 -0.04em; font: 800 clamp(48px, 9vw, 96px) / 0.95 var(--font); letter-spacing: -0.035em; color: #fff;
 }
+#title h1 .wordmark { display: block; width: min(440px, 80vw); height: auto; margin: 0 0 4px -10px; }
 .lede { margin: 20px 0 30px; font-size: 17px; line-height: 1.6; font-weight: 500; color: rgba(238, 243, 248, 0.82); max-width: 30em; }
 .title-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .map-pick { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }

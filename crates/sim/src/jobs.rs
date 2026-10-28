@@ -166,7 +166,7 @@ impl Sim {
     }
 
     /// Whether the cell is the floor under a building, so digging it out would
-    /// leave the building floating. Such a dig waits until the building is down.
+    /// leave the building floating. Such a dig is refused.
     pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
         self.held_up_by(x, y).is_some()
     }

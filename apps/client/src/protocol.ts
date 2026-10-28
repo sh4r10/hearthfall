@@ -60,6 +60,8 @@ export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'suffoca
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
+/** Ticks for a mushroom bed out of the firelight to grow a ration; must match MUSHROOM_TICKS in crates/sim/src/lib.rs. */
+export const MUSHROOM_TICKS = 400;
 /** Light below this counts as dark; must match DARK_BELOW in crates/sim/src/lib.rs. */
 export const DARK_BELOW = 40;
 /** Oxygen (mg) below which survivors suffocate and hearths go out; must match SUFFOCATE_BELOW_MG and HEARTH_MIN_OXYGEN_MG. */
@@ -86,6 +88,23 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.OxygenDiffuser]: [2, 6],
 };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
+/** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */
+export const REACH: Record<number, number> = { [Building.Hearth]: 1, [Building.MushroomBed]: 1 };
+/**
+ * The cell of the building standing on (x, y), if (x, y) is its floor; ladders
+ * need none. Mirrors held_up_by in crates/sim/src/jobs.rs, which refuses to
+ * dig such a cell.
+ */
+export function heldUpBy(f: { width: number; buildings: Uint8Array }, x: number, y: number): number | undefined {
+  if (y === 0) return undefined;
+  for (const dx of [-1, 0, 1]) {
+    const ox = x + dx;
+    if (ox < 0 || ox >= f.width) continue;
+    const b = f.buildings[(y - 1) * f.width + ox];
+    if (b !== Building.None && b !== Building.Ladder && Math.abs(dx) <= (REACH[b] ?? 0)) return (y - 1) * f.width + ox;
+  }
+  return undefined;
+}
 export const LAMP_COST = BUILD_COST[Building.Lamp][0];
 /** Fuel a full hearth holds, and ticks each unit burns for; must match HEARTH_CAPACITY and HEARTH_BURN_TICKS. */
 export const HEARTH_CAPACITY = 40;
