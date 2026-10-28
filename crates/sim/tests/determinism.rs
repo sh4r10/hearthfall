@@ -392,24 +392,17 @@ fn buildings_never_float() {
     // Nothing but a ladder goes up in mid-air.
     sim.step(&[Command::Build { x: 12, y: 15, building: Building::Bed }]);
     assert!(sim.jobs.is_empty());
-    // Digging out a building's floor takes the building down first, and the
-    // dig waits until it is.
+    // A building's floor can't be dug out from under it, not even at the edge
+    // of a wide one: removing a building is always an explicit order.
     let lamp = sim.idx(12, 20);
     sim.buildings[lamp] = Building::Lamp;
-    sim.step(&[Command::Dig { x: 12, y: 21 }]);
-    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct && (j.x, j.y) == (12, 20)));
-    let dig = sim.jobs.iter().find(|j| j.kind == JobKind::Dig).unwrap().clone();
-    assert!(sim.holds_up_building(dig.x, dig.y));
-    // A wide building rests on the cells beside its own too: digging under the
-    // edge of a hearth takes the hearth down, and a cairn's floor stays put.
     let hearth = sim.idx(16, 20);
     sim.buildings[hearth] = Building::Hearth;
-    sim.step(&[Command::Dig { x: 17, y: 21 }]);
-    assert!(sim.jobs.iter().any(|j| j.kind == JobKind::Deconstruct && (j.x, j.y) == (16, 20)));
     let cairn = sim.idx(8, 20);
     sim.buildings[cairn] = Building::Cairn;
-    sim.step(&[Command::Dig { x: 8, y: 21 }]);
-    assert!(!sim.jobs.iter().any(|j| (j.x, j.y) == (8, 21)));
+    sim.step(&[Command::Dig { x: 12, y: 21 }, Command::Dig { x: 17, y: 21 }, Command::Dig { x: 8, y: 21 }]);
+    assert!(sim.jobs.iter().all(|j| j.kind != JobKind::Dig));
+    assert!(sim.holds_up_building(15, 21) && !sim.holds_up_building(18, 21));
     // A bed whose floor goes anyway falls and is salvaged at once.
     let bed = sim.idx(20, 20);
     sim.buildings[bed] = Building::Bed;

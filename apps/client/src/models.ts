@@ -15,6 +15,10 @@ export function registerModel(name: string, factory: ModelFactory) {
   registry.set(name, factory);
 }
 
+export function hasModel(name: string) {
+  return registry.has(name);
+}
+
 export function makeModel(name: string, variant?: number): THREE.Object3D {
   const factory = registry.get(name);
   if (!factory) throw new Error(`No model registered as "${name}"`);

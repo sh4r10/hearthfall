@@ -221,15 +221,10 @@ impl Sim {
         match command {
             Command::Dig { x, y } if self.in_bounds(x, y) => {
                 if self.elements[self.idx(x, y)].is_diggable() {
-                    // Digging out a building's floor takes the building down first.
-                    // A cairn can't be taken down, so its floor stays.
-                    match self.held_up_by(x, y) {
-                        Some(bx) if !jobs::removable(self.buildings[self.idx(bx, y - 1)]) => {}
-                        Some(bx) => {
-                            self.order_deconstruct(bx, y - 1);
-                            self.add_job(x, y, JobKind::Dig);
-                        }
-                        None => self.add_job(x, y, JobKind::Dig),
+                    // A building's floor can't be dug out from under it: the
+                    // player removes the building first, on purpose.
+                    if !self.holds_up_building(x, y) {
+                        self.add_job(x, y, JobKind::Dig);
                     }
                 }
             }
