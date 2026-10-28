@@ -386,3 +386,16 @@ registerModel('dig-marker', () => {
   for (const m of [handle, head]) m.castShadow = false;
   return g;
 });
+
+// A red crowbar over a building that is to be taken down.
+registerModel('deconstruct-marker', () => {
+  const g = new THREE.Group();
+  const red = mat('#e0574f', { emissive: '#5a1612', emissiveIntensity: 0.7 });
+  const bar = mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.55, 5), red, 0, 0, 0);
+  bar.rotation.z = -0.7;
+  const hook = mesh(new THREE.TorusGeometry(0.09, 0.035, 4, 8, Math.PI), red, 0.21, 0.24, 0);
+  hook.rotation.z = -0.7;
+  g.add(bar, hook);
+  for (const m of [bar, hook]) m.castShadow = false;
+  return g;
+});

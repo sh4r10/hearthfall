@@ -14,7 +14,7 @@ mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_AIR, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use jobs::{build_cost, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -54,13 +54,16 @@ pub const MAX_EVENTS: usize = 32;
 pub const EVENT_DEATH: u8 = 1;
 /// [`Event::kind`] for a Shade starting an attack on a survivor.
 pub const EVENT_SHADE_ATTACK: u8 = 2;
+/// [`Event::kind`] for a building falling because its floor went. Its
+/// `colonist` field holds the [`Building`] number instead.
+pub const EVENT_COLLAPSE: u8 = 3;
 
 /// Something the renderer should hear about once, such as a death.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Event {
     pub tick: u64,
     pub kind: u8,
-    /// Index of the colonist it happened to.
+    /// Index of the colonist it happened to (for [`EVENT_COLLAPSE`], the building).
     pub colonist: u32,
 }
 
@@ -70,8 +73,10 @@ pub enum Command {
     Dig { x: u32, y: u32 },
     /// Mark a cell for construction.
     Build { x: u32, y: u32, building: Building },
-    /// Remove a dig or build order.
+    /// Remove a dig, build or deconstruct order.
     Cancel { x: u32, y: u32 },
+    /// Have the building in a cell taken down.
+    Deconstruct { x: u32, y: u32 },
     SetRole { colonist: u32, role: Role },
 }
 
@@ -193,16 +198,21 @@ impl Sim {
     fn apply(&mut self, command: Command) {
         match command {
             Command::Dig { x, y } if self.in_bounds(x, y) => {
-                if self.elements[self.idx(x, y)].is_diggable() && !self.holds_up_building(x, y) {
+                if self.elements[self.idx(x, y)].is_diggable() {
+                    // Digging out a building's floor takes the building down first.
+                    if self.holds_up_building(x, y) {
+                        self.order_deconstruct(x, y - 1);
+                    }
                     self.add_job(x, y, JobKind::Dig);
                 }
             }
+            Command::Deconstruct { x, y } if self.in_bounds(x, y) => self.order_deconstruct(x, y),
             Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) => {
                 if self.room_for(x, y, building) {
                     self.add_job(x, y, JobKind::Build(building));
                 }
             }
-            Command::Cancel { x, y } => self.cancel_job(x, y),
+            Command::Cancel { x, y } if self.in_bounds(x, y) => self.cancel_job(x, y),
             Command::SetRole { colonist, role } => {
                 if let Some(c) = self.colonists.get_mut(colonist as usize) {
                     c.role = role;

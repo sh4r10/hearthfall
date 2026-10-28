@@ -57,6 +57,7 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
     ({
       dig: () => s.dig(x, y),
       cancel: () => s.cancel(x, y),
+      deconstruct: () => s.deconstruct(x, y),
       ladder: () => s.build(x, y, Building.Ladder),
       hearth: () => s.build(x, y, Building.Hearth),
       mushroom: () => s.build(x, y, Building.MushroomBed),

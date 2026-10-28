@@ -9,6 +9,8 @@ pub enum JobKind {
     Build(Building),
     /// Carry coal from the stockpile into a hearth.
     Refuel,
+    /// Take a building down and put part of its cost back in the stockpile.
+    Deconstruct,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,6 +54,20 @@ pub fn build_cost(b: Building) -> (i32, i32) {
     }
 }
 
+/// What a building gives back when taken down, as (coal, stone): half its
+/// cost, rounded up so a one-stone ladder isn't lost. A hearth also gives back
+/// the fuel still in it.
+pub fn refund(b: Building) -> (i32, i32) {
+    let (coal, stone) = build_cost(b);
+    ((coal + 1) / 2, (stone + 1) / 2)
+}
+
+/// Whether the player may order `b` taken down. Cairns are memorials the sim
+/// places, so they stay.
+pub fn removable(b: Building) -> bool {
+    !matches!(b, Building::None | Building::Cairn)
+}
+
 /// How many cells either side of its own a building's picture reaches. Two
 /// buildings on the same row must be further apart than their reaches added up,
 /// so they never draw over each other.
@@ -68,6 +84,7 @@ impl JobKind {
             JobKind::Dig => Role::Digger,
             JobKind::Build(_) => Role::Builder,
             JobKind::Refuel => Role::Firekeeper,
+            JobKind::Deconstruct => Role::Builder,
         }
     }
 
@@ -76,6 +93,7 @@ impl JobKind {
             JobKind::Dig => 0,
             JobKind::Build(_) => 1,
             JobKind::Refuel => 2,
+            JobKind::Deconstruct => 3,
         }
     }
 }
@@ -99,7 +117,21 @@ impl Sim {
         }
     }
 
-    /// Whether the job still makes sense and its materials are available.
+    /// Order the building at (x, y) taken down. A refuel errand on a hearth
+    /// gives way to it.
+    pub(crate) fn order_deconstruct(&mut self, x: u32, y: u32) {
+        if !removable(self.buildings[self.idx(x, y)]) {
+            return;
+        }
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && j.kind == JobKind::Refuel) {
+            let job = self.jobs.remove(pos);
+            if let Some(c) = job.claimed_by {
+                self.colonists[c as usize].drop_job();
+            }
+        }
+        self.add_job(x, y, JobKind::Deconstruct);
+    }
+
     /// Whether `b` can go at (x, y): open, empty, and clear of every building
     /// and planned building on the row by their combined [`reach`].
     pub fn room_for(&self, x: u32, y: u32, b: Building) -> bool {
@@ -121,10 +153,47 @@ impl Sim {
             })
     }
 
-    /// Whether the cell is the floor under a building (ladders need none), so
-    /// digging it out would leave the building floating.
+    /// Whether `b` needs solid floor under it. Ladders hang on their own, and
+    /// a cairn lies wherever its survivor fell.
+    pub fn needs_floor(b: Building) -> bool {
+        !matches!(b, Building::None | Building::Ladder | Building::Cairn)
+    }
+
+    /// Whether the cell is the floor under a building, so digging it out would
+    /// leave the building floating. Such a dig waits until the building is down.
     pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
-        y > 0 && !matches!(self.buildings[self.idx(x, y - 1)], Building::None | Building::Ladder)
+        y > 0 && Self::needs_floor(self.buildings[self.idx(x, y - 1)])
+    }
+
+    /// Whether a non-ladder building or planned building at (x, y) has lost
+    /// the solid floor it stands on.
+    fn unsupported(&self, x: u32, y: u32, b: Building) -> bool {
+        Self::needs_floor(b) && (y + 1 >= self.height || self.elements[self.idx(x, y + 1)].is_open())
+    }
+
+    /// Buildings whose floor has gone (water drained away, say) fall and break.
+    /// What they were made of is salvaged, as if taken down.
+    pub(crate) fn collapse_unsupported(&mut self) {
+        for i in 0..self.buildings.len() {
+            let b = self.buildings[i];
+            let (x, y) = (i as u32 % self.width, i as u32 / self.width);
+            if b == Building::None || !(self.unsupported(x, y, b) || !self.elements[i].is_open()) {
+                continue;
+            }
+            self.take_down(i);
+            if b != Building::Cairn {
+                self.push_event(crate::EVENT_COLLAPSE, b as u32);
+            }
+        }
+    }
+
+    /// Remove the building at cell `i` and salvage it into the stockpile.
+    fn take_down(&mut self, i: usize) {
+        let (coal, stone) = refund(self.buildings[i]);
+        self.coal += coal + self.hearth_fuel[i].max(0);
+        self.stone += stone;
+        self.hearth_fuel[i] = 0;
+        self.buildings[i] = Building::None;
     }
 
     pub(crate) fn job_doable(&self, job: &Job) -> bool {
@@ -136,6 +205,7 @@ impl Sim {
                 self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= coal && self.stone >= stone
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
+            JobKind::Deconstruct => removable(self.buildings[i]),
         }
     }
 
@@ -149,6 +219,10 @@ impl Sim {
             JobKind::Build(Building::Hearth) => 150,
             JobKind::Build(_) => 80,
             JobKind::Refuel => 30,
+            JobKind::Deconstruct => match self.buildings[self.idx(job.x, job.y)] {
+                Building::Hearth => 75,
+                _ => 40,
+            },
         }
     }
 
@@ -180,11 +254,13 @@ impl Sim {
                 self.coal -= amount;
                 self.hearth_fuel[i] += amount;
             }
+            JobKind::Deconstruct => self.take_down(i),
         }
     }
 
     /// Raise refuel errands for hungry hearths and drop jobs that no longer apply.
     pub(crate) fn maintain_jobs(&mut self) {
+        self.collapse_unsupported();
         if self.coal > 0 {
             for i in 0..self.buildings.len() {
                 if self.buildings[i] == Building::Hearth && self.hearth_fuel[i] < REFUEL_BELOW {
@@ -198,11 +274,12 @@ impl Sim {
             let job = &self.jobs[k];
             let stale = match job.kind {
                 JobKind::Dig => !self.elements[self.idx(job.x, job.y)].is_diggable(),
-                JobKind::Build(_) => {
+                JobKind::Build(b) => {
                     let i = self.idx(job.x, job.y);
-                    !self.elements[i].is_open() || self.buildings[i] != Building::None
+                    !self.elements[i].is_open() || self.buildings[i] != Building::None || self.unsupported(job.x, job.y, b)
                 }
                 JobKind::Refuel => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
+                JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
             };
             if stale {
                 let job = self.jobs.remove(k);
