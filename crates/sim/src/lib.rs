@@ -14,7 +14,7 @@ mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -112,7 +112,9 @@ impl Sim {
         let oxygen = elements.iter().map(|e| if e.is_open() { START_OXYGEN_MG } else { 0 }).collect();
         let (cx, cy) = (width / 2, height / 2);
         let roles = [Role::Digger, Role::Builder, Role::Firekeeper];
-        let colonists = roles.iter().enumerate().map(|(i, &r)| Colonist::new(cx - 3 + i as u32 * 3, cy, r)).collect();
+        // Around the hearth, not in it, and not on top of each other.
+        let spots = [cx - 3, cx + 3, cx + 5];
+        let colonists = roles.iter().zip(spots).map(|(&r, x)| Colonist::new(x, cy, r)).collect();
         let mut buildings = vec![Building::None; n];
         let mut hearth_fuel = vec![0; n];
         let start = (cy * width + cx) as usize;
@@ -186,13 +188,12 @@ impl Sim {
     fn apply(&mut self, command: Command) {
         match command {
             Command::Dig { x, y } if self.in_bounds(x, y) => {
-                if self.elements[self.idx(x, y)].is_diggable() {
+                if self.elements[self.idx(x, y)].is_diggable() && !self.holds_up_building(x, y) {
                     self.add_job(x, y, JobKind::Dig);
                 }
             }
             Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) => {
-                let i = self.idx(x, y);
-                if self.elements[i].is_open() && self.buildings[i] == Building::None {
+                if self.room_for(x, y, building) {
                     self.add_job(x, y, JobKind::Build(building));
                 }
             }

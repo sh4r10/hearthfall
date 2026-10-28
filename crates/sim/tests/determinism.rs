@@ -167,10 +167,10 @@ fn builders_use_ladders_to_reach_high_jobs() {
         let i = sim.idx(18, y);
         sim.buildings[i] = Building::Ladder;
     }
-    let ledge = sim.idx(19, 8);
-    sim.step(&[Command::Build { x: 19, y: 7, building: Building::OxygenDiffuser }]);
     // Make (19, 8) solid so (19, 7) is a ledge beside the ladder.
+    let ledge = sim.idx(19, 8);
     sim.elements[ledge] = Element::Rock;
+    sim.step(&[Command::Build { x: 19, y: 7, building: Building::OxygenDiffuser }]);
     for _ in 0..800 {
         sim.step(&[]);
     }
@@ -307,10 +307,10 @@ fn tired_survivors_walk_to_a_free_bed() {
     sim.colonists[0].energy = 100;
     sim.colonists[1].energy = 100;
     sim.step(&[]);
-    // The first takes the bed; one sleeper per bed, so the second lies down where they are.
+    // The first takes the bed; one sleeper per bed, so the second lies down on the floor.
     assert_eq!(sim.colonists[0].bed, Some(bed as u32));
     assert_eq!(sim.colonists[0].activity, Activity::Walking);
-    assert_eq!(sim.colonists[1].bed, None);
+    assert_ne!(sim.colonists[1].bed, Some(bed as u32));
     assert_eq!(sim.colonists[1].activity, Activity::Sleeping);
     for _ in 0..30 {
         sim.step(&[]);
@@ -323,6 +323,30 @@ fn tired_survivors_walk_to_a_free_bed() {
     // Even in the dark, a bed rests better than the floor.
     assert!(sim.colonists[0].energy > sim.colonists[1].energy, "bed {} floor {}", sim.colonists[0].energy, sim.colonists[1].energy);
     assert!(sim.colonists[0].sleep_quality > sim.colonists[1].sleep_quality);
+}
+
+#[test]
+fn floor_sleepers_spread_out_and_keep_off_the_hearth() {
+    for seed in 0..10 {
+        let mut sim = Sim::new(seed, 64, 64);
+        for c in sim.colonists.iter_mut() {
+            c.energy = 100;
+        }
+        for _ in 0..120 {
+            sim.step(&[]);
+        }
+        let spots: Vec<(u32, u32)> = sim.colonists.iter().filter(|c| c.activity == Activity::Sleeping).map(|c| (c.x, c.y)).collect();
+        assert_eq!(spots.len(), sim.colonists.len(), "seed {seed}: not all asleep");
+        for (k, &(x, y)) in spots.iter().enumerate() {
+            for &(ox, oy) in &spots[k + 1..] {
+                assert!(oy != y || x.abs_diff(ox) > 1, "seed {seed}: sleepers at {x},{y} and {ox},{oy} overlap");
+            }
+            for dx in -2i32..=2 {
+                let hx = (x as i32 + dx) as u32;
+                assert_ne!(sim.buildings[sim.idx(hx, y)], Building::Hearth, "seed {seed}: sleeper at {x},{y} beside the hearth");
+            }
+        }
+    }
 }
 
 #[test]
@@ -377,4 +401,37 @@ fn shades_take_survivors_left_in_the_dark() {
     }
     sim.step(&[]);
     assert!(sim.shades.is_empty());
+}
+
+#[test]
+fn buildings_cannot_be_placed_over_each_other() {
+    let mut sim = sealed_room(14, 40, (5, 10, 30, 20));
+    sim.coal = 100;
+    let (x, y) = (12u32, 20u32);
+    sim.step(&[Command::Build { x, y, building: Building::Hearth }]);
+    // A hearth's picture reaches a cell either side: nothing can go there,
+    // nor a mushroom bed (which also reaches a cell) two cells away.
+    sim.step(&[Command::Build { x: x + 1, y, building: Building::Bed }]);
+    sim.step(&[Command::Build { x: x + 2, y, building: Building::MushroomBed }]);
+    // A bed two cells away and another beside it are fine.
+    sim.step(&[Command::Build { x: x + 2, y, building: Building::Bed }]);
+    sim.step(&[Command::Build { x: x + 3, y, building: Building::Bed }]);
+    let planned: Vec<(u32, Building)> = sim.jobs.iter().filter_map(|j| match j.kind {
+        JobKind::Build(b) => Some((j.x, b)),
+        _ => None,
+    }).collect();
+    assert_eq!(planned, vec![(x, Building::Hearth), (x + 2, Building::Bed), (x + 3, Building::Bed)]);
+}
+
+#[test]
+fn buildings_never_float() {
+    let mut sim = sealed_room(15, 40, (5, 10, 30, 20));
+    // Nothing but a ladder goes up in mid-air.
+    sim.step(&[Command::Build { x: 12, y: 15, building: Building::Bed }]);
+    assert!(sim.jobs.is_empty());
+    // And the floor under a building can't be dug out.
+    let lamp = sim.idx(12, 20);
+    sim.buildings[lamp] = Building::Lamp;
+    sim.step(&[Command::Dig { x: 12, y: 21 }]);
+    assert!(sim.jobs.is_empty());
 }

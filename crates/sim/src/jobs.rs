@@ -44,6 +44,16 @@ pub fn build_cost(b: Building) -> i32 {
     }
 }
 
+/// How many cells either side of its own a building's picture reaches. Two
+/// buildings on the same row must be further apart than their reaches added up,
+/// so they never draw over each other.
+pub fn reach(b: Building) -> u32 {
+    match b {
+        Building::Hearth | Building::MushroomBed => 1,
+        _ => 0,
+    }
+}
+
 impl JobKind {
     pub fn role(self) -> Role {
         match self {
@@ -82,10 +92,37 @@ impl Sim {
     }
 
     /// Whether the job still makes sense and its materials are available.
+    /// Whether `b` can go at (x, y): open, empty, and clear of every building
+    /// and planned building on the row by their combined [`reach`].
+    pub fn room_for(&self, x: u32, y: u32, b: Building) -> bool {
+        let i = self.idx(x, y);
+        if !self.elements[i].is_open() || self.buildings[i] != Building::None {
+            return false;
+        }
+        // Everything but a ladder stands on solid floor.
+        if b != Building::Ladder && (y + 1 >= self.height || self.elements[self.idx(x, y + 1)].is_open()) {
+            return false;
+        }
+        let clear = |ox: u32, other: Building| other == Building::None || x.abs_diff(ox) > reach(b) + reach(other);
+        let w = self.width;
+        let row = (y * w) as usize;
+        (0..w).all(|ox| ox == x || clear(ox, self.buildings[row + ox as usize]))
+            && self.jobs.iter().all(|j| match j.kind {
+                JobKind::Build(other) => j.y != y || (j.x != x && clear(j.x, other)),
+                _ => true,
+            })
+    }
+
+    /// Whether the cell is the floor under a building (ladders need none), so
+    /// digging it out would leave the building floating.
+    pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
+        y > 0 && !matches!(self.buildings[self.idx(x, y - 1)], Building::None | Building::Ladder)
+    }
+
     pub(crate) fn job_doable(&self, job: &Job) -> bool {
         let i = self.idx(job.x, job.y);
         match job.kind {
-            JobKind::Dig => self.elements[i].is_diggable(),
+            JobKind::Dig => self.elements[i].is_diggable() && !self.holds_up_building(job.x, job.y),
             JobKind::Build(b) => {
                 self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= build_cost(b)
             }
