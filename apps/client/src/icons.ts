@@ -26,6 +26,9 @@ const paths: Record<string, string> = {
   shade: '<path d="M12 3c-3.5 0-6 3-6 7v6c1.5-1 2.5 1 4 0s2.5 1 4 0 2.5 1 4 0v-6c0-4-2.5-7-6-7Z"/><path d="M9.5 10h.01M14.5 10h.01"/>',
   depth: '<path d="M12 3v14"/><path d="m7 12 5 5 5-5"/><path d="M4 21h16"/>',
   stone: '<path d="M4 14 7 8l6-2 6 3 1 5-4 4H8Z"/><path d="m7 8 4 4 8-1M11 12l-3 7"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
+  priority: '<path d="M5 20v-5M12 20v-9M19 20V5"/>',
+  alert: '<path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 10v4M12 17.5h.01"/>',
   skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.2 4 3 5v3h8v-3c1.8-1 3-2.5 3-5a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.5"/><circle cx="14.5" cy="10.5" r="1.5"/>',
 };
 
