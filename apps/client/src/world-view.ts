@@ -106,8 +106,10 @@ export class WorldView {
   private height = 0;
   private terrain = new THREE.Group();
   private instanced: CellInstances[] = [];
-  private water?: THREE.InstancedMesh;
-  private waterCells: number[] = [];
+  private water?: THREE.Mesh;
+  private foam?: THREE.Mesh;
+  private waterSurface?: { ids: Int32Array; base: Float32Array };
+  private foamSurface?: { ids: Int32Array; base: Float32Array };
   private buildings = new THREE.Group();
   private markerGroup = new THREE.Group();
   private markers = new Map<string, Marker>();
@@ -364,27 +366,135 @@ export class WorldView {
     return wall;
   }
 
+  /**
+   * Water is one continuous body rather than a block per cell: a front face
+   * per cell, a lit surface on top of each column, a pale foam line along the
+   * surface, and a gentle wave on every surface vertex. It is darker with
+   * depth and shaded by the light texture like the back wall.
+   */
   private updateWater(elements: Uint8Array) {
-    const cells: number[] = [];
-    elements.forEach((e, i) => { if (e === Element.Water) cells.push(i); });
-    if (!this.water || this.water.instanceMatrix.count < cells.length) {
-      if (this.water) this.scene.remove(this.water);
-      this.water = new THREE.InstancedMesh(
-        new THREE.BoxGeometry(1, 1, 1.1),
-        new THREE.MeshStandardMaterial({ color: '#3c7896', emissive: '#0f2a3a', roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.7 }),
-        Math.max(64, cells.length * 2),
-      );
-      this.water.renderOrder = 1;
-      this.scene.add(this.water);
+    const { width: w, height: h } = this;
+    const isWater = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && elements[y * w + x] === Element.Water;
+    const pos: number[] = [], uv: number[] = [], col: number[] = [], index: number[] = [];
+    const foamPos: number[] = [], foamIndex: number[] = [];
+    const surface: number[] = []; // vertex ids that ride the waves
+    const foamSurface: number[] = [];
+    const shallow = new THREE.Color('#3f8fb0'), deep = new THREE.Color('#163f58'), c = new THREE.Color();
+    const FRONT = 0.42, BACK = -0.42;
+    // Cells are either full or empty, so a pool's surface can be a cell
+    // higher in some columns than others. Draw each connected surface at its
+    // average height instead, so pools look flat.
+    const level = new Map<number, number>();
+    {
+      const parent = new Map<number, number>();
+      const find = (i: number): number => {
+        let r = i;
+        while (parent.get(r) !== r) r = parent.get(r)!;
+        parent.set(i, r);
+        return r;
+      };
+      const isSurface = (x: number, y: number) => isWater(x, y) && !isWater(x, y - 1);
+      for (let i = 0; i < elements.length; i++) if (isSurface(i % w, Math.floor(i / w))) parent.set(i, i);
+      for (const i of parent.keys()) {
+        const x = i % w, y = Math.floor(i / w);
+        for (const ny of [y - 1, y, y + 1]) {
+          const lower = Math.max(y, ny);
+          if (isSurface(x + 1, ny) && isWater(x, lower) && isWater(x + 1, lower)) parent.set(find(ny * w + x + 1), find(i));
+        }
+      }
+      const sum = new Map<number, [number, number]>();
+      for (const i of parent.keys()) {
+        const r = find(i), acc = sum.get(r) ?? [0, 0];
+        acc[0] += Math.floor(i / w);
+        acc[1]++;
+        sum.set(r, acc);
+      }
+      for (const i of parent.keys()) {
+        const [total, n] = sum.get(find(i))!;
+        level.set(i, total / n);
+      }
     }
-    const m = new THREE.Matrix4(), p = new THREE.Vector3();
-    this.waterCells = cells;
-    cells.forEach((c, i) => {
-      this.cellToWorld(c % this.width, Math.floor(c / this.width), p);
-      this.water!.setMatrixAt(i, m.makeTranslation(p.x, p.y, 0));
-    });
-    this.water.count = cells.length;
-    this.water.instanceMatrix.needsUpdate = true;
+    const depthOf = (x: number, y: number) => {
+      let d = 0;
+      while (isWater(x, y - d - 1)) d++;
+      return d;
+    };
+    const vertex = (x: number, y: number, z: number, depth: number, wave: boolean, top = y) => {
+      y = wave ? top : y;
+      const id = pos.length / 3;
+      pos.push(x - w / 2, h / 2 - y, z);
+      uv.push(x / w, 1 - y / h);
+      c.lerpColors(shallow, deep, Math.min(depth / 6, 1));
+      col.push(c.r, c.g, c.b);
+      if (wave) surface.push(id);
+      return id;
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!isWater(x, y)) continue;
+        const top = !isWater(x, y - 1);
+        // Depth below this column's drawn surface, so the colour fades smoothly across columns.
+        const d = y - (level.get((y - depthOf(x, y)) * w + x) ?? y);
+        // Front face, from (x, y) at the top left to (x + 1, y + 1).
+        const lv = level.get(y * w + x) ?? y;
+        const a = vertex(x, y, FRONT, Math.max(d, 0), top, lv), b = vertex(x + 1, y, FRONT, Math.max(d, 0), top, lv);
+        const e = vertex(x, y + 1, FRONT, d + 1, false), f = vertex(x + 1, y + 1, FRONT, d + 1, false);
+        index.push(a, e, b, b, e, f);
+        if (!top) continue;
+        // The surface, sloping back into the cave.
+        const g = vertex(x, y, BACK, 0, true, lv), k = vertex(x + 1, y, BACK, 0, true, lv);
+        index.push(a, b, g, b, k, g);
+        // Foam line just in front of the surface edge.
+        const fid = foamPos.length / 3;
+        foamPos.push(x - w / 2, h / 2 - lv + 0.03, FRONT + 0.01, x + 1 - w / 2, h / 2 - lv + 0.03, FRONT + 0.01,
+          x - w / 2, h / 2 - lv - 0.05, FRONT + 0.01, x + 1 - w / 2, h / 2 - lv - 0.05, FRONT + 0.01);
+        foamIndex.push(fid, fid + 2, fid + 1, fid + 1, fid + 2, fid + 3);
+        foamSurface.push(fid, fid + 1, fid + 2, fid + 3);
+      }
+    }
+
+    if (!this.water) {
+      this.water = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
+        vertexColors: true, map: this.lightTex, roughness: 0.3, metalness: 0.1, emissive: '#0a2230',
+        transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false,
+      }));
+      this.water.renderOrder = 1;
+      this.foam = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
+        color: '#bfe3f2', map: this.lightTex, transparent: true, opacity: 0.7, depthWrite: false,
+      }));
+      this.foam.renderOrder = 2;
+      this.scene.add(this.water, this.foam);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.setIndex(index);
+    geo.computeVertexNormals();
+    this.water.geometry.dispose();
+    this.water.geometry = geo;
+    const foamGeo = new THREE.BufferGeometry();
+    foamGeo.setAttribute('position', new THREE.Float32BufferAttribute(foamPos, 3));
+    foamGeo.setAttribute('uv', new THREE.Float32BufferAttribute(foamPos.flatMap((v, i) => (i % 3 === 0 ? [(v + w / 2) / w] : i % 3 === 1 ? [(v + h / 2) / h] : [])), 2));
+    foamGeo.setIndex(foamIndex);
+    this.foam!.geometry.dispose();
+    this.foam!.geometry = foamGeo;
+    this.waterSurface = { ids: Int32Array.from(surface), base: Float32Array.from(surface.map((id) => pos[id * 3 + 1])) };
+    this.foamSurface = { ids: Int32Array.from(foamSurface), base: Float32Array.from(foamSurface.map((id) => foamPos[id * 3 + 1])) };
+  }
+
+  /** Small rolling waves on the water surface and its foam line. */
+  private animateWater(t: number) {
+    for (const [mesh, surf] of [[this.water, this.waterSurface], [this.foam, this.foamSurface]] as const) {
+      if (!mesh || !surf) continue;
+      const p = mesh.geometry.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < surf.ids.length; i++) {
+        const id = surf.ids[i];
+        const x = p.getX(id), z = p.getZ(id);
+        p.setY(id, surf.base[i] - 0.06 + Math.sin(t * 1.8 + x * 1.1 + z * 2) * 0.035 + Math.sin(t * 2.9 - x * 0.7) * 0.02);
+      }
+      p.needsUpdate = true;
+    }
   }
 
   // --- Buildings and markers -------------------------------------------------
@@ -488,10 +598,6 @@ export class WorldView {
         mesh.setColorAt(i, colour.setRGB(base[i * 3] * s, base[i * 3 + 1] * s, base[i * 3 + 2] * s));
       }
       mesh.instanceColor!.needsUpdate = true;
-    }
-    if (this.water) {
-      this.waterCells.forEach((c, i) => this.water!.setColorAt(i, colour.setScalar(this.shade[c])));
-      if (this.water.instanceColor) this.water.instanceColor.needsUpdate = true;
     }
     const lit = this.lightTex.image.data as Uint8Array;
     for (let y = 0; y < this.height; y++) {
@@ -658,6 +764,7 @@ export class WorldView {
         h.light.intensity = 15 * flicker * (1 - this.nightAmount * 0.35);
       }
       this.updateEmbers(dt, t);
+      this.animateWater(t);
       for (const b of this.buildings.children) {
         const bubbles = b.getObjectByName('bubbles');
         bubbles?.children.forEach((bubble, j) => { bubble.position.y = 0.7 + ((t * 0.4 + j * 0.25) % 1) * 0.5; });

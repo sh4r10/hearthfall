@@ -1,6 +1,7 @@
 //! Environment: light, water, gases and heat.
 
 use crate::{Building, Element, Sim, DARK_BELOW, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::world::water_outlet;
 
 impl Sim {
     /// Flood light outwards from every lit hearth through open cells, so
@@ -65,10 +66,7 @@ impl Sim {
                     Some((x, y + 1))
                 } else {
                     let dir = if self.rng.below(2) == 0 { -1 } else { 1 };
-                    [dir, -dir].into_iter().map(|d| (x + d, y)).find(|&(sx, sy)| {
-                        // Flow sideways towards a drop, or occasionally level out.
-                        self.open(sx, sy) && (self.open(sx, sy + 1) || self.rng.below(4) == 0)
-                    })
+                    [dir, -dir].into_iter().find_map(|d| water_outlet(&self.elements, w, h, x, y, d))
                 };
                 if let Some((tx, ty)) = target {
                     let j = self.idx(tx as u32, ty as u32);

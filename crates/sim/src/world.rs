@@ -88,5 +88,89 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
             cells.push(element);
         }
     }
+    settle_water(&mut cells, w, h, cx, cy);
     cells
+}
+
+/// Water pressure: a surface cell that cannot fall looks along the row
+/// below it, through the water there, for an open cell to flow into. This
+/// levels pools out instead of leaving them stepped. Returns that cell.
+pub(crate) fn water_outlet(cells: &[Element], w: i32, h: i32, x: i32, y: i32, dir: i32) -> Option<(i32, i32)> {
+    const REACH: i32 = 24;
+    let at = |x: i32, y: i32| (y * w + x) as usize;
+    if y + 1 >= h || (y > 0 && cells[at(x, y - 1)] == Element::Water) {
+        return None; // only the surface flows, and the bottom row has nowhere to go
+    }
+    // Step sideways onto a drop, as a single cell of water would.
+    let sx = x + dir;
+    if sx >= 0 && sx < w && cells[at(sx, y)] == Element::Floor && cells[at(sx, y + 1)] == Element::Floor {
+        return Some((sx, y));
+    }
+    let mut nx = x;
+    for _ in 0..REACH {
+        nx += dir;
+        if nx < 0 || nx >= w {
+            return None;
+        }
+        match cells[at(nx, y + 1)] {
+            Element::Water => continue,
+            Element::Floor => return Some((nx, y + 1)),
+            _ => return None,
+        }
+    }
+    None
+}
+
+/// Let generated water fall to rest, then dry out any water that could flow
+/// into the starting room. Water only moves down and sideways, so the only
+/// water that can reach the room is water at or above the room's floor level
+/// in caves that connect to it. Water in sealed caves stays as a hazard for
+/// diggers to break into.
+fn settle_water(cells: &mut [Element], w: i32, h: i32, cx: i32, cy: i32) {
+    let at = |x: i32, y: i32| (y * w + x) as usize;
+    // Pour the water down and level it out, using the same moves as the
+    // game's water (fall, or step sideways towards a drop), until it rests.
+    let open = |cells: &[Element], x: i32, y: i32| x >= 0 && y >= 0 && x < w && y < h && cells[at(x, y)] == Element::Floor;
+    for pass in 0..2000 {
+        let mut moved = false;
+        let dir = if pass % 2 == 0 { 1 } else { -1 };
+        for y in (0..h).rev() {
+            for x in 0..w {
+                if cells[at(x, y)] != Element::Water {
+                    continue;
+                }
+                let target = if open(cells, x, y + 1) {
+                    Some((x, y + 1))
+                } else {
+                    [dir, -dir].into_iter().find_map(|d| water_outlet(cells, w, h, x, y, d))
+                };
+                if let Some((tx, ty)) = target {
+                    cells.swap(at(x, y), at(tx, ty));
+                    moved = true;
+                }
+            }
+        }
+        if !moved {
+            break;
+        }
+    }
+
+    // Flood the start room's cave system through anything water can pass.
+    let mut seen = vec![false; cells.len()];
+    let mut stack = vec![(cx, cy)];
+    seen[at(cx, cy)] = true;
+    while let Some((x, y)) = stack.pop() {
+        if y <= cy && cells[at(x, y)] == Element::Water {
+            cells[at(x, y)] = Element::Floor;
+        }
+        for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+            if nx < 0 || ny < 0 || nx >= w || ny >= h || seen[at(nx, ny)] {
+                continue;
+            }
+            if matches!(cells[at(nx, ny)], Element::Floor | Element::Water) {
+                seen[at(nx, ny)] = true;
+                stack.push((nx, ny));
+            }
+        }
+    }
 }

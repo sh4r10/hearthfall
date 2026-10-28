@@ -189,3 +189,41 @@ fn tired_survivors_sleep_and_hungry_ones_eat() {
     assert!(sim.colonists[1].fullness > 5000);
     assert!(sim.colonists[0].energy > 100);
 }
+
+#[test]
+fn the_start_room_never_floods() {
+    for seed in 0..40 {
+        for (w, h) in [(160, 110), (128, 96)] {
+            let mut sim = Sim::new(seed, w, h);
+            for _ in 0..300 {
+                sim.step(&[]);
+            }
+            let (cx, cy) = (w / 2, h / 2);
+            for y in cy - 4..=cy {
+                for x in cx - 8..=cx + 8 {
+                    assert_ne!(sim.elements[sim.idx(x, y)], Element::Water, "seed {seed} ({w}x{h}) flooded at {x},{y}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn water_levels_out_into_a_flat_pool() {
+    let mut sim = sealed_room(4, 16, (0, 0, 15, 15));
+    sim.colonists.clear();
+    // A tall column of water on the left of an empty basin.
+    for y in 4..16 {
+        for x in 0..4 {
+            let i = sim.idx(x, y);
+            sim.elements[i] = Element::Water;
+        }
+    }
+    for _ in 0..200 {
+        sim.step(&[]);
+    }
+    // 48 cells over a 16 wide floor: exactly the bottom three rows.
+    let water: Vec<usize> = (0..256).filter(|&i| sim.elements[i] == Element::Water).collect();
+    assert_eq!(water.len(), 48);
+    assert!(water.iter().all(|&i| i / 16 >= 13), "pool is not level");
+}

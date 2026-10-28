@@ -21,6 +21,7 @@ You never control survivors directly. You mark jobs, and survivors claim and car
 - **Coal is fuel (built).** Dig coal seams to fill the stockpile. Firekeepers carry it to hearths that run low.
 - **Food (built: mushroom beds).** Mushroom beds only grow in the dark, which forces you to build outside the light.
 - **Air (built).** Carbon dioxide sinks and pools, and a sealed room with a fire suffocates.
+- **Water (built).** Water falls and levels out into pools. The starting cave is always dry: the map generator lets water settle and dries out any that could flow into the start room. Sealed pockets of water stay in the rock, so careless digging can flood the colony.
 - **Growth.** Refugees arrive every few days. Taking one in needs a bed, food and warmth to spare.
 - **Escalation.** Creatures are drawn by the colony's heat, light and digging noise, so the threat grows with colony size and depth.
 

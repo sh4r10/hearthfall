@@ -49,7 +49,7 @@ Reference points:
 - **Solid cells** are large, overlapping, randomly turned low-poly lumps (one per cell, scaled about 1.4), so the rock reads as one faceted mass and the grid never shows. Lumps facing open space are lighter and cast shadows, and are nudged back so floors stay clear.
 - **Details:** stalactites under ceilings, pebbles on floors, gold specks on coal, and rare glowing cave fungus.
 - **Back wall:** a gently bumped low-poly plane behind the caves, warm brown where the cave is open and near-black behind rock.
-- **Water:** translucent blue blocks, darkened by the light field like everything else.
+- **Water:** one continuous translucent body, not a block per cell: a front face, a lit surface sloping back, a pale foam line and small rolling waves, darker with depth and shaded by the light field. Each connected surface is drawn at its average height so pools look flat.
 
 ## Buildings (first set)
 
