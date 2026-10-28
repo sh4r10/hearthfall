@@ -4,14 +4,14 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, Element, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
-import { lumpGeometry, makeModel, mat } from './models';
+import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
+import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
 import { terrainMaterial } from './terrain-shader';
 import { overlayMaterial } from './overlay-shader';
 import './sprites';
-import { BED_TOP, type SurvivorAnim } from './sprites';
+import { BED_TOP, type ShadeAnim, type SurvivorAnim } from './sprites';
 
 export type Overlay = 'none' | 'warmth';
 
@@ -79,6 +79,7 @@ interface ShadeView {
   /** 0..1 fade, so they loom in and out instead of popping. */
   fade: number;
   gone: boolean;
+  facing: number;
 }
 const SHADE_SPEED = 3; // cells per second, a touch slower than a survivor
 
@@ -99,6 +100,10 @@ interface Survivor {
   climbing: boolean;
   /** Dropping with nothing underfoot. */
   falling: boolean;
+  /** Seconds left of cheering (at dawn). */
+  cheer: number;
+  /** Seconds until the next puff of breath in the cold. */
+  breath: number;
   /** Seconds since they last moved on screen, so the walking pose outlasts a brief pause between steps. */
   still: number;
   stride: number;
@@ -115,6 +120,9 @@ const WALK_SPEED = 5;
 
 interface Marker {
   object: THREE.Object3D;
+  /** Priority number and stuck "!" badges, shown when they say something. */
+  badge?: THREE.Sprite;
+  alert?: THREE.Sprite;
   flat?: boolean;
   bar: THREE.Mesh;
   seen: boolean;
@@ -143,6 +151,15 @@ export class WorldView {
   overlay: Overlay = 'none';
   /** Camera target in world units, and cells visible vertically at the play plane. */
   readonly view = { x: 0, y: 0, span: 18 };
+  /** How many times normal speed the sim runs; survivors and Shades glide to match. */
+  timeScale = 1;
+  /** Show every order's priority, not only the ones off the default (while the Priority tool is out). */
+  private showPriorities = false;
+
+  setShowPriorities(on: boolean) {
+    this.showPriorities = on;
+    if (this.latest) this.updateMarkers(this.latest); // the game may be paused, with no frame coming
+  }
 
   private composer: EffectComposer;
   private grading = new ShaderPass(GradingShader);
@@ -156,6 +173,11 @@ export class WorldView {
   private foamSurface?: { ids: Int32Array; base: Float32Array };
   private buildings = new THREE.Group();
   private markerGroup = new THREE.Group();
+  /** Painted effects: one-shot bursts, and streams of falling water keyed by cell. */
+  private effects = new THREE.Group();
+  private bursts: { obj: THREE.Object3D; age: number; frames: number; fps: number; vx: number; vy: number }[] = [];
+  private streams = new Map<number, THREE.Object3D>();
+  private wasNight = false;
   private markers = new Map<string, Marker>();
   private hearths: Hearth[] = [];
   private lamps: THREE.PointLight[] = [];
@@ -184,6 +206,12 @@ export class WorldView {
   private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false, depthTest: false });
   private removeMaterial = new THREE.MeshBasicMaterial({ color: '#ff6b6b', transparent: true, opacity: 0.2, depthWrite: false, depthTest: false });
   private readonly glowTex = glowTexture();
+  private badgeTex = new Map<string, THREE.Texture>();
+  private flash?: { mesh: THREE.Mesh; age: number };
+  private selection = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.5, -0.5, 0), new THREE.Vector3(0.5, -0.5, 0), new THREE.Vector3(0.5, 0.5, 0), new THREE.Vector3(-0.5, 0.5, 0)]),
+    new THREE.LineBasicMaterial({ color: '#7cc4ff', transparent: true, opacity: 0.9, depthTest: false }),
+  );
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -193,7 +221,10 @@ export class WorldView {
     this.renderer.toneMapping = PAINTED ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = PAINTED ? 1.05 : 1.2;
     this.scene.background = new THREE.Color('#020304');
-    this.scene.add(this.terrain, this.buildings, this.markerGroup);
+    this.scene.add(this.terrain, this.buildings, this.markerGroup, this.effects);
+    this.selection.visible = false;
+    this.selection.renderOrder = 10;
+    this.scene.add(this.selection);
 
     // A faint cold fill so shapes read in the dark; all warmth comes from fire.
     this.scene.add(new THREE.HemisphereLight('#5f7fa8', '#2a1d14', 1.8));
@@ -622,6 +653,7 @@ export class WorldView {
       this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
       const model = makeModel(name);
       model.position.set(p.x, p.y - 0.5, 0);
+      model.userData.cell = i;
       this.buildings.add(model);
       if (b === Building.Hearth) {
         model.scale.setScalar(1.3);
@@ -698,13 +730,89 @@ export class WorldView {
         this.markers.set(key, marker);
       }
       marker.seen = true;
+      const priority = frame.jobs[k + 6], stuck = frame.jobs[k + 7] !== 0;
+      const showNumber = this.showPriorities || priority !== DEFAULT_PRIORITY;
+      if (showNumber && !marker.badge) {
+        marker.badge = this.badge(String(priority));
+        this.cellToWorld(x, y, p);
+        marker.badge.position.set(p.x - 0.3, p.y + 0.3, 0.9);
+        this.markerGroup.add(marker.badge);
+      }
+      if (marker.badge) {
+        marker.badge.visible = showNumber;
+        marker.badge.material.map = this.badgeTexture(String(priority));
+      }
+      if (stuck && !marker.alert) {
+        marker.alert = this.badge('!');
+        this.cellToWorld(x, y, p);
+        marker.alert.position.set(p.x + 0.3, p.y + 0.3, 0.9);
+        this.markerGroup.add(marker.alert);
+      }
+      if (marker.alert) marker.alert.visible = stuck;
       marker.bar.visible = progress > 0;
       marker.bar.scale.x = Math.max(progress, 1) / 100;
     }
     for (const [key, marker] of this.markers) {
       if (marker.seen) continue;
       this.markerGroup.remove(marker.object, marker.bar, ...(marker.object.userData.square ? [marker.object.userData.square] : []));
+      for (const b of [marker.badge, marker.alert]) if (b) { this.markerGroup.remove(b); b.material.dispose(); }
       this.markers.delete(key);
+    }
+  }
+
+  /** A small round badge: a priority number on slate, or an amber "!" for a stuck order. */
+  private badgeTexture(label: string) {
+    let tex = this.badgeTex.get(label);
+    if (tex) return tex;
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const alert = label === '!';
+    const n = Number(label);
+    g.beginPath();
+    g.arc(32, 32, 28, 0, Math.PI * 2);
+    g.fillStyle = alert ? '#ffb454' : 'rgba(18, 26, 36, 0.9)';
+    g.fill();
+    g.lineWidth = 4;
+    g.strokeStyle = alert ? '#2a1c14' : n > DEFAULT_PRIORITY ? '#7cc4ff' : 'rgba(255, 255, 255, 0.35)';
+    g.stroke();
+    g.fillStyle = alert ? '#2a1c14' : n > DEFAULT_PRIORITY ? '#7cc4ff' : '#eef3f8';
+    g.font = '800 38px Manrope, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(label, 32, 34);
+    tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    this.badgeTex.set(label, tex);
+    return tex;
+  }
+
+  private badge(label: string) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.badgeTexture(label), depthTest: false, transparent: true, toneMapped: false }));
+    sprite.scale.setScalar(0.36);
+    sprite.renderOrder = 11;
+    return sprite;
+  }
+
+  /** Ring a cell for a moment, to show where the camera jumped to. */
+  flashCell(x: number, y: number) {
+    if (!this.flash) {
+      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.68, 40), new THREE.MeshBasicMaterial({ color: '#ffb454', transparent: true, depthTest: false, toneMapped: false }));
+      mesh.renderOrder = 12;
+      this.scene.add(mesh);
+      this.flash = { mesh, age: 0 };
+    }
+    this.cellToWorld(x, y, this.flash.mesh.position);
+    this.flash.mesh.position.z = 0.95;
+    this.flash.age = 0;
+  }
+
+  /** Outline the inspected cell, or hide the outline. */
+  select(cell?: [number, number]) {
+    this.selection.visible = !!cell;
+    if (cell) {
+      this.cellToWorld(cell[0], cell[1], this.selection.position);
+      this.selection.position.z = 0.9;
     }
   }
 
@@ -785,7 +893,7 @@ export class WorldView {
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, index: i };
+      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, cheer: 0, breath: Math.random() * 2, index: i };
       const o = i * COLONIST_STRIDE;
       this.cellToWorld(frame.colonists[o], frame.colonists[o + 1], s.pos);
       s.pos.y -= 0.5;
@@ -800,12 +908,15 @@ export class WorldView {
     this.latest = frame;
 
     if (!this.lastElements || frame.elements.some((e, i) => e !== this.lastElements![i])) {
+      if (this.lastElements) this.dugOut(this.lastElements, frame.elements);
       const solidChanged = !this.lastElements || frame.elements.some((e, i) => this.isSolid(e) !== this.isSolid(this.lastElements![i]) || (e !== this.lastElements![i] && e !== Element.Water && this.lastElements![i] !== Element.Water));
       this.lastElements = frame.elements;
       if (solidChanged) this.rebuildTerrain(frame.elements);
       else this.updateWater(frame.elements);
+      this.updateStreams(frame.elements);
     }
     if (!this.lastBuildings || frame.buildings.some((b, i) => b !== this.lastBuildings![i])) {
+      if (this.lastBuildings) this.builtOrRemoved(this.lastBuildings, frame.buildings);
       this.lastBuildings = frame.buildings;
       this.rebuildBuildings(frame.buildings);
     }
@@ -829,6 +940,88 @@ export class WorldView {
       s.warmth = warmth;
     });
     this.updateShades(frame);
+    // Everyone still standing cheers when the night is over.
+    if (this.wasNight && !frame.night) for (const s of this.survivors) s.cheer = 2.5;
+    this.wasNight = frame.night;
+  }
+
+  // --- Effects ---------------------------------------------------------------
+
+  /** Play a painted effect once at (x, y), drifting at (vx, vy) cells a second. */
+  private burst(name: string, x: number, y: number, opts: { fps?: number; vx?: number; vy?: number; flip?: boolean } = {}) {
+    if (!hasModel(`fx-${name}`) || this.bursts.length > 40) return;
+    const obj = makeModel(`fx-${name}`);
+    obj.position.set(x, y, 0.3);
+    if (opts.flip) obj.rotation.y = Math.PI;
+    this.effects.add(obj);
+    this.bursts.push({ obj, age: 0, frames: 4, fps: opts.fps ?? 10, vx: opts.vx ?? 0, vy: opts.vy ?? 0 });
+  }
+
+  private animateBursts(dt: number, t: number) {
+    this.bursts = this.bursts.filter((b) => {
+      b.age += dt;
+      const frame = b.age * b.fps;
+      if (frame >= b.frames) {
+        this.effects.remove(b.obj);
+        return false;
+      }
+      b.obj.userData.frame(frame);
+      b.obj.position.x += b.vx * dt;
+      b.obj.position.y += b.vy * dt;
+      return true;
+    });
+    for (const s of this.streams.values()) s.userData.frame(t * 10 + s.position.x);
+  }
+
+  /** A burst of rock, dirt or coal where a cell was dug out. */
+  private dugOut(before: Uint8Array, after: Uint8Array) {
+    const kind: Record<number, string> = { [Element.Rock]: 'debris-rock', [Element.Dirt]: 'debris-dirt', [Element.Coal]: 'debris-coal' };
+    const p = new THREE.Vector3();
+    after.forEach((e, i) => {
+      if (e !== Element.Floor || !kind[before[i]]) return;
+      this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
+      this.burst(kind[before[i]], p.x, p.y);
+    });
+  }
+
+  /** A puff of smoke where a building went up or came down. */
+  private builtOrRemoved(before: Uint8Array, after: Uint8Array) {
+    const p = new THREE.Vector3();
+    after.forEach((b, i) => {
+      if (b === before[i] || b === Building.Cairn) return;
+      this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
+      this.burst('smoke-puff', p.x, p.y - 0.15, { fps: 7, vy: 0.4 });
+    });
+  }
+
+  /** Falling water: a stream on every water cell with open space below, and a splash where it lands. */
+  private updateStreams(elements: Uint8Array) {
+    if (!hasModel('fx-falling-water')) return;
+    const w = this.width, wanted = new Map<number, string>();
+    for (let i = 0; i < elements.length - w; i++) {
+      if (elements[i] !== Element.Water || elements[i + w] !== Element.Floor) continue;
+      wanted.set(i, 'falling-water');
+      // Follow the drop to where it lands.
+      let j = i + w;
+      while (j + w < elements.length && elements[j + w] === Element.Floor) j += w;
+      if (hasModel('fx-splash')) wanted.set(j, 'splash');
+    }
+    for (const [i, obj] of this.streams) {
+      if (wanted.get(i) === obj.userData.kind) wanted.delete(i);
+      else {
+        this.effects.remove(obj);
+        this.streams.delete(i);
+      }
+    }
+    const p = new THREE.Vector3();
+    for (const [i, kind] of wanted) {
+      const obj = makeModel(`fx-${kind}`);
+      obj.userData.kind = kind;
+      this.cellToWorld(i % w, Math.floor(i / w), p);
+      obj.position.set(p.x, kind === 'splash' ? p.y - 0.25 : p.y, 0.25);
+      this.effects.add(obj);
+      this.streams.set(i, obj);
+    }
   }
 
   /** Match the Shade views to the sim's list; extras fade out before they are removed. */
@@ -840,7 +1033,7 @@ export class WorldView {
       if (!v) {
         const model = makeModel('shade', i);
         this.scene.add(model);
-        v = { model, target: new THREE.Vector3(), pos: new THREE.Vector3(), attacking: false, fade: 0, gone: false };
+        v = { model, target: new THREE.Vector3(), pos: new THREE.Vector3(), attacking: false, fade: 0, gone: false, facing: 1 };
         this.cellToWorld(x, y, v.pos);
         v.pos.y -= 0.5;
         this.shades[i] = v;
@@ -869,6 +1062,19 @@ export class WorldView {
         v.pos.y += (dy / dist) * step;
       }
       const { model } = v;
+      const play = model.userData.play as ((anim: ShadeAnim, frame: number) => void) | undefined;
+      if (play) {
+        // Painted Shade: drifts, lunges when attacking, shrinks from the light as it goes.
+        if (Math.abs(dx) > 0.05) v.facing = Math.sign(dx);
+        model.position.set(v.pos.x, v.pos.y + Math.sin(t * 1.7 + i) * 0.08, 0.15);
+        model.rotation.set(0, v.facing > 0 ? 0 : Math.PI, 0);
+        model.scale.setScalar(0.85 + v.fade * 0.15);
+        if (v.gone) play('recoil', Math.min((1 - v.fade) * 3, 2));
+        else if (v.attacking) play('lunge', t * 6 + i);
+        else play('drift', t * 4 + i);
+        ((model.getObjectByName('body') as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = v.fade;
+        return true;
+      }
       model.position.set(v.pos.x, v.pos.y + Math.sin(t * 1.7 + i) * 0.12, 0.15);
       model.rotation.z = Math.sin(t * 1.1 + i * 2) * 0.12;
       const shiver = v.attacking ? Math.sin(t * 30) * 0.06 : 0;
@@ -951,7 +1157,9 @@ export class WorldView {
       }
       s.sleeper.visible = true;
       s.sleeper.position.copy(s.pos);
-      if (s.sleeper.userData.flat && this.lastBuildings?.[s.cell] === Building.Bed) s.sleeper.position.y += BED_TOP; // on the mattress
+      const onBed = this.lastBuildings?.[s.cell] === Building.Bed;
+      s.sleeper.userData.bed?.(onBed); // flat on their back on a cot, curled up on the ground
+      if (s.sleeper.userData.flat && onBed) s.sleeper.position.y += BED_TOP; // on the mattress
       s.sleeper.rotation.y = s.facing > 0 ? 0 : Math.PI;
       const blanket = s.sleeper.getObjectByName('blanket');
       if (blanket) blanket.scale.y = 1 + Math.sin(t * 1.6 + s.index) * 0.05;
@@ -999,6 +1207,17 @@ export class WorldView {
     return true;
   }
 
+  /** Breath puffs in the cold, and frost creeping over someone close to freezing. */
+  private coldShows(s: Survivor, cold: number, dt: number) {
+    const frost = s.model.getObjectByName('frost') as THREE.Mesh | undefined;
+    if (frost) (frost.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.clamp((cold - 0.55) / 0.35, 0, 1) * 0.9;
+    if (cold < 0.35) return;
+    s.breath -= dt;
+    if (s.breath > 0) return;
+    s.breath = 1.6 + Math.random();
+    this.burst('breath-mist', s.pos.x + 0.22 * s.facing, s.pos.y + 1.2, { fps: 6, vx: 0.3 * s.facing, vy: 0.15, flip: s.facing < 0 });
+  }
+
   private animateFlatSurvivor(s: Survivor, dt: number, t: number, i: number) {
     const { model, parts } = s;
     const moving = this.glide(s, dt);
@@ -1010,11 +1229,14 @@ export class WorldView {
       model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
       model.scale.set(1, 1, 1);
       const cold = 1 - s.warmth / STAT_MAX;
+      s.cheer = Math.max(s.cheer - dt, 0);
+      this.coldShows(s, cold, dt);
       if (s.falling) play('idle', 0);
       else if (moving && s.climbing) play('climb', s.stride * 4);
       else if (moving) play(s.job === 2 ? 'carry' : 'walk', (s.stride / 1.2) * 6 + i);
       else if (s.activity === 2) play(s.job === 0 ? 'dig' : 'build', t * (s.job === 0 ? 6 : 7) + i);
       else if (s.activity === 4) play('eat', t * 2.5 + i);
+      else if (s.cheer > 0 && s.activity === 0) play('celebrate', t * 5 + i);
       else if (cold > 0.4) play('cold', t * 14 + i);
       else play('idle', t * 2.5 + i * 1.3);
       return;
@@ -1113,10 +1335,20 @@ export class WorldView {
       (o.material as THREE.MeshBasicMaterial).color.setRGB(s * (0.8 + warm * 0.4), s * (0.9 + warm * 0.12), s * (1.1 - warm * 0.32));
     });
     tint(this.buildings);
+    tint(this.effects);
     for (const s of this.survivors) {
       tint(s.model);
       if (s.sleeper?.visible) tint(s.sleeper);
       if (s.corpse?.visible) tint(s.corpse);
+    }
+  }
+
+  /** Mushroom beds show how far along their next ration is; in the firelight they don't grow. */
+  private growMushrooms(frame: Frame) {
+    const phase = (frame.tick % MUSHROOM_TICKS) / MUSHROOM_TICKS;
+    for (const b of this.buildings.children) {
+      const stage = b.userData.stage as ((n: number) => void) | undefined;
+      if (stage) stage(frame.firelight[b.userData.cell] >= DARK_BELOW ? 0 : Math.min(Math.floor(phase * 3), 2));
     }
   }
 
@@ -1166,8 +1398,19 @@ export class WorldView {
         bubbles?.children.forEach((bubble, j) => { bubble.position.y = 0.7 + ((t * 0.4 + j * 0.25) % 1) * 0.5; });
       }
       for (const marker of this.markers.values()) if (!marker.flat) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
-      this.survivors.forEach((s, i) => this.animateSurvivor(s, dt, t, i));
-      this.animateShades(dt, t);
+      // Faster sim, faster feet: the drawn walk keeps up with the cells.
+      const sdt = dt * Math.max(this.timeScale, 1);
+      this.survivors.forEach((s, i) => this.animateSurvivor(s, sdt, t, i));
+      this.animateBursts(dt, t);
+      this.growMushrooms(frame);
+      this.animateShades(sdt, t);
+      if (this.flash) {
+        this.flash.age += dt;
+        const k = Math.min(this.flash.age / 1.6, 1);
+        this.flash.mesh.scale.setScalar(1 + k * 0.6);
+        (this.flash.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - k;
+        this.flash.mesh.visible = k < 1;
+      }
       for (const l of this.lamps) l.intensity = 4 + Math.sin(t * 9 + l.position.x) * 0.3;
       this.lightSprites(t);
       if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;

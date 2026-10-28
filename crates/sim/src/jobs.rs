@@ -23,7 +23,14 @@ pub struct Job {
     pub created: u64,
     /// Index of the colonist working on it.
     pub claimed_by: Option<u32>,
+    /// 1 (whenever) to 9 (drop everything). Survivors take the highest
+    /// priority they can reach first, and the nearest among equals.
+    pub priority: u8,
 }
+
+/// Priority of a fresh order.
+pub const DEFAULT_PRIORITY: u8 = 5;
+pub const MAX_PRIORITY: u8 = 9;
 
 /// Coal a hearth costs to build.
 pub const HEARTH_COST: i32 = 8;
@@ -107,7 +114,8 @@ impl Sim {
         }
         let id = self.next_job_id;
         self.next_job_id += 1;
-        self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None });
+        let priority = if kind == JobKind::Refuel { self.refuel_priority[self.idx(x, y)] } else { DEFAULT_PRIORITY };
+        self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
@@ -116,6 +124,19 @@ impl Sim {
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
             }
+        }
+    }
+
+    /// Set the priority of whatever order is on (x, y), refuelling included.
+    pub(crate) fn set_priority(&mut self, x: u32, y: u32, priority: u8) {
+        let priority = priority.clamp(1, MAX_PRIORITY);
+        // A hearth keeps its refuel priority for every errand to come.
+        let i = self.idx(x, y);
+        if self.buildings[i] == Building::Hearth {
+            self.refuel_priority[i] = priority;
+        }
+        for job in self.jobs.iter_mut().filter(|j| j.x == x && j.y == y) {
+            job.priority = priority;
         }
     }
 
@@ -167,7 +188,7 @@ impl Sim {
     }
 
     /// Whether the cell is the floor under a building, so digging it out would
-    /// leave the building floating. Such a dig waits until the building is down.
+    /// leave the building floating. Such a dig is refused.
     pub fn holds_up_building(&self, x: u32, y: u32) -> bool {
         self.held_up_by(x, y).is_some()
     }
@@ -214,6 +235,7 @@ impl Sim {
         self.coal += coal + self.hearth_fuel[i].max(0);
         self.stone += stone;
         self.hearth_fuel[i] = 0;
+        self.refuel_priority[i] = DEFAULT_PRIORITY;
         self.buildings[i] = Building::None;
     }
 

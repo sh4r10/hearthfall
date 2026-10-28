@@ -37,13 +37,17 @@
     <header id="top" hidden>
       <div class="brand">Hearthfall</div>
       <div id="clock" class="panel" aria-label="Time of day"><div class="dial"><i></i></div><div class="clock-text"></div></div>
+      <div id="speed" class="panel" role="group" aria-label="Game speed"></div>
       <div id="stats" class="panel"></div>
       <div id="depth" class="panel" aria-label="Depth"></div>
+      <button id="stuck" class="panel" data-tip="" hidden></button>
     </header>
     <aside id="roster" aria-label="Survivors" hidden></aside>
     <ol id="log" aria-live="polite" hidden></ol>
     <section id="tutorial" class="panel" hidden></section>
     <div id="hint" class="panel" hidden></div>
+    <aside id="inspect" class="panel" aria-live="polite" hidden></aside>
+    <div id="priority-strip" class="panel" role="group" aria-label="Priority to paint" hidden></div>
     <nav id="toolbar" class="panel" aria-label="Orders" hidden>
       <div class="group" id="tools"></div>
       <div class="divider"></div>

@@ -7,12 +7,17 @@ use wasm_bindgen::prelude::*;
 pub struct WebSim {
     sim: sim::Sim,
     queued: Vec<Command>,
+    /// `Sim::job_blockers`, refreshed every [`BLOCKERS_EVERY`] ticks since it walks every survivor's map.
+    blockers: Vec<u8>,
+    blockers_tick: u64,
 }
+
+const BLOCKERS_EVERY: u64 = 10;
 
 /// Values per colonist in [`WebSim::colonists`].
 pub const COLONIST_STRIDE: usize = 13;
 /// Values per job in [`WebSim::jobs`].
-pub const JOB_STRIDE: usize = 6;
+pub const JOB_STRIDE: usize = 8;
 /// Values per event in [`WebSim::events`].
 pub const EVENT_STRIDE: usize = 3;
 /// Values per Shade in [`WebSim::shades`].
@@ -22,7 +27,7 @@ pub const SHADE_STRIDE: usize = 3;
 impl WebSim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u64, width: u32, height: u32) -> WebSim {
-        WebSim { sim: sim::Sim::new(seed, width, height), queued: Vec::new() }
+        WebSim { sim: sim::Sim::new(seed, width, height), queued: Vec::new(), blockers: Vec::new(), blockers_tick: u64::MAX }
     }
 
     pub fn dig(&mut self, x: u32, y: u32) {
@@ -55,6 +60,19 @@ impl WebSim {
         if let Some(role) = Role::from_u8(role) {
             self.queued.push(Command::SetRole { colonist, role });
         }
+    }
+
+    /// Set the priority (1 to 9) of the order on a cell.
+    pub fn set_priority(&mut self, x: u32, y: u32, priority: u8) {
+        self.queued.push(Command::SetPriority { x, y, priority });
+    }
+
+    /// Applies the queued commands without running a tick, so orders given
+    /// while paused show at once. Same result as leaving them for `step`.
+    pub fn apply_queued(&mut self) {
+        let commands = std::mem::take(&mut self.queued);
+        self.sim.apply_commands(&commands);
+        self.blockers_tick = u64::MAX;
     }
 
     /// Runs one tick with every command queued since the last step.
@@ -107,6 +125,11 @@ impl WebSim {
         self.sim.hearth_fuel.clone()
     }
 
+    /// Priority of each hearth's refuel errands, by cell.
+    pub fn refuel_priority(&self) -> Vec<u8> {
+        self.sim.refuel_priority.clone()
+    }
+
     pub fn light(&self) -> Vec<u8> {
         self.sim.light.clone()
     }
@@ -152,18 +175,26 @@ impl WebSim {
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
     /// 3 deconstruct), building (to build, or to take down), progress percent,
-    /// claimed (0 or 1).
-    pub fn jobs(&self) -> Vec<i32> {
+    /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
+    /// `sim::BLOCK_` value, 0 if it isn't).
+    pub fn jobs(&mut self) -> Vec<i32> {
+        let tick = self.sim.tick;
+        if self.blockers.len() != self.sim.jobs.len() || self.blockers_tick == u64::MAX || tick >= self.blockers_tick + BLOCKERS_EVERY {
+            self.blockers = self.sim.job_blockers();
+            self.blockers_tick = tick;
+        }
         let s = &self.sim;
+        let blockers = &self.blockers;
         s.jobs
             .iter()
-            .flat_map(|j| {
+            .enumerate()
+            .flat_map(|(k, j)| {
                 let building = match j.kind {
                     sim::JobKind::Build(b) => b as i32,
                     sim::JobKind::Deconstruct => s.buildings[s.idx(j.x, j.y)] as i32,
                     _ => 0,
                 };
-                [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32]
+                [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32, j.priority as i32, blockers[k] as i32]
             })
             .collect()
     }

@@ -8,13 +8,15 @@
 mod colonist;
 mod jobs;
 mod nav;
+mod orders;
 mod physics;
 mod rng;
 mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -93,6 +95,8 @@ pub enum Command {
     /// Have the building in a cell taken down.
     Deconstruct { x: u32, y: u32 },
     SetRole { colonist: u32, role: Role },
+    /// Change the priority (1 to 9) of the order on a cell.
+    SetPriority { x: u32, y: u32, priority: u8 },
 }
 
 #[derive(Clone, Debug)]
@@ -104,6 +108,8 @@ pub struct Sim {
     pub buildings: Vec<Building>,
     /// Fuel inside each hearth, indexed by cell.
     pub hearth_fuel: Vec<i32>,
+    /// Priority each hearth's refuel errands get, indexed by cell.
+    pub refuel_priority: Vec<u8>,
     pub temperature: Vec<i32>,
     /// Light level per cell, 0..=255. Derived from hearths and lamps each tick.
     pub light: Vec<u8>,
@@ -153,6 +159,7 @@ impl Sim {
             elements,
             buildings,
             hearth_fuel,
+            refuel_priority: vec![DEFAULT_PRIORITY; n],
             temperature: vec![START_TEMP_CK; n],
             light: vec![0; n],
             firelight: vec![0; n],
@@ -240,19 +247,23 @@ impl Sim {
         self.tick += 1;
     }
 
+    /// Apply commands without advancing time. `step` applies its commands
+    /// before anything moves, so this is the same as handing them to the next
+    /// step; a paused game uses it so new orders show at once.
+    pub fn apply_commands(&mut self, commands: &[Command]) {
+        for &c in commands {
+            self.apply(c);
+        }
+    }
+
     fn apply(&mut self, command: Command) {
         match command {
             Command::Dig { x, y } if self.in_bounds(x, y) => {
                 if self.elements[self.idx(x, y)].is_diggable() {
-                    // Digging out a building's floor takes the building down first.
-                    // A cairn can't be taken down, so its floor stays.
-                    match self.held_up_by(x, y) {
-                        Some(bx) if !jobs::removable(self.buildings[self.idx(bx, y - 1)]) => {}
-                        Some(bx) => {
-                            self.order_deconstruct(bx, y - 1);
-                            self.add_job(x, y, JobKind::Dig);
-                        }
-                        None => self.add_job(x, y, JobKind::Dig),
+                    // A building's floor can't be dug out from under it: the
+                    // player removes the building first, on purpose.
+                    if !self.holds_up_building(x, y) {
+                        self.add_job(x, y, JobKind::Dig);
                     }
                 }
             }
@@ -263,6 +274,7 @@ impl Sim {
                 }
             }
             Command::Cancel { x, y } if self.in_bounds(x, y) => self.cancel_job(x, y),
+            Command::SetPriority { x, y, priority } if self.in_bounds(x, y) => self.set_priority(x, y, priority),
             Command::SetRole { colonist, role } => {
                 if let Some(c) = self.colonists.get_mut(colonist as usize) {
                     c.role = role;
@@ -316,6 +328,7 @@ impl Sim {
         for i in 0..self.elements.len() {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
             eat(&self.hearth_fuel[i].to_le_bytes());
+            eat(&[self.refuel_priority[i]]);
             eat(&self.temperature[i].to_le_bytes());
             eat(&self.smoke[i].to_le_bytes());
         }
@@ -323,7 +336,7 @@ impl Sim {
             c.hash_into(&mut eat);
         }
         for j in &self.jobs {
-            for v in [j.id as i32, j.x as i32, j.y as i32, j.kind.code() as i32, j.progress, j.created as i32, j.claimed_by.map_or(-1, |c| c as i32)] {
+            for v in [j.id as i32, j.x as i32, j.y as i32, j.kind.code() as i32, j.progress, j.created as i32, j.claimed_by.map_or(-1, |c| c as i32), j.priority as i32] {
                 eat(&v.to_le_bytes());
             }
         }
