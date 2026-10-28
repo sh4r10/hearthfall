@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, Element, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, DEFAULT_PRIORITY, Element, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, type Frame } from './protocol';
 import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -115,6 +115,9 @@ const WALK_SPEED = 5;
 
 interface Marker {
   object: THREE.Object3D;
+  /** Priority number and stuck "!" badges, shown when they say something. */
+  badge?: THREE.Sprite;
+  alert?: THREE.Sprite;
   flat?: boolean;
   bar: THREE.Mesh;
   seen: boolean;
@@ -143,6 +146,15 @@ export class WorldView {
   overlay: Overlay = 'none';
   /** Camera target in world units, and cells visible vertically at the play plane. */
   readonly view = { x: 0, y: 0, span: 18 };
+  /** How many times normal speed the sim runs; survivors and Shades glide to match. */
+  timeScale = 1;
+  /** Show every order's priority, not only the ones off the default (while the Priority tool is out). */
+  private showPriorities = false;
+
+  setShowPriorities(on: boolean) {
+    this.showPriorities = on;
+    if (this.latest) this.updateMarkers(this.latest); // the game may be paused, with no frame coming
+  }
 
   private composer: EffectComposer;
   private grading = new ShaderPass(GradingShader);
@@ -185,6 +197,12 @@ export class WorldView {
   private digMaterial = new THREE.MeshBasicMaterial({ color: '#f0a04b', transparent: true, opacity: 0.22, depthWrite: false, depthTest: false });
   private removeMaterial = new THREE.MeshBasicMaterial({ color: '#ff6b6b', transparent: true, opacity: 0.2, depthWrite: false, depthTest: false });
   private readonly glowTex = glowTexture();
+  private badgeTex = new Map<string, THREE.Texture>();
+  private flash?: { mesh: THREE.Mesh; age: number };
+  private selection = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.5, -0.5, 0), new THREE.Vector3(0.5, -0.5, 0), new THREE.Vector3(0.5, 0.5, 0), new THREE.Vector3(-0.5, 0.5, 0)]),
+    new THREE.LineBasicMaterial({ color: '#7cc4ff', transparent: true, opacity: 0.9, depthTest: false }),
+  );
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -195,6 +213,9 @@ export class WorldView {
     this.renderer.toneMappingExposure = PAINTED ? 1.05 : 1.2;
     this.scene.background = new THREE.Color('#020304');
     this.scene.add(this.terrain, this.buildings, this.markerGroup);
+    this.selection.visible = false;
+    this.selection.renderOrder = 10;
+    this.scene.add(this.selection);
 
     // A faint cold fill so shapes read in the dark; all warmth comes from fire.
     this.scene.add(new THREE.HemisphereLight('#5f7fa8', '#2a1d14', 1.8));
@@ -707,13 +728,89 @@ export class WorldView {
         this.markers.set(key, marker);
       }
       marker.seen = true;
+      const priority = frame.jobs[k + 6], stuck = frame.jobs[k + 7] !== 0;
+      const showNumber = this.showPriorities || priority !== DEFAULT_PRIORITY;
+      if (showNumber && !marker.badge) {
+        marker.badge = this.badge(String(priority));
+        this.cellToWorld(x, y, p);
+        marker.badge.position.set(p.x - 0.3, p.y + 0.3, 0.9);
+        this.markerGroup.add(marker.badge);
+      }
+      if (marker.badge) {
+        marker.badge.visible = showNumber;
+        marker.badge.material.map = this.badgeTexture(String(priority));
+      }
+      if (stuck && !marker.alert) {
+        marker.alert = this.badge('!');
+        this.cellToWorld(x, y, p);
+        marker.alert.position.set(p.x + 0.3, p.y + 0.3, 0.9);
+        this.markerGroup.add(marker.alert);
+      }
+      if (marker.alert) marker.alert.visible = stuck;
       marker.bar.visible = progress > 0;
       marker.bar.scale.x = Math.max(progress, 1) / 100;
     }
     for (const [key, marker] of this.markers) {
       if (marker.seen) continue;
       this.markerGroup.remove(marker.object, marker.bar, ...(marker.object.userData.square ? [marker.object.userData.square] : []));
+      for (const b of [marker.badge, marker.alert]) if (b) { this.markerGroup.remove(b); b.material.dispose(); }
       this.markers.delete(key);
+    }
+  }
+
+  /** A small round badge: a priority number on slate, or an amber "!" for a stuck order. */
+  private badgeTexture(label: string) {
+    let tex = this.badgeTex.get(label);
+    if (tex) return tex;
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const alert = label === '!';
+    const n = Number(label);
+    g.beginPath();
+    g.arc(32, 32, 28, 0, Math.PI * 2);
+    g.fillStyle = alert ? '#ffb454' : 'rgba(18, 26, 36, 0.9)';
+    g.fill();
+    g.lineWidth = 4;
+    g.strokeStyle = alert ? '#2a1c14' : n > DEFAULT_PRIORITY ? '#7cc4ff' : 'rgba(255, 255, 255, 0.35)';
+    g.stroke();
+    g.fillStyle = alert ? '#2a1c14' : n > DEFAULT_PRIORITY ? '#7cc4ff' : '#eef3f8';
+    g.font = '800 38px Manrope, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(label, 32, 34);
+    tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    this.badgeTex.set(label, tex);
+    return tex;
+  }
+
+  private badge(label: string) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.badgeTexture(label), depthTest: false, transparent: true, toneMapped: false }));
+    sprite.scale.setScalar(0.36);
+    sprite.renderOrder = 11;
+    return sprite;
+  }
+
+  /** Ring a cell for a moment, to show where the camera jumped to. */
+  flashCell(x: number, y: number) {
+    if (!this.flash) {
+      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.68, 40), new THREE.MeshBasicMaterial({ color: '#ffb454', transparent: true, depthTest: false, toneMapped: false }));
+      mesh.renderOrder = 12;
+      this.scene.add(mesh);
+      this.flash = { mesh, age: 0 };
+    }
+    this.cellToWorld(x, y, this.flash.mesh.position);
+    this.flash.mesh.position.z = 0.95;
+    this.flash.age = 0;
+  }
+
+  /** Outline the inspected cell, or hide the outline. */
+  select(cell?: [number, number]) {
+    this.selection.visible = !!cell;
+    if (cell) {
+      this.cellToWorld(cell[0], cell[1], this.selection.position);
+      this.selection.position.z = 0.9;
     }
   }
 
@@ -1199,8 +1296,17 @@ export class WorldView {
         bubbles?.children.forEach((bubble, j) => { bubble.position.y = 0.7 + ((t * 0.4 + j * 0.25) % 1) * 0.5; });
       }
       for (const marker of this.markers.values()) if (!marker.flat) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
-      this.survivors.forEach((s, i) => this.animateSurvivor(s, dt, t, i));
-      this.animateShades(dt, t);
+      // Faster sim, faster feet: the drawn walk keeps up with the cells.
+      const sdt = dt * Math.max(this.timeScale, 1);
+      this.survivors.forEach((s, i) => this.animateSurvivor(s, sdt, t, i));
+      this.animateShades(sdt, t);
+      if (this.flash) {
+        this.flash.age += dt;
+        const k = Math.min(this.flash.age / 1.6, 1);
+        this.flash.mesh.scale.setScalar(1 + k * 0.6);
+        (this.flash.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - k;
+        this.flash.mesh.visible = k < 1;
+      }
       for (const l of this.lamps) l.intensity = 4 + Math.sin(t * 9 + l.position.x) * 0.3;
       this.lightSprites(t);
       if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;

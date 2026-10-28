@@ -1,19 +1,18 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, BLOCK_NONE, BLOCK_REASONS, BUILD_COST, Building, CAUSES, DEFAULT_PRIORITY, MAX_PRIORITY, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
 import { MAP_VIEWS, MapViews } from './map-views';
+import { PriorityBrush, SpeedControl, StuckOrders } from './management';
+import { Inspector, NEEDS, doing, needBar } from './inspect';
 import SimWorker from './sim.worker.ts?worker&inline';
 
 const TICKS_PER_SECOND = 10;
 const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
 const NAMES = ['Esk', 'Mara', 'Tobin', 'Ostra', 'Pim', 'Ruta', 'Juno', 'Wren']; // the cast in the art brief, in art order
-const NEEDS: [label: string, offset: number, icon: string][] = [
-  ['Warmth', 5, 'warmth'], ['Breath', 4, 'breath'], ['Energy', 6, 'energy'], ['Food', 7, 'food'], ['Mood', 8, 'mood'], ['Sleep', 9, 'sleep'],
-];
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
 interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number }
@@ -25,6 +24,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back where the fire has used it up. Fresh-cut rock breathes and walls slowly soak up smoke, so most shafts clear on their own.', building: Building.OxygenDiffuser },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
+  { tool: 'priority', key: 'P', label: 'Priority', icon: 'priority', tip: 'Repaint how urgent orders are, from 1 to 9. Survivors take the most urgent order they can reach first.' },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
@@ -37,6 +37,7 @@ const HINTS: Record<Tool, string> = {
   lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
   deconstruct: '<b>Remove:</b> click a building, or shift-drag a box over several. A survivor takes each down and salvages half its cost.',
+  priority: '<b>Priority:</b> pick a level with 1 to 9, then click orders or shift-drag a box over them. 9 is dropped-everything urgent, 1 is whenever. New orders start at 5.',
   cancel: '<b>Cancel:</b> click an order, or shift-drag a box over many. Right-click or right-drag cancels with any tool.',
 };
 
@@ -53,6 +54,16 @@ let worker: Worker | undefined;
 const send = (msg: ToWorker) => worker?.postMessage(msg);
 
 let tool: Tool = 'dig';
+const speed = new SpeedControl(send);
+const brush = new PriorityBrush();
+const inspector = new Inspector(NAMES, TICKS_PER_SECOND, send, () => { world.select(); hint.hidden = false; });
+function inspect(x: number, y: number) {
+  if (!last) return;
+  inspector.open(x, y, last);
+  world.select([x, y]);
+  hint.hidden = true;
+}
+const stuck = new StuckOrders(world, inspect);
 
 // --- Title screen ------------------------------------------------------------
 
@@ -101,12 +112,6 @@ function stat(name: string, label: string, value: string | number, warn = false)
   return `<div class="stat${warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}</b></div></div>`;
 }
 
-function needBar(label: string, value: number, name: string) {
-  const pct = Math.round((value / STAT_MAX) * 100);
-  const level = pct < 25 ? 'bad' : pct < 50 ? 'low' : '';
-  return `<div class="need ${level}" title="${label}: ${pct}%">${icon(name, 14)}<i><b style="width:${pct}%"></b></i></div>`;
-}
-
 function renderRoster(frame: Frame) {
   const count = frame.colonists.length / COLONIST_STRIDE;
   if (roster.childElementCount !== count) {
@@ -138,14 +143,7 @@ function renderRoster(frame: Frame) {
     const dead = activity === 'Dead';
     card.classList.toggle('dead', dead);
     card.classList.toggle('struggling', !dead && NEEDS.some(([, o]) => c[o] < STAT_MAX / 4));
-    const job = c[12] >= 0 ? JOB_NAMES[c[12]] : '';
-    card.querySelector('.doing')!.textContent =
-      dead ? (CAUSES[c[13]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
-      : activity === 'Walking' && job ? `Heading off ${job}`
-      : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
-      : activity === 'Sleeping' ? 'Asleep'
-      : activity === 'Idle' ? 'Warming up by the fire'
-      : activity;
+    card.querySelector('.doing')!.textContent = doing(c);
     card.querySelector('.needs')!.innerHTML = NEEDS.map(([label, o, name]) => needBar(label, c[o], name)).join('');
   });
 }
@@ -284,6 +282,9 @@ function onFrame(event: MessageEvent<FromWorker>) {
   renderRoster(frame);
   renderDepth(frame);
   tutorialStep(frame);
+  stuck.update(frame);
+  inspector.update(frame);
+  world.timeScale = speed.speed;
   views.update(frame, world.overlay);
   document.body.classList.toggle('night', frame.night);
   const over = $('gameover');
@@ -315,12 +316,14 @@ $('overlays').innerHTML = MAP_VIEWS.map((o) =>
 
 document.querySelectorAll<HTMLElement>('[data-tip]').forEach((el) => {
   el.addEventListener('pointerenter', () => {
-    tooltip.innerHTML = el.dataset.tip!;
+    if (!el.dataset.tip) return;
+    tooltip.innerHTML = el.dataset.tip;
     tooltip.hidden = false;
     const r = el.getBoundingClientRect();
     const t = tooltip.getBoundingClientRect();
     tooltip.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8)}px`;
-    tooltip.style.top = `${r.top - t.height - 10}px`;
+    // Above the button, or below it for the top bar.
+    tooltip.style.top = `${r.top - t.height - 10 < 8 ? r.bottom + 10 : r.top - t.height - 10}px`;
   });
   el.addEventListener('pointerleave', () => (tooltip.hidden = true));
 });
@@ -331,6 +334,8 @@ function selectButton(attr: string, value: string) {
 function setTool(t: Tool) {
   tool = t;
   selectButton('data-tool', t);
+  brush.shown(t === 'priority');
+  world.setShowPriorities(t === 'priority');
   hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}<br>Drag to look around, scroll to zoom.</div>`;
 }
 function setOverlay(o: Overlay) {
@@ -348,8 +353,12 @@ document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
+  if (speed.key(e)) return e.preventDefault();
   const key = e.key.toLowerCase();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
+  // With the Priority tool out, the number keys pick the level instead of a tool.
+  if (tool === 'priority' && /^[1-9]$/.test(key)) return brush.set(Number(key));
+  if (key === 'escape' && inspector.cell) return inspector.close();
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel', p: 'priority' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', o: 'air', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
@@ -358,13 +367,34 @@ window.addEventListener('keydown', (e) => {
 // Drag pans, wheel zooms. A click places an order. Shift-drag paints build
 // orders along the pointer, and draws a box for dig, remove and cancel.
 // Right-click and right-drag cancel with any tool.
-const BOX_TOOLS: Tool[] = ['dig', 'deconstruct', 'cancel'];
+const BOX_TOOLS: Tool[] = ['dig', 'deconstruct', 'cancel', 'priority'];
 const selectBox = $('select-box');
 let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; paint: boolean; box?: Tool } | undefined;
+/** Place an order with `t` on a cell, or for Priority, repaint the order there. */
+function orderAt(t: Tool, x: number, y: number) {
+  if (t === 'priority') send({ type: 'priority', x, y, priority: brush.level });
+  else send({ type: 'command', tool: t, x, y });
+}
 const order = (e: PointerEvent) => {
   const cell = world.pickCell(e.clientX, e.clientY);
-  if (cell) send({ type: 'command', tool, x: cell[0], y: cell[1] });
+  if (cell) orderAt(tool, cell[0], cell[1]);
 };
+/** A plain click: order if the tool does something there, else inspect what is there. */
+function click(e: PointerEvent) {
+  const cell = world.pickCell(e.clientX, e.clientY);
+  if (!cell || !last) return;
+  const [x, y] = cell;
+  const i = y * last.width + x;
+  const builds = TOOLS.find((t) => t.tool === tool)?.building !== undefined;
+  // Clicking an order already there with a tool that would only repeat it shows the order instead.
+  const ordered = tool !== 'cancel' && tool !== 'priority' && applies('cancel', last, i);
+  const orders = !ordered && (builds ? last.elements[i] === Element.Floor && last.buildings[i] === Building.None : applies(tool, last, i));
+  if (orders) {
+    orderAt(tool, x, y);
+    if (inspector.cell?.[0] === x && inspector.cell?.[1] === y) inspector.update(last);
+  } else if (inspector.has(last, x, y)) inspect(x, y);
+  else if (inspector.cell) inspector.close();
+}
 /** Whether `t` would do anything at cell i, so a box only sends orders that apply. */
 function applies(t: Tool, f: Frame, i: number) {
   const x = i % f.width, y = Math.floor(i / f.width);
@@ -373,8 +403,10 @@ function applies(t: Tool, f: Frame, i: number) {
     return e === Element.Dirt || e === Element.Rock || e === Element.Coal;
   }
   if (t === 'deconstruct') return f.buildings[i] !== Building.None && f.buildings[i] !== Building.Cairn;
+  // Priority repaints any order, and a hearth keeps its refuel priority even between refuels.
+  if (t === 'priority' && f.buildings[i] === Building.Hearth) return true;
   for (let k = 0; k < f.jobs.length; k += JOB_STRIDE) {
-    if (f.jobs[k] === x && f.jobs[k + 1] === y && f.jobs[k + 2] !== JOB_REFUEL) return true;
+    if (f.jobs[k] === x && f.jobs[k + 1] === y && (t === 'priority' || f.jobs[k + 2] !== JOB_REFUEL)) return true;
   }
   return false;
 }
@@ -393,7 +425,7 @@ function applyBox(e: PointerEvent, t: Tool) {
   const f = last;
   for (let y = Math.min(a[1], b[1]); y <= Math.max(a[1], b[1]); y++) {
     for (let x = Math.min(a[0], b[0]); x <= Math.max(a[0], b[0]); x++) {
-      if (applies(t, f, y * f.width + x)) send({ type: 'command', tool: t, x, y });
+      if (applies(t, f, y * f.width + x)) orderAt(t, x, y);
     }
   }
 }
@@ -418,7 +450,7 @@ canvas.addEventListener('pointermove', (e) => {
 });
 canvas.addEventListener('pointerup', (e) => {
   if (drag?.box) applyBox(e, drag.box);
-  else if (drag && !drag.moved && !drag.paint) order(e);
+  else if (drag && !drag.moved && !drag.paint) click(e);
   drag = undefined;
   selectBox.hidden = true;
 });

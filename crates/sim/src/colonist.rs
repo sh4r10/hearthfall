@@ -385,7 +385,7 @@ impl Sim {
         let col = &self.colonists[c];
         let role_taken = |role| self.colonists.iter().any(|o| o.alive() && o.role == role);
         let field = self.field_from(col.x, col.y);
-        let mut best: Option<(i32, usize, usize)> = None; // (score, job index, stand cell)
+        let mut best: Option<(u8, i32, usize, usize)> = None; // (priority, score, job index, stand cell)
         for (k, job) in self.jobs.iter().enumerate() {
             if job.claimed_by.is_some() || !self.job_doable(job) {
                 continue;
@@ -400,11 +400,12 @@ impl Sim {
             if job.kind.role() != col.role {
                 score += 25;
             }
-            if best.map_or(true, |(s, _, _)| score < s) {
-                best = Some((score, k, stand));
+            // Higher priority first, then the nearest.
+            if best.map_or(true, |(p, s, _, _)| job.priority > p || (job.priority == p && score < s)) {
+                best = Some((job.priority, score, k, stand));
             }
         }
-        let Some((_, k, stand)) = best else { return false };
+        let Some((_, _, k, stand)) = best else { return false };
         let path = self.path_to(&field, stand);
         let job = &mut self.jobs[k];
         job.claimed_by = Some(c as u32);

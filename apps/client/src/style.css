@@ -318,3 +318,59 @@ body.night #night-veil { opacity: 1; }
   border: 1.5px solid var(--accent); background: rgba(124, 196, 255, 0.1);
 }
 #select-box.danger { border-color: var(--danger); background: rgba(255, 107, 107, 0.1); }
+
+/* --- Colony management: speed, priority, stuck orders, inspect ------------- */
+#speed, #stuck { pointer-events: auto; }
+#speed { display: flex; align-items: center; gap: 2px; height: 46px; box-sizing: border-box; padding: 0 5px; }
+#speed button { height: 34px; min-width: 34px; padding: 0 8px; justify-content: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); }
+#speed button:hover { color: var(--ink); }
+#speed button.active { color: var(--accent); }
+body.paused #speed [data-speed="0"] { animation: pulse-tool 1.6s ease-in-out infinite; }
+/* Paused: a thin ice-blue frame round the world, like holding your breath. */
+body.paused::after { content: ''; position: fixed; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--accent-edge); }
+
+#stuck { height: 46px; box-sizing: border-box; padding: 0 14px 0 12px; gap: 10px; text-align: left; animation: pulse 1.8s ease-in-out infinite; }
+#stuck .icon { color: var(--warn); }
+#stuck div { display: flex; flex-direction: column; gap: 1px; line-height: 1.15; }
+#stuck b { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--warn); }
+#stuck span { font-size: 12px; font-weight: 600; color: var(--muted); max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tooltip kbd { margin-left: 4px; }
+@media (max-width: 900px) { #stuck span { display: none; } }
+
+#priority-strip {
+  position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 2px; padding: 5px 8px; animation: slide-up 0.2s ease-out;
+}
+#priority-strip button { width: 30px; height: 30px; padding: 0; justify-content: center; font-size: 13px; font-weight: 700; color: var(--muted); }
+#priority-strip button:hover { color: var(--ink); }
+#priority-strip button.active { color: var(--accent); }
+.strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 6px 0 2px; }
+.strip-hint { font-size: 11px; font-weight: 600; color: var(--muted); margin: 0 4px 0 8px; white-space: nowrap; }
+@media (max-width: 760px) { .strip-hint { display: none; } }
+
+#inspect {
+  position: fixed; z-index: 5; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  width: 272px; padding: 12px 14px 13px; box-sizing: border-box; animation: slide-up 0.2s ease-out;
+  font-size: 12px; color: var(--muted);
+}
+#inspect header { display: flex; align-items: center; gap: 8px; color: var(--accent); }
+#inspect header b { flex: 1; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+#inspect .close { padding: 4px; color: var(--muted); }
+#inspect .close:hover { color: var(--ink); }
+#inspect .status { margin: 3px 0 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+#inspect .needs { margin-bottom: 10px; }
+#inspect .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-top: 1px solid var(--edge); }
+#inspect .row b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+#inspect h4 { margin: 12px 0 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+#inspect .note { margin: 8px 0 0; line-height: 1.45; }
+#inspect em { font-style: normal; color: var(--warn); }
+#inspect .meter i { display: block; height: 4px; margin-bottom: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+#inspect .meter b { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s; }
+#inspect .meter.low b { background: var(--warn); }
+#inspect .meter.bad b { background: var(--danger); }
+.priority-pick { margin-top: 10px; }
+.priority-pick span { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.priority-pick div { display: flex; gap: 1px; }
+.priority-pick button { flex: 1; height: 24px; padding: 0; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+.priority-pick button.active { color: var(--accent); }
