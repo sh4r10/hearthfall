@@ -5715,7 +5715,7 @@
   {
    "id": "wordmark",
    "path": "art-codex/out/ui/wordmark.png",
-   "batch": 2,
+   "batch": 1,
    "kind": "sprite",
    "width": 1600,
    "height": 480,
@@ -5731,7 +5731,7 @@
   {
    "id": "story-1",
    "path": "art-codex/out/story/1.png",
-   "batch": 2,
+   "batch": 1,
    "kind": "illustration",
    "width": 1920,
    "height": 1080,
@@ -5747,7 +5747,7 @@
   {
    "id": "story-1-back",
    "path": "art-codex/out/story/1-back.png",
-   "batch": 2,
+   "batch": 1,
    "kind": "layer",
    "width": 1920,
    "height": 1080,
@@ -5763,7 +5763,7 @@
   {
    "id": "story-1-mid",
    "path": "art-codex/out/story/1-mid.png",
-   "batch": 2,
+   "batch": 1,
    "kind": "layer",
    "width": 1920,
    "height": 1080,
@@ -5779,7 +5779,7 @@
   {
    "id": "story-1-front",
    "path": "art-codex/out/story/1-front.png",
-   "batch": 2,
+   "batch": 1,
    "kind": "layer",
    "width": 1920,
    "height": 1080,

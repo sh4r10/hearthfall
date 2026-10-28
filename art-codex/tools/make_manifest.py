@@ -261,13 +261,13 @@ TRAIT_TEXT = {"hardy": "a shield with a snowflake", "night-owl": "an owl head", 
 for t, sym in TRAIT_TEXT.items():
     add(f"trait-{t}", f"ui/traits/{t}.png", 128, 128, batch=3, kind="icon", anchor="centre",
         prompt=f"{UI_ICON} Trait glyph for '{t.replace('-', ' ')}': {sym}.")
-add("wordmark", "ui/wordmark.png", 1600, 480, batch=2, kind="sprite", anchor="centre",
+add("wordmark", "ui/wordmark.png", 1600, 480, batch=1, kind="sprite", anchor="centre",
     prompt="The word HEARTHFALL as a painted logo: chunky hand-cut capital letters like carved, charred wood, warm ember light catching the top edges, frost on the bottom edges, a small flame rising from the crossbar of the first A. Transparent background. The text must be spelled exactly HEARTHFALL, and nothing else may be written.")
 
 # ---------------------------------------------------------------- story
 
 STORY = [
-    ("1", 2, "The last warm day: a small mountain mining town at midday, people in coats in the square, the sun pale and too small in a washed-out sky, light cold and thin. A child points up at it."),
+    ("1", 1, "The last warm day: a small mountain mining town at midday, people in coats in the square, the sun pale and too small in a washed-out sky, light cold and thin. A child points up at it."),
     ("2", 2, "Frozen fields: a farm under deep snow, a broken frozen windmill, a family in heavy coats standing in a dead field looking up at the weak sun."),
     ("3", 2, "The walk: a long line of survivors crossing deep snow at dusk, small and dark against a huge blue landscape, each carrying a lantern or a clay pot of embers, the lights making a dotted line."),
     ("4", 2, "The descent: the line entering a mine mouth in a cliff face, timber frame, warm light spilling out of the tunnel onto the snow."),

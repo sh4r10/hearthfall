@@ -3,7 +3,7 @@
 Generated from `tools/make_manifest.py`; do not edit by hand. Sizes are per frame; a strip of N frames is N times as wide.
 `compose` rows are built by `tools/compose_character.py`, not painted.
 
-## Batch 1: fix what looks bad now (111 files)
+## Batch 1: fix what looks bad now (116 files)
 
 | id | save as | size | frames | alpha | what |
 |---|---|---|---|---|---|
@@ -118,8 +118,13 @@ Generated from `tools/make_manifest.py`; do not edit by hand. Sizes are per fram
 | `fx-frost-overlay` | `art-codex/out/fx/frost-overlay.png` | 320x320 | 1 | yes | Frost crust to lay over a survivor: pale blue-white crystals in a rough body-sized patch, mostly transparent, for frost creeping over a freezing survivor. |
 | `fx-falling-water` | `art-codex/out/fx/falling-water.png` | 64x256 | 4 | yes | A thin stream of falling water, pale blue, centred, splash-free, loop. |
 | `fx-splash` | `art-codex/out/fx/splash.png` | 128x96 | 4 | yes | A small splash where a stream hits a pool. |
+| `wordmark` | `art-codex/out/ui/wordmark.png` | 1600x480 | 1 | yes | The word HEARTHFALL as a painted logo: chunky hand-cut capital letters like carved, charred wood, warm ember light catching the top edges, frost on the bottom edges, a small flame rising from the crossbar of the first A. Transparent background. The text must be spelled exactly HEARTHFALL, and nothing else may be written. |
+| `story-1` | `art-codex/out/story/1.png` | 1920x1080 | 1 | no | The last warm day: a small mountain mining town at midday, people in coats in the square, the sun pale and too small in a washed-out sky, light cold and thin. A child points up at it. |
+| `story-1-back` | `art-codex/out/story/1-back.png` | 1920x1080 | 1 | no | Parallax layer 'back' of story scene 1: sky or far background only, fully opaque. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
+| `story-1-mid` | `art-codex/out/story/1-mid.png` | 1920x1080 | 1 | yes | Parallax layer 'mid' of story scene 1: middle ground on transparent. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
+| `story-1-front` | `art-codex/out/story/1-front.png` | 1920x1080 | 1 | yes | Parallax layer 'front' of story scene 1: foreground figures and nearest objects on transparent. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
 
-## Batch 2: the full cast, the story and the interface (200 files)
+## Batch 2: the full cast, the story and the interface (195 files)
 
 | id | save as | size | frames | alpha | what |
 |---|---|---|---|---|---|
@@ -298,11 +303,6 @@ Generated from `tools/make_manifest.py`; do not edit by hand. Sizes are per fram
 | `icon-death` | `art-codex/out/ui/icons/death.png` | 128x128 | 1 | yes | Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a small cairn of stones. |
 | `icon-day` | `art-codex/out/ui/icons/day.png` | 128x128 | 1 | yes | Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a pale dim sun. |
 | `icon-night` | `art-codex/out/ui/icons/night.png` | 128x128 | 1 | yes | Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a crescent moon and stars. |
-| `wordmark` | `art-codex/out/ui/wordmark.png` | 1600x480 | 1 | yes | The word HEARTHFALL as a painted logo: chunky hand-cut capital letters like carved, charred wood, warm ember light catching the top edges, frost on the bottom edges, a small flame rising from the crossbar of the first A. Transparent background. The text must be spelled exactly HEARTHFALL, and nothing else may be written. |
-| `story-1` | `art-codex/out/story/1.png` | 1920x1080 | 1 | no | The last warm day: a small mountain mining town at midday, people in coats in the square, the sun pale and too small in a washed-out sky, light cold and thin. A child points up at it. |
-| `story-1-back` | `art-codex/out/story/1-back.png` | 1920x1080 | 1 | no | Parallax layer 'back' of story scene 1: sky or far background only, fully opaque. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
-| `story-1-mid` | `art-codex/out/story/1-mid.png` | 1920x1080 | 1 | yes | Parallax layer 'mid' of story scene 1: middle ground on transparent. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
-| `story-1-front` | `art-codex/out/story/1-front.png` | 1920x1080 | 1 | yes | Parallax layer 'front' of story scene 1: foreground figures and nearest objects on transparent. Stacked back, mid, front they must reproduce story/1.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
 | `story-2` | `art-codex/out/story/2.png` | 1920x1080 | 1 | no | Frozen fields: a farm under deep snow, a broken frozen windmill, a family in heavy coats standing in a dead field looking up at the weak sun. |
 | `story-2-back` | `art-codex/out/story/2-back.png` | 1920x1080 | 1 | no | Parallax layer 'back' of story scene 2: sky or far background only, fully opaque. Stacked back, mid, front they must reproduce story/2.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
 | `story-2-mid` | `art-codex/out/story/2-mid.png` | 1920x1080 | 1 | yes | Parallax layer 'mid' of story scene 2: middle ground on transparent. Stacked back, mid, front they must reproduce story/2.png exactly. *Painted extensions: the back layer continues behind the cut-out mid and front so there are no holes when the layers slide.* |
