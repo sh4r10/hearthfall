@@ -10,7 +10,35 @@ The survivors went underground, towards the planet's own heat, and carried fire 
 
 Other survivors are still out there, on the frozen surface or in failing shelters. Your hearths are the warmest thing for miles, and refugees follow the warmth down to you.
 
+Deep below, at the planet's warm core, is an old furnace the first refugees built and lost: the **Deep Hearth**. Relighting it would warm every cave above it.
+
 An animated, skippable version of this story plays from the main menu and on the first run.
+
+## The goal of a run
+
+Each run is a descent (plan agreed 2026-10-28). **You win by digging down to the Deep Hearth and relighting it with your colony alive.** You lose when every survivor is dead, or every fire is out at dawn. A first win takes about 20 to 30 in-game days.
+
+- **Score:** days taken, with a bonus for each survivor alive. Endless mode continues after the win, with longer nights and more creatures, and the leaderboard ranks days survived.
+- **Competitive:** same seed, same map, fastest descent wins.
+- **The HUD always shows:** depth (a gauge with the 5 layers), what the next layer needs, and time until night.
+
+### The daily rhythm
+
+1. **Day (about 70 s): prepare.** Dig, gather coal and food, build, push deeper. The light is wide and nothing attacks.
+2. **Night (about 50 s): hold the line.** The light shrinks, Shades come out of the dark for anyone outside the firelight, and cold bites harder.
+3. **Dawn: count the cost.** Fuel used, anyone lost, and a refugee may appear at the edge of the light.
+
+### The layers
+
+Every layer needs its own hearth, so going deeper splits fuel and people.
+
+| Layer | Days | Find | Danger | To go deeper |
+| --- | --- | --- | --- | --- |
+| 1 Frost Crust | 1-4 | dirt, ice, shallow coal | cold, Shades at night | a second hearth below the first |
+| 2 Coal Seams | 4-9 | hard rock, rich coal, stone; the workbench | Burrowers | stone walls and lamps |
+| 3 Flooded Galleries | 9-14 | lakes, glowing fungus caverns (best food) | Heat-leeches, flooding | a water pump |
+| 4 The Old Mine | 14-20 | ruins, scrap, iron, survivors to rescue | Shade swarms | defences, iron for the furnace |
+| 5 The Warm Deep | 20-25 | warm rock, the Deep Hearth | the Deep thing | relight the Deep Hearth: win |
 
 ## Core loop
 
@@ -22,7 +50,8 @@ You never control survivors directly. You mark jobs, and survivors claim and car
 - **Food (built: mushroom beds).** Mushroom beds only grow in the dark, which forces you to build outside the light.
 - **Air (built).** Carbon dioxide sinks and pools, and a sealed room with a fire suffocates.
 - **Water (built).** Water falls and levels out into pools. The starting cave is always dry: the map generator lets water settle and dries out any that could flow into the start room. Sealed pockets of water stay in the rock, so careless digging can flood the colony.
-- **Growth.** Refugees arrive every few days. Taking one in needs a bed, food and warmth to spare.
+- **Death (built).** A survivor who freezes or suffocates collapses, and a cairn is left where they fell. Deaths are logged with the day and cause.
+- **Growth.** Refugees arrive at dawn every few days. Taking one in needs a bed, food and warmth to spare.
 - **Escalation.** Creatures are drawn by the colony's heat, light and digging noise, so the threat grows with colony size and depth.
 
 ## Survivors
@@ -49,10 +78,20 @@ Start with dig, ladder, hearth, mushroom bed and oxygen diffuser **(built)**. Su
 
 ## Modes
 
-- **Endless (main):** grow and survive. Score is days survived multiplied by peak population, and goes on the leaderboard.
+- **Descent (main):** reach and relight the Deep Hearth. Score is days taken with a bonus per survivor alive.
+- **Endless:** keep going after the win. Score is days survived, on the leaderboard.
 - **Scenarios:** set challenges, for example "survive 10 days with 3 people and no coal seams".
 - **Co-op:** friends share one colony.
 - **Competitive:** players dig into the same world from different sides. Physics is a weapon: breach a wall to flood or gas a rival.
+
+## Milestones
+
+1. **Polish (done 2026-10-28):** smooth movement, bedrolls, collapse and cairns, painted water, hauling still to do.
+2. **Nights that bite:** Shades at night, lamps, beds, depth gauge, first-night tutorial. This is where it becomes a game.
+3. **Layers 1 to 3:** the vertical map, stone, workbench and the first research, Burrowers and Heat-leeches.
+4. **A growing colony:** refugees with skill cards, skills that grow, kitchen and medbay.
+5. **The win:** layers 4 and 5, defences, the Deep thing, the Deep Hearth, win screen.
+6. **Around the game:** story intro, save and load, Endless, leaderboard, co-op, competitive.
 
 ## Tutorial
 
