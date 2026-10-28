@@ -29,7 +29,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives stone. Digging under a building takes it down first.',
+  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. Digging under a building takes it down first.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
