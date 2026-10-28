@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { artTexture, artUrl } from './art';
-import { registerModel } from './models';
+import { bedroll, frost, registerModel } from './models';
 
 // Painted sprites from apps/client/art/ replace the code-built models of the
 // same name whenever the image exists. Each sprite is a flat card standing in
@@ -145,6 +145,63 @@ if (has('survivor-0-front', 'survivor-0-side', 'survivor-0-leg1')) {
       g.add(empty);
     }
     g.add(front, side);
+    return g;
+  });
+}
+
+/**
+ * Sleeping: the top of the front view (the hooded head) leaning back on the
+ * pillow of the code-built bedroll, tucked in behind the blanket. The mound is
+ * named 'blanket' so the renderer can scale it for breathing; the head card
+ * is named 'head'.
+ */
+const SLEEP_CROP = 0.38; // the part of the front view kept, from the top
+const SLEEP_HEAD = 0.5; // world height of the cropped head
+if (has('survivor-0-front')) {
+  registerModel('survivor-sleeping', (variant = 0) => {
+    const v = has(`survivor-${variant % 2}-front`) ? variant % 2 : 0;
+    const g = bedroll(variant);
+    g.userData.flat = true;
+    const head = card(`survivor-${v}-front`, SLEEP_HEAD / SLEEP_CROP);
+    head.name = 'head';
+    const map = texture(`survivor-${v}-front`).clone();
+    map.repeat.set(1, SLEEP_CROP);
+    map.offset.set(0, 1 - SLEEP_CROP);
+    (head.material as THREE.MeshBasicMaterial).map = map;
+    head.geometry = new THREE.PlaneGeometry(1, SLEEP_CROP).translate(0, SLEEP_CROP / 2, 0);
+    head.position.set(0.32, 0.03, -0.05);
+    head.rotation.z = -0.35;
+    head.renderOrder = 6;
+    g.add(head);
+    return g;
+  });
+}
+
+/**
+ * Dead: the side view laid flat on its back along x, head towards +x, about
+ * 1.3 long and 0.75 tall, darkened and frosted over. The card is named 'body'.
+ */
+const DEAD_LENGTH = 1.3;
+if (has('survivor-0-side')) {
+  registerModel('survivor-dead', (variant = 0) => {
+    const v = has(`survivor-${variant % 2}-side`) ? variant % 2 : 0;
+    const g = new THREE.Group();
+    g.userData.flat = true;
+    const body = card(`survivor-${v}-side`, DEAD_LENGTH);
+    body.name = 'body';
+    // Anchor the card at its bottom left (the back of the coat) so that, laid
+    // down, it rests on the ground whatever the image's width.
+    body.geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
+    body.userData.shade = 0.6;
+    body.renderOrder = 6;
+    const pivot = new THREE.Group();
+    pivot.rotation.z = Math.PI / 2; // head to -x, face up
+    pivot.position.set(DEAD_LENGTH / 2, -0.04, 0);
+    pivot.add(body);
+    const mirror = new THREE.Group();
+    mirror.scale.x = -1; // head to +x, face still up
+    mirror.add(pivot);
+    g.add(mirror, frost([[0.48, 0.57], [0.25, 0.58], [0.06, 0.49], [-0.06, 0.46], [-0.22, 0.45], [-0.44, 0.38]]));
     return g;
   });
 }
