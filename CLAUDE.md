@@ -1,0 +1,15 @@
+# Hearthfall
+
+A side-on browser colony-survival game. Read these before changing gameplay, art or UI, and keep them up to date when decisions change:
+
+- `docs/design.md`: story, mechanics, creatures, modes and tutorial. The single source of truth for what the game is.
+- `docs/art-brief.md`: art style, palette, proportions and the full asset list. All art must follow it.
+- `docs/art-prompts.md`: AI prompts for generating art. Every prompt starts with the shared style block.
+- `docs/ui-guide.md`: interface tokens, type and components. New UI reuses these tokens.
+
+## Code
+
+- `crates/sim` is the deterministic simulation. Integer maths only, all randomness through the seeded `Rng`, fixed iteration order. Anything that changes state must be included in `state_hash`. Run `cargo test -p sim` after changes.
+- `crates/sim-wasm` exposes the sim to the browser. Keep the flat array layouts in sync with `apps/client/src/protocol.ts` (`COLONIST_STRIDE`, `JOB_STRIDE`, enums).
+- `apps/client` renders with Three.js. The simulation never depends on the renderer.
+- `pnpm --filter client build:single` builds the one-file demo in `apps/client/dist/hearthfall.html`.
