@@ -830,6 +830,9 @@ export class WorldView {
       if (first) s.pos.copy(s.target);
       s.activity = activity;
       s.job = frame.colonists[o + 12];
+      // Face the work while at it.
+      const jobX = frame.colonists[o + 10];
+      if (activity === 2 && jobX >= 0 && jobX !== x) s.facing = Math.sign(jobX - x);
       s.cell = y * this.width + x;
       s.warmth = warmth;
     });

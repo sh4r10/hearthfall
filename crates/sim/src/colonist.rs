@@ -435,6 +435,25 @@ impl Sim {
             return;
         }
 
+        // Nothing left to walk, but not beside the job (a fall, or a path
+        // cleared for a need): find the way again, or let the job go.
+        let (jx, jy) = (self.jobs[k].x, self.jobs[k].y);
+        let col = &self.colonists[c];
+        if col.x.abs_diff(jx) > 1 || col.y.abs_diff(jy) > 1 {
+            let field = self.field_from(col.x, col.y);
+            match self.stand_cell(&field.dist, jx as i32, jy as i32) {
+                Some(stand) if stand != self.idx(col.x, col.y) => {
+                    let path = self.path_to(&field, stand);
+                    let col = &mut self.colonists[c];
+                    col.path = path;
+                    col.timer = 0;
+                    col.activity = Activity::Walking;
+                }
+                _ => self.release_job(c),
+            }
+            return;
+        }
+
         // Arrived: work it off. Role specialists work faster, low mood slows everyone.
         let col = &mut self.colonists[c];
         col.activity = Activity::Working;

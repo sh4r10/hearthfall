@@ -546,3 +546,24 @@ fn survivors_step_out_of_stale_air_and_a_shaft_clears() {
     let bottom = sim.idx(32, 30);
     assert!(sim.co2[bottom] < 900, "the shaft still holds {} mg of CO2", sim.co2[bottom]);
 }
+
+#[test]
+fn work_only_happens_beside_the_job() {
+    let mut sim = sealed_room(12, 64, (10, 30, 54, 30));
+    sim.colonists.truncate(1);
+    sim.colonists[0].x = 20;
+    sim.colonists[0].y = 30;
+    sim.step(&[Command::Build { x: 40, y: 30, building: Building::Bed }]);
+    for _ in 0..600 {
+        sim.step(&[]);
+        let c = &sim.colonists[0];
+        if c.activity == Activity::Working {
+            assert!(c.x.abs_diff(40) <= 1, "working on (40, 30) from ({}, {})", c.x, c.y);
+        }
+        // Knock them off course once: the path is gone but the job isn't.
+        if sim.tick == 20 {
+            sim.colonists[0].path.clear();
+        }
+    }
+    assert_eq!(sim.buildings[sim.idx(40, 30)], Building::Bed, "the bed was never built: {:?}", sim.jobs);
+}
