@@ -120,6 +120,29 @@ fn colonists_freeze_when_the_fire_dies() {
 }
 
 #[test]
+fn frozen_colonists_leave_cairns_and_death_events() {
+    let mut sim = Sim::new(6, 64, 64);
+    let centre = sim.idx(32, 32);
+    sim.hearth_fuel[centre] = 0;
+    sim.coal = 0;
+    for _ in 0..1000 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.alive_colonists(), 0);
+    for (k, c) in sim.colonists.iter().enumerate() {
+        assert_eq!(c.cause, sim::CAUSE_FROZE);
+        // The cold hearth stays put; anywhere else gets a cairn.
+        let i = sim.idx(c.x, c.y);
+        let expected = if i == centre { Building::Hearth } else { Building::Cairn };
+        assert_eq!(sim.buildings[i], expected, "colonist {k} at {},{}", c.x, c.y);
+        let deaths: Vec<_> = sim.events.iter().filter(|e| e.colonist == k as u32).collect();
+        assert_eq!(deaths.len(), 1);
+        assert_eq!(deaths[0].kind, sim::EVENT_DEATH);
+    }
+    assert_eq!(sim.events.len(), sim.colonists.len());
+}
+
+#[test]
 fn a_survivor_walks_over_and_digs_a_marked_cell() {
     // Floor along the bottom of a room, with a coal block at the far end.
     let mut sim = sealed_room(1, 40, (5, 10, 30, 20));

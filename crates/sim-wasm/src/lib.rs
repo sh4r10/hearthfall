@@ -10,9 +10,11 @@ pub struct WebSim {
 }
 
 /// Values per colonist in [`WebSim::colonists`].
-pub const COLONIST_STRIDE: usize = 13;
+pub const COLONIST_STRIDE: usize = 14;
 /// Values per job in [`WebSim::jobs`].
 pub const JOB_STRIDE: usize = 6;
+/// Values per event in [`WebSim::events`].
+pub const EVENT_STRIDE: usize = 3;
 
 #[wasm_bindgen]
 impl WebSim {
@@ -111,7 +113,8 @@ impl WebSim {
 
     /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, breath,
     /// warmth, energy, fullness, mood, sleep quality (needs out of 10000),
-    /// then the job's x and y (-1 if none) and its kind.
+    /// then the job's x and y (-1 if none) and its kind, then the cause of
+    /// death (0 alive, 1 froze, 2 suffocated).
     pub fn colonists(&self) -> Vec<i32> {
         let s = &self.sim;
         s.colonists
@@ -122,6 +125,7 @@ impl WebSim {
                     c.x as i32, c.y as i32, c.role as i32, c.activity as i32,
                     c.breath, c.warmth, c.energy, c.fullness, c.mood, c.sleep_quality,
                     job.map_or(-1, |j| j.x as i32), job.map_or(-1, |j| j.y as i32), job.map_or(-1, |j| j.kind.code() as i32),
+                    c.cause as i32,
                 ]
             })
             .collect()
@@ -141,5 +145,11 @@ impl WebSim {
                 [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32]
             })
             .collect()
+    }
+
+    /// Flat, `EVENT_STRIDE` values each, oldest first: tick, kind (1 death),
+    /// colonist index. Only the last 32 events are kept.
+    pub fn events(&self) -> Vec<i32> {
+        self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()
     }
 }

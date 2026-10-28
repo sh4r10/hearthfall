@@ -12,7 +12,7 @@ mod physics;
 mod rng;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, STAT_MAX};
+pub use colonist::{Activity, Colonist, Role, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, STAT_MAX};
 pub use jobs::{Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use world::{Building, Element, START_OXYGEN_MG, START_TEMP_CK};
@@ -39,6 +39,19 @@ pub const LIGHT_RADIUS_NIGHT: i32 = 8;
 pub const HEARTH_MIN_OXYGEN_MG: i32 = 150;
 /// Below this light level a cell counts as dark and colonists get cold.
 pub const DARK_BELOW: u8 = 40;
+/// How many recent events [`Sim::events`] keeps.
+pub const MAX_EVENTS: usize = 32;
+/// [`Event::kind`] for a survivor dying.
+pub const EVENT_DEATH: u8 = 1;
+
+/// Something the renderer should hear about once, such as a death.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Event {
+    pub tick: u64,
+    pub kind: u8,
+    /// Index of the colonist it happened to.
+    pub colonist: u32,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -71,6 +84,8 @@ pub struct Sim {
     pub food: i32,
     pub colonists: Vec<Colonist>,
     pub jobs: Vec<Job>,
+    /// The last [`MAX_EVENTS`] events, oldest first.
+    pub events: Vec<Event>,
     next_job_id: u32,
     rng: Rng,
     scratch: Vec<i32>,
@@ -105,6 +120,7 @@ impl Sim {
             food: START_FOOD,
             colonists,
             jobs: Vec::new(),
+            events: Vec::new(),
             next_job_id: 1,
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
@@ -158,7 +174,7 @@ impl Sim {
                     self.add_job(x, y, JobKind::Dig);
                 }
             }
-            Command::Build { x, y, building } if self.in_bounds(x, y) && building != Building::None => {
+            Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) => {
                 let i = self.idx(x, y);
                 if self.elements[i].is_open() && self.buildings[i] == Building::None {
                     self.add_job(x, y, JobKind::Build(building));
@@ -196,6 +212,13 @@ impl Sim {
         }
     }
 
+    pub(crate) fn push_event(&mut self, kind: u8, colonist: u32) {
+        if self.events.len() == MAX_EVENTS {
+            self.events.remove(0);
+        }
+        self.events.push(Event { tick: self.tick, kind, colonist });
+    }
+
     /// FNV-1a over the whole state. Peers compare this to detect desyncs.
     pub fn state_hash(&self) -> u64 {
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -222,6 +245,11 @@ impl Sim {
             for v in [j.id as i32, j.x as i32, j.y as i32, j.kind.code() as i32, j.progress, j.created as i32, j.claimed_by.map_or(-1, |c| c as i32)] {
                 eat(&v.to_le_bytes());
             }
+        }
+        for e in &self.events {
+            eat(&e.tick.to_le_bytes());
+            eat(&[e.kind]);
+            eat(&e.colonist.to_le_bytes());
         }
         h
     }

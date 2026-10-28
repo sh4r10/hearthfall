@@ -27,19 +27,22 @@ export interface Frame {
   colonists: Int32Array;
   /** Flat, JOB_STRIDE each; see WebSim::jobs. */
   jobs: Int32Array;
+  /** Flat, EVENT_STRIDE each (tick, kind, colonist), last 32, oldest first; see WebSim::events. */
+  events: Int32Array;
 }
 
 export type FromWorker = Frame;
 
-export const COLONIST_STRIDE = 13;
+export const COLONIST_STRIDE = 14;
 export const JOB_STRIDE = 6;
+export const EVENT_STRIDE = 3;
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
 
 // Mirror the enums in crates/sim/src/world.rs.
 export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
-export const Building = { None: 0, OxygenDiffuser: 1, Ladder: 2, Hearth: 3, MushroomBed: 4 } as const;
+export const Building = { None: 0, OxygenDiffuser: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5 } as const;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
 export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth'] as const;

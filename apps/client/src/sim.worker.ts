@@ -24,8 +24,9 @@ function sendFrame(s: WebSim) {
     temperature: s.temperature(),
     colonists: s.colonists(),
     jobs: s.jobs(),
+    events: s.events(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.hearthFuel, frame.oxygen, frame.co2, frame.temperature, frame.colonists, frame.jobs].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.hearthFuel, frame.oxygen, frame.co2, frame.temperature, frame.colonists, frame.jobs, frame.events].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });

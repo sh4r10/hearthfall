@@ -43,6 +43,9 @@ pub enum Building {
     Hearth = 3,
     /// Grows food, but only in the dark.
     MushroomBed = 4,
+    /// Marks where a survivor died. Placed by the sim, never built, and
+    /// blocks nothing.
+    Cairn = 5,
 }
 
 /// Gas masses are in milligrams per cell, temperatures in centi-kelvin.

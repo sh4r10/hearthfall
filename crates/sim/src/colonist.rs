@@ -1,10 +1,15 @@
 //! Survivors: their needs, moods and what they decide to do each tick.
 
 use crate::nav::UNREACHED;
-use crate::{Sim, BREATH_MG, SUFFOCATE_BELOW_MG};
+use crate::{Building, Sim, BREATH_MG, EVENT_DEATH, SUFFOCATE_BELOW_MG};
 
 /// Every need runs from 0 (empty) to this.
 pub const STAT_MAX: i32 = 10_000;
+
+/// Values of [`Colonist::cause`]: why they died.
+pub const CAUSE_ALIVE: u8 = 0;
+pub const CAUSE_FROZE: u8 = 1;
+pub const CAUSE_SUFFOCATED: u8 = 2;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,6 +56,8 @@ pub struct Colonist {
     /// Id of the claimed job, if any.
     pub job: Option<u32>,
     pub path: Vec<(u32, u32)>,
+    /// Why they died, one of the `CAUSE_` values. `CAUSE_ALIVE` until then.
+    pub cause: u8,
     timer: u32,
 }
 
@@ -69,6 +76,7 @@ impl Colonist {
             sleep_quality: STAT_MAX * 7 / 10,
             job: None,
             path: Vec::new(),
+            cause: CAUSE_ALIVE,
             timer: 0,
         }
     }
@@ -86,7 +94,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.timer as i32] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.cause as i32, self.timer as i32] {
             eat(&v.to_le_bytes());
         }
     }
@@ -141,6 +149,8 @@ impl Sim {
         col.mood += (comfort.clamp(0, STAT_MAX) - col.mood) / 200;
 
         if col.breath <= 0 || col.warmth <= 0 {
+            // Running out of air takes precedence if both give out at once.
+            col.cause = if col.breath <= 0 { CAUSE_SUFFOCATED } else { CAUSE_FROZE };
             col.breath = col.breath.max(0);
             col.warmth = col.warmth.max(0);
             col.activity = Activity::Dead;
@@ -150,6 +160,11 @@ impl Sim {
                     job.claimed_by = None;
                 }
             }
+            // Leave a cairn where they fell, unless something already stands there.
+            if self.buildings[i] == Building::None {
+                self.buildings[i] = Building::Cairn;
+            }
+            self.push_event(EVENT_DEATH, c as u32);
         }
     }
 
