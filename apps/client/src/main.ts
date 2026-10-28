@@ -1,5 +1,6 @@
 import { WorldRenderer, type Overlay } from './renderer';
 import type { FromWorker, ToWorker } from './protocol';
+import SimWorker from './sim.worker.ts?worker&inline';
 
 const TICKS_PER_SECOND = 10;
 const MAP_SIZE = 160;
@@ -9,7 +10,8 @@ type Tool = 'dig' | 'diffuser';
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const stats = document.getElementById('stats')!;
 const world = new WorldRenderer(canvas);
-const worker = new Worker(new URL('./sim.worker.ts', import.meta.url), { type: 'module' });
+const worker = new SimWorker();
+worker.onerror = (e) => console.error('sim worker failed:', e.message);
 const send = (msg: ToWorker) => worker.postMessage(msg);
 
 let tool: Tool = 'dig';

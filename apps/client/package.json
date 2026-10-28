@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "build:single": "vite build && node scripts/single-file.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

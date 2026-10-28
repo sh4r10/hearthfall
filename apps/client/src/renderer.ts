@@ -101,6 +101,7 @@ export class WorldRenderer {
     const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, this.camera);
+    if (!this.ground) return undefined;
     const targets: THREE.Object3D[] = [this.ground];
     if (this.walls) targets.push(this.walls);
     const hit = ray.intersectObjects(targets, false)[0];
@@ -286,11 +287,11 @@ export class WorldRenderer {
 
     // Day/night: the sun swings overhead and drops to near-black at night,
     // leaving the campfire as the main light, Don't Starve style.
-    const phase = (elapsed % DAY_SECONDS) / DAY_SECONDS;
+    const phase = ((elapsed + DAY_SECONDS * 0.08) % DAY_SECONDS) / DAY_SECONDS; // start in the morning
     const daylight = Math.max(0, Math.sin(phase * Math.PI * 2));
     this.sun.position.set(Math.cos(phase * Math.PI * 2) * 40, 10 + daylight * 40, 20);
-    this.sun.intensity = 0.05 + daylight * 2.4;
-    this.ambient.intensity = 0.08 + daylight * 0.6;
+    this.sun.intensity = 0.35 + daylight * 2.1; // moonlight keeps nights readable
+    this.ambient.intensity = 0.3 + daylight * 0.4;
     this.renderer.toneMappingExposure = 0.8 + daylight * 0.4;
     this.fire.intensity = 28 + Math.sin(elapsed * 13) * 3 + Math.sin(elapsed * 7.3) * 4;
 

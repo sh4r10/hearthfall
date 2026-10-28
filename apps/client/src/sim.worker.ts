@@ -1,5 +1,6 @@
 // Runs the Rust/WebAssembly simulation at a fixed tick rate, off the main thread.
 import init, { WebSim } from '../../../crates/sim-wasm/pkg/sim_wasm.js';
+import wasmUrl from '../../../crates/sim-wasm/pkg/sim_wasm_bg.wasm?url';
 import type { Frame, ToWorker } from './protocol';
 
 let sim: WebSim | undefined;
@@ -27,7 +28,9 @@ function sendFrame(s: WebSim) {
 self.onmessage = async (event: MessageEvent<ToWorker>) => {
   const msg = event.data;
   if (msg.type === 'init') {
-    await init();
+    // The wasm is inlined as a data URL so the game can ship as one file.
+    const bytes = Uint8Array.from(atob(wasmUrl.split(',')[1]), (c) => c.charCodeAt(0));
+    await init({ module_or_path: bytes });
     const s = new WebSim(BigInt(msg.seed), msg.width, msg.height);
     sim = s;
     sendFrame(s);
