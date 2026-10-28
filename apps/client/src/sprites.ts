@@ -98,6 +98,24 @@ if (has('diffuser')) registerModel('diffuser', () => {
   return g;
 });
 
+if (has('bed')) registerModel('bed', () => {
+  const g = new THREE.Group();
+  const m = card('bed', 0.43); // about 1.3 wide
+  m.position.y = -0.02;
+  m.renderOrder = 3;
+  g.add(m);
+  return g;
+});
+
+if (has('lamp')) registerModel('lamp', () => {
+  const g = new THREE.Group();
+  const m = card('lamp', 1.2 / 1.3); // the renderer draws lamps 1.3 times larger
+  m.position.y = -0.02;
+  m.renderOrder = 3;
+  g.add(m);
+  return g;
+});
+
 if (has('cairn')) registerModel('cairn', () => {
   const g = new THREE.Group();
   const m = card('cairn', 160 * PX);

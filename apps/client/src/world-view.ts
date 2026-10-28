@@ -89,6 +89,8 @@ interface Survivor {
   pos: THREE.Vector3;
   facing: number;
   activity: number;
+  /** The grid cell they stand in. */
+  cell: number;
   /** The kind of job they hold (index into JOB_NAMES), or -1. */
   job: number;
   warmth: number;
@@ -288,7 +290,7 @@ export class WorldView {
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i });
+      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, index: i });
     }
 
     const first = frame.buildings.indexOf(Building.Hearth);
@@ -797,6 +799,7 @@ export class WorldView {
       if (first) s.pos.copy(s.target);
       s.activity = activity;
       s.job = frame.colonists[o + 12];
+      s.cell = y * this.width + x;
       s.warmth = warmth;
     });
     this.updateShades(frame);
@@ -908,6 +911,7 @@ export class WorldView {
       }
       s.sleeper.visible = true;
       s.sleeper.position.copy(s.pos);
+      if (s.sleeper.userData.flat && this.lastBuildings?.[s.cell] === Building.Bed) s.sleeper.position.y += 0.3; // on the cot, not under it
       s.sleeper.rotation.y = s.facing > 0 ? 0 : Math.PI;
       const blanket = s.sleeper.getObjectByName('blanket');
       if (blanket) blanket.scale.y = 1 + Math.sin(t * 1.6 + s.index) * 0.05;

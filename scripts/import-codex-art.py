@@ -35,6 +35,9 @@ COPY = {
     "diffuser": "buildings/diffuser-on.png",
     "diffuser-off": "buildings/diffuser-off.png",
     "cairn": "buildings/grave.png",
+    "bed": "buildings/bed-empty.png",
+    "lamp": "buildings/lamp-on.png",
+    "lamp-off": "buildings/lamp-off.png",
 }
 # Strips of FRAME x FRAME cells, scaled to SHOWN.
 ANIMS = ["idle", "walk", "dig", "build", "carry", "climb", "celebrate", "cold", "sleep"]
