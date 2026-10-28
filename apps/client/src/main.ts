@@ -162,8 +162,8 @@ function onFrame(event: MessageEvent<FromWorker>) {
 // --- Tools ---------------------------------------------------------------------
 
 $('tools').innerHTML = TOOLS.map((t) =>
-  `<button class="tool${t.cost ? ' cost' : ''}" data-tool="${t.tool}" ${t.cost ? `data-cost="${t.cost}"` : ''} data-tip="<b>${t.label}</b>${t.tip}">
-    <kbd>${t.key}</kbd>${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
+  `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
+    <kbd>${t.key}</kbd>${t.cost ? `<span class="cost" title="Costs ${t.cost} coal">${icon('coal', 10)}${t.cost}</span>` : ''}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
 $('overlays').innerHTML = OVERLAYS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}">
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
