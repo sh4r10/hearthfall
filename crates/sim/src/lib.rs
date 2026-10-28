@@ -238,10 +238,15 @@ impl Sim {
             Command::Dig { x, y } if self.in_bounds(x, y) => {
                 if self.elements[self.idx(x, y)].is_diggable() {
                     // Digging out a building's floor takes the building down first.
-                    if self.holds_up_building(x, y) {
-                        self.order_deconstruct(x, y - 1);
+                    // A cairn can't be taken down, so its floor stays.
+                    match self.held_up_by(x, y) {
+                        Some(bx) if !jobs::removable(self.buildings[self.idx(bx, y - 1)]) => {}
+                        Some(bx) => {
+                            self.order_deconstruct(bx, y - 1);
+                            self.add_job(x, y, JobKind::Dig);
+                        }
+                        None => self.add_job(x, y, JobKind::Dig),
                     }
-                    self.add_job(x, y, JobKind::Dig);
                 }
             }
             Command::Deconstruct { x, y } if self.in_bounds(x, y) => self.order_deconstruct(x, y),
