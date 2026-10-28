@@ -71,12 +71,25 @@ interface Hearth {
 interface Survivor {
   model: THREE.Object3D;
   parts: Record<'legL' | 'legR' | 'armF' | 'armB' | 'head' | 'tool', THREE.Object3D>;
-  from: THREE.Vector3;
-  to: THREE.Vector3;
+  /** Where the sim says they are, and where they are drawn: the drawn position chases the sim at a steady walking pace. */
+  target: THREE.Vector3;
+  pos: THREE.Vector3;
   facing: number;
   activity: number;
   warmth: number;
+  /** Seconds since they last moved on screen, so the walking pose outlasts a brief pause between steps. */
+  still: number;
+  stride: number;
+  /** Stand-ins shown instead of the model while asleep or dead, made on first use. */
+  sleeper?: THREE.Object3D;
+  corpse?: THREE.Object3D;
+  /** Seconds since they died, for the collapse and the fade. */
+  dead: number;
+  index: number;
 }
+
+/** Cells per second the sim moves a walking survivor (one cell every STEP_TICKS ticks at 10 ticks/s). */
+const WALK_SPEED = 5;
 
 interface Marker {
   object: THREE.Object3D;
@@ -90,6 +103,7 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.OxygenDiffuser]: 'diffuser',
   [Building.MushroomBed]: 'mushroom-bed',
   [Building.Hearth]: 'hearth',
+  [Building.Cairn]: 'cairn',
 };
 
 const ELEMENT_COLOURS: Record<number, string[]> = {
@@ -127,13 +141,12 @@ export class WorldView {
   private shadeTarget!: Float32Array;
   private lightTex!: THREE.DataTexture;
   private maskTex?: THREE.DataTexture;
+  private waterTex?: THREE.DataTexture;
   private terrainShader?: THREE.ShaderMaterial;
   private gasTex!: THREE.DataTexture;
   private latest?: Frame;
   private lastElements?: Uint8Array;
   private lastBuildings?: Uint8Array;
-  private frameTime = 0;
-  private frameInterval = 100;
   private clock = new THREE.Clock();
   private nightAmount = 0;
   private raycaster = new THREE.Raycaster();
@@ -220,7 +233,9 @@ export class WorldView {
     this.gasTex = this.gridTexture();
     if (PAINTED) {
       this.maskTex = this.gridTexture();
-      this.terrainShader = terrainMaterial(this.maskTex, this.lightTex, this.width, this.height);
+      this.waterTex = this.gridTexture();
+      this.waterTex.magFilter = this.waterTex.minFilter = THREE.NearestFilter;
+      this.terrainShader = terrainMaterial(this.maskTex, this.lightTex, this.waterTex, this.width, this.height);
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), this.terrainShader);
       ground.position.z = -0.1; // just behind the sprites standing in the play plane
       this.scene.add(ground);
@@ -252,7 +267,7 @@ export class WorldView {
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      this.survivors.push({ model, parts, from: new THREE.Vector3(), to: new THREE.Vector3(), facing: 1, activity: 0, warmth: STAT_MAX });
+      this.survivors.push({ model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, warmth: STAT_MAX, still: 10, stride: 0, dead: 0, index: i });
     }
 
     const first = frame.buildings.indexOf(Building.Hearth);
@@ -404,7 +419,81 @@ export class WorldView {
    * surface, and a gentle wave on every surface vertex. It is darker with
    * depth and shaded by the light texture like the back wall.
    */
+  /**
+   * Cells are either full or empty, so a pool's surface can be a cell higher
+   * in some columns than others. Returns, for every surface cell, the average
+   * height of its connected surface, so pools can be drawn flat.
+   */
+  private surfaceLevels(elements: Uint8Array) {
+    const { width: w, height: h } = this;
+    const isWater = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && elements[y * w + x] === Element.Water;
+    const level = new Map<number, number>();
+    const parent = new Map<number, number>();
+    const find = (i: number): number => {
+      let r = i;
+      while (parent.get(r) !== r) r = parent.get(r)!;
+      parent.set(i, r);
+      return r;
+    };
+    const isSurface = (x: number, y: number) => isWater(x, y) && !isWater(x, y - 1);
+    for (let i = 0; i < elements.length; i++) if (isSurface(i % w, Math.floor(i / w))) parent.set(i, i);
+    for (const i of parent.keys()) {
+      const x = i % w, y = Math.floor(i / w);
+      for (const ny of [y - 1, y, y + 1]) {
+        const lower = Math.max(y, ny);
+        if (isSurface(x + 1, ny) && isWater(x, lower) && isWater(x + 1, lower)) parent.set(find(ny * w + x + 1), find(i));
+      }
+    }
+    const sum = new Map<number, [number, number]>();
+    for (const i of parent.keys()) {
+      const r = find(i), acc = sum.get(r) ?? [0, 0];
+      acc[0] += Math.floor(i / w);
+      acc[1]++;
+      sum.set(r, acc);
+    }
+    for (const i of parent.keys()) {
+      const [total, n] = sum.get(find(i))!;
+      level.set(i, total / n);
+    }
+    return level;
+  }
+
+  /**
+   * Painted water lives in the terrain shader: a nearest-filtered texture
+   * holding, per cell, how full it is (from the bottom) and how deep it sits
+   * below the pool's surface.
+   */
+  private paintWater(elements: Uint8Array) {
+    const { width: w, height: h } = this;
+    const data = this.waterTex!.image.data as Uint8Array;
+    data.fill(0);
+    const level = this.surfaceLevels(elements);
+    const set = (x: number, y: number, fill: number, depth: number, top: boolean) => {
+      if (y < 0) return;
+      const i = this.texIndex(x, y);
+      data[i] = Math.max(data[i], Math.round(Math.min(Math.max(fill, 0), 1) * 255));
+      data[i + 1] = Math.round(Math.min(Math.max(depth, 0) / 8, 1) * 255);
+      data[i + 2] = top ? 255 : 0;
+    };
+    for (let x = 0; x < w; x++) {
+      let lv = -1;
+      for (let y = 0; y < h; y++) {
+        const c = y * w + x;
+        if (elements[c] !== Element.Water) { lv = -1; continue; }
+        if (lv < 0) {
+          lv = level.get(c) ?? y;
+          // The surface sits at the pool's average level, which may be above this cell.
+          const above = lv < y && elements[c - w] === Element.Floor;
+          set(x, y, y + 1 - lv, 0, !above);
+          if (above) set(x, y - 1, y - lv, 0, true);
+        } else set(x, y, 1, y - lv, false);
+      }
+    }
+    this.waterTex!.needsUpdate = true;
+  }
+
   private updateWater(elements: Uint8Array) {
+    if (this.waterTex) return this.paintWater(elements);
     const { width: w, height: h } = this;
     const isWater = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && elements[y * w + x] === Element.Water;
     const pos: number[] = [], uv: number[] = [], col: number[] = [], index: number[] = [];
@@ -413,39 +502,7 @@ export class WorldView {
     const foamSurface: number[] = [];
     const shallow = new THREE.Color('#3f8fb0'), deep = new THREE.Color('#163f58'), c = new THREE.Color();
     const FRONT = 0.42, BACK = -0.42;
-    // Cells are either full or empty, so a pool's surface can be a cell
-    // higher in some columns than others. Draw each connected surface at its
-    // average height instead, so pools look flat.
-    const level = new Map<number, number>();
-    {
-      const parent = new Map<number, number>();
-      const find = (i: number): number => {
-        let r = i;
-        while (parent.get(r) !== r) r = parent.get(r)!;
-        parent.set(i, r);
-        return r;
-      };
-      const isSurface = (x: number, y: number) => isWater(x, y) && !isWater(x, y - 1);
-      for (let i = 0; i < elements.length; i++) if (isSurface(i % w, Math.floor(i / w))) parent.set(i, i);
-      for (const i of parent.keys()) {
-        const x = i % w, y = Math.floor(i / w);
-        for (const ny of [y - 1, y, y + 1]) {
-          const lower = Math.max(y, ny);
-          if (isSurface(x + 1, ny) && isWater(x, lower) && isWater(x + 1, lower)) parent.set(find(ny * w + x + 1), find(i));
-        }
-      }
-      const sum = new Map<number, [number, number]>();
-      for (const i of parent.keys()) {
-        const r = find(i), acc = sum.get(r) ?? [0, 0];
-        acc[0] += Math.floor(i / w);
-        acc[1]++;
-        sum.set(r, acc);
-      }
-      for (const i of parent.keys()) {
-        const [total, n] = sum.get(find(i))!;
-        level.set(i, total / n);
-      }
-    }
+    const level = this.surfaceLevels(elements);
     const depthOf = (x: number, y: number) => {
       let d = 0;
       while (isWater(x, y - d - 1)) d++;
@@ -683,12 +740,10 @@ export class WorldView {
     if (this.latest) this.paintGas(this.latest);
   }
 
-  applyFrame(frame: Frame, ticksPerSecond: number) {
+  applyFrame(frame: Frame, _ticksPerSecond: number) {
     const first = !this.latest;
     if (first) this.setup(frame);
     this.latest = frame;
-    this.frameInterval = 1000 / ticksPerSecond;
-    this.frameTime = performance.now();
 
     if (!this.lastElements || frame.elements.some((e, i) => e !== this.lastElements![i])) {
       const solidChanged = !this.lastElements || frame.elements.some((e, i) => this.isSolid(e) !== this.isSolid(this.lastElements![i]) || (e !== this.lastElements![i] && e !== Element.Water && this.lastElements![i] !== Element.Water));
@@ -708,10 +763,9 @@ export class WorldView {
     this.survivors.forEach((s, i) => {
       const o = i * COLONIST_STRIDE;
       const [x, y, , activity, , warmth] = frame.colonists.subarray(o, o + 6);
-      s.from.copy(first ? this.cellToWorld(x, y).setY(this.cellToWorld(x, y).y - 0.5) : s.model.position);
-      this.cellToWorld(x, y, s.to);
-      s.to.y -= 0.5;
-      if (Math.abs(s.to.x - s.from.x) > 0.01) s.facing = Math.sign(s.to.x - s.from.x);
+      this.cellToWorld(x, y, s.target);
+      s.target.y -= 0.5;
+      if (first) s.pos.copy(s.target);
       s.activity = activity;
       s.warmth = warmth;
     });
@@ -720,28 +774,106 @@ export class WorldView {
   // --- Animation -------------------------------------------------------------
 
   /** Painted puppet: front view when standing about, side view walking and working. */
-  private animateFlatSurvivor(s: Survivor, k: number, t: number, i: number) {
+  /**
+   * Move the drawn position towards the sim's cell at walking pace. The sim
+   * steps a whole cell at a time, so chasing it at a constant speed turns the
+   * steps into a glide. Returns true while they are visibly walking.
+   */
+  private glide(s: Survivor, dt: number) {
+    const dx = s.target.x - s.pos.x, dy = s.target.y - s.pos.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 2.5) {
+      s.pos.copy(s.target); // teleported (a fall, or the first frame)
+      s.still = 10;
+      return false;
+    }
+    if (dist < 0.002) {
+      s.still += dt;
+      return s.still < 0.18 && s.activity === 1;
+    }
+    const step = Math.min(dist, WALK_SPEED * dt * (dy < -0.3 ? 1.6 : 1)); // falls are quick
+    s.pos.x += (dx / dist) * step;
+    s.pos.y += (dy / dist) * step;
+    if (Math.abs(dx) > 0.05) s.facing = Math.sign(dx);
+    s.still = 0;
+    s.stride += step;
+    return true;
+  }
+
+  /**
+   * Asleep or dead, the standing model gives way to a bedroll or a frosted
+   * body. Death plays as a short collapse, then the body lies by its cairn
+   * for a while and fades. Returns true when the standing model is hidden.
+   */
+  private restingOrDead(s: Survivor, dt: number, t: number) {
+    const { model } = s;
+    const asleep = s.activity === 3, dead = s.activity === 5;
+    if (!asleep && !dead) {
+      s.dead = 0;
+      if (s.sleeper) s.sleeper.visible = false;
+      if (s.corpse) s.corpse.visible = false;
+      model.visible = true;
+      return false;
+    }
+    if (asleep) {
+      if (!s.sleeper) {
+        s.sleeper = makeModel('survivor-sleeping', s.index);
+        if (!s.sleeper.userData.flat) s.sleeper.scale.setScalar(1.25);
+        this.scene.add(s.sleeper);
+      }
+      s.sleeper.visible = true;
+      s.sleeper.position.copy(s.pos);
+      s.sleeper.rotation.y = s.facing > 0 ? 0 : Math.PI;
+      const blanket = s.sleeper.getObjectByName('blanket');
+      if (blanket) blanket.scale.y = 1 + Math.sin(t * 1.6 + s.index) * 0.05;
+      model.visible = false;
+      return true;
+    }
+    // Dead: 0.7 s collapse on the standing model, then the body.
+    s.dead += dt;
+    const k = Math.min(s.dead / 0.7, 1);
+    if (k < 1) {
+      model.visible = true;
+      model.position.copy(s.pos);
+      model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, -k * k * 0.5 * s.facing);
+      const sink = k * k;
+      model.scale.set(1 + sink * 0.1, 1 - sink * 0.35, 1);
+      return true;
+    }
+    if (!s.corpse) {
+      s.corpse = makeModel('survivor-dead', s.index);
+      if (!s.corpse.userData.flat) s.corpse.scale.setScalar(1.25);
+      this.scene.add(s.corpse);
+    }
+    model.visible = false;
+    s.corpse.visible = true;
+    s.corpse.position.copy(s.pos);
+    s.corpse.rotation.y = s.facing > 0 ? 0 : Math.PI;
+    // Sink into the ground over a few seconds, leaving the cairn.
+    const gone = Math.min(Math.max((s.dead - 6) / 4, 0), 1);
+    s.corpse.position.y -= gone * 0.6;
+    s.corpse.visible = gone < 1;
+    return true;
+  }
+
+  private animateFlatSurvivor(s: Survivor, dt: number, t: number, i: number) {
     const { model, parts } = s;
-    model.position.lerpVectors(s.from, s.to, k);
-    const moving = s.from.distanceToSquared(s.to) > 0.01 && k < 1;
+    const moving = this.glide(s, dt);
+    if (this.restingOrDead(s, dt, t)) return;
+    model.position.copy(s.pos);
     const front = model.getObjectByName('front')!, side = model.getObjectByName('side')!;
-    const lying = s.activity === 3 || s.activity === 5;
-    const walking = moving || s.activity === 1;
-    side.visible = walking || s.activity === 2 || lying;
+    const walking = moving;
+    side.visible = walking || s.activity === 2;
     front.visible = !side.visible;
     model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, 0);
     model.scale.set(1, 1, 1);
     side.rotation.z = 0;
     let swing = 0;
-    if (lying) {
-      model.rotation.z = Math.PI / 2;
-      model.position.y += 0.2;
-      model.position.x -= 0.55 * s.facing;
-      if (s.activity === 3) model.scale.x = 1 + Math.sin(t * 2 + i) * 0.03;
-    } else if (walking) {
-      const phase = t * 11 + i * 1.7;
+    if (walking) {
+      // Legs swing with distance covered, not time, so they stop when the feet stop.
+      const phase = s.stride * 7 + i * 1.7;
       swing = Math.sin(phase) * 0.45;
-      model.position.y += Math.abs(Math.sin(phase)) * 0.05;
+      model.position.y += Math.abs(Math.sin(phase)) * 0.035;
       side.rotation.z = -0.05;
     } else if (s.activity === 2) {
       // Hacking at the rock: lean in and spring back.
@@ -759,25 +891,20 @@ export class WorldView {
     parts.legR.rotation.z = -swing;
   }
 
-  private animateSurvivor(s: Survivor, k: number, t: number, i: number) {
+  private animateSurvivor(s: Survivor, dt: number, t: number, i: number) {
     const { model, parts } = s;
-    if (model.userData.flat) return this.animateFlatSurvivor(s, k, t, i);
-    model.position.lerpVectors(s.from, s.to, k);
-    const moving = s.from.distanceToSquared(s.to) > 0.01 && k < 1;
-    const lying = s.activity === 3 || s.activity === 5;
-    const phase = t * 11 + i * 1.7;
+    if (model.userData.flat) return this.animateFlatSurvivor(s, dt, t, i);
+    const moving = this.glide(s, dt);
+    if (this.restingOrDead(s, dt, t)) return;
+    model.position.copy(s.pos);
+    const phase = s.stride * 7 + i * 1.7;
     let legSwing = 0, armF = 0.1, armB = -0.1, headTilt = 0;
     parts.tool.visible = s.activity === 2;
 
-    if (lying) {
-      model.rotation.set(0, s.facing > 0 ? 0 : Math.PI, Math.PI / 2);
-      model.position.y += 0.25;
-      model.position.x -= 0.3 * s.facing;
-      if (s.activity === 3) model.scale.y = 1.25 * (1 + Math.sin(t * 2 + i) * 0.03); // slow breathing
-    } else {
+    {
       model.rotation.set(0, s.facing > 0 ? -0.45 : Math.PI + 0.45, 0);
       model.scale.y = 1.25;
-      if (moving || s.activity === 1) {
+      if (moving) {
         legSwing = Math.sin(phase) * 0.7;
         armF = -legSwing * 0.8;
         armB = legSwing * 0.8;
@@ -828,7 +955,11 @@ export class WorldView {
       (o.material as THREE.MeshBasicMaterial).color.setRGB(s * (0.8 + warm * 0.4), s * (0.9 + warm * 0.12), s * (1.1 - warm * 0.32));
     });
     tint(this.buildings);
-    for (const s of this.survivors) tint(s.model);
+    for (const s of this.survivors) {
+      tint(s.model);
+      if (s.sleeper?.visible) tint(s.sleeper);
+      if (s.corpse?.visible) tint(s.corpse);
+    }
   }
 
   private updateEmbers(dt: number, t: number) {
@@ -877,8 +1008,7 @@ export class WorldView {
         bubbles?.children.forEach((bubble, j) => { bubble.position.y = 0.7 + ((t * 0.4 + j * 0.25) % 1) * 0.5; });
       }
       for (const marker of this.markers.values()) if (!marker.flat) marker.object.rotation.z = Math.sin(t * 3) * 0.15;
-      const k = Math.min((performance.now() - this.frameTime) / this.frameInterval, 1);
-      this.survivors.forEach((s, i) => this.animateSurvivor(s, k, t, i));
+      this.survivors.forEach((s, i) => this.animateSurvivor(s, dt, t, i));
       this.lightSprites(t);
       if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;
     }

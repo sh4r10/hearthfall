@@ -19,6 +19,7 @@ export const terrainVertex = /* glsl */ `
 export const terrainFragment = /* glsl */ `
   uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = water
   uniform sampler2D uLight;  // r = brightness from the sim's light field
+  uniform sampler2D uWater;  // r = how full the cell is from its bottom, g = depth below the surface, b = surface cell (nearest filtered)
   uniform vec2 uSize;        // grid size in cells
   // Optional painted textures; the matching flag is 1.0 when one is loaded.
   uniform sampler2D uRockTex, uDirtTex, uCoalTex, uWallTex;
@@ -91,12 +92,24 @@ export const terrainFragment = /* glsl */ `
     wall = mix(wall, texture2D(uWallTex, cell / 8.0).rgb, uHasArt.w);
     wall *= 1.0 - smoothstep(0.0, 0.7, near) * 0.6;
 
-    // Water pools in open space, with a bright surface line.
-    float water = smoothstep(0.45, 0.55, m.a);
-    float above = mask(cell + vec2(0.0, 0.7)).a;
-    float surface = water * (1.0 - smoothstep(0.3, 0.6, above));
-    vec3 waterColor = mix(vec3(0.10, 0.28, 0.40), vec3(0.20, 0.45, 0.58), noise(cell * 1.5 + uTime * 0.3));
-    vec3 open = mix(wall, mix(wall, waterColor, 0.8), water) + surface * vec3(0.25, 0.4, 0.45) * (0.6 + 0.4 * sin(cell.x * 2.0 + uTime * 2.0));
+    // Water: each cell knows how full it is, so the surface is a smooth
+    // line at the pool's real level, with a ripple, foam and depth shading.
+    vec2 wuv = vUv;
+    vec4 wc = texture2D(uWater, wuv);
+    float fillFrac = fract(cell.y);                       // 0 at a cell's bottom edge, 1 at its top
+    float ripple = sin(cell.x * 2.6 + uTime * 1.7) * 0.03 + sin(cell.x * 5.1 - uTime * 2.6) * 0.015;
+    float surfaceAt = wc.r + ripple;
+    // b marks the cell holding the pool's surface; every cell below it is full.
+    float topCell = wc.b;
+    float water = step(0.001, wc.r) * mix(1.0, 1.0 - smoothstep(surfaceAt - 0.02, surfaceAt + 0.02, fillFrac), topCell);
+    float surface = water * topCell * (1.0 - smoothstep(surfaceAt - 0.14, surfaceAt - 0.02, fillFrac));
+    float depth = wc.g * 8.0 + (1.0 - fillFrac);
+    vec3 shallowColor = vec3(0.22, 0.52, 0.62), deepColor = vec3(0.05, 0.16, 0.26);
+    vec3 waterColor = mix(shallowColor, deepColor, smoothstep(0.0, 6.0, depth));
+    waterColor *= 0.9 + 0.2 * fbm(cell * 2.0 + vec2(uTime * 0.15, -uTime * 0.1)); // caustic shimmer
+    waterColor = mix(waterColor, texture2D(uWallTex, cell / 8.0).rgb * vec3(0.5, 0.8, 1.0), 0.12 * uHasArt.w);
+    vec3 open = mix(wall, waterColor, water * 0.9);
+    open += surface * vec3(0.28, 0.4, 0.42) * (0.7 + 0.3 * sin(cell.x * 3.0 + uTime * 2.2));
 
     vec3 color = mix(open, solidColor, inside);
 
@@ -110,11 +123,12 @@ export const terrainFragment = /* glsl */ `
   }
 `;
 
-export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTexture, width: number, height: number) {
+export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTexture, water: THREE.DataTexture, width: number, height: number) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMask: { value: mask },
       uLight: { value: light },
+      uWater: { value: water },
       uSize: { value: new THREE.Vector2(width, height) },
       uTime: { value: 0 },
       ...paintedTextures(),
