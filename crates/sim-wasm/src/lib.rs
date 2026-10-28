@@ -32,6 +32,7 @@ impl WebSim {
     /// `building` uses the numbering of `sim::Building`.
     pub fn build(&mut self, x: u32, y: u32, building: u8) {
         let building = match building {
+            1 => Building::Vent,
             2 => Building::Ladder,
             3 => Building::Hearth,
             4 => Building::MushroomBed,
@@ -118,6 +119,11 @@ impl WebSim {
     /// Where hearth light will reach tonight; see `Sim::night_firelight`.
     pub fn night_firelight(&self) -> Vec<u8> {
         self.sim.night_firelight()
+    }
+
+    /// Smoke per cell scaled to 0..=255; see `sim::SMOKE_MAX`.
+    pub fn smoke(&self) -> Vec<u8> {
+        self.sim.smoke.iter().map(|&s| (s * 255 / sim::SMOKE_MAX) as u8).collect()
     }
 
     pub fn temperature(&self) -> Vec<i32> {

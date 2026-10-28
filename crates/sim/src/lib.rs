@@ -50,6 +50,22 @@ pub const EVENT_SHADE_ATTACK: u8 = 2;
 pub const EVENT_COLLAPSE: u8 = 3;
 /// [`Event::kind`] for a refugee joining the colony.
 pub const EVENT_ARRIVAL: u8 = 4;
+/// [`Event::kind`] for smoke first gathering thick enough to matter. Sent once.
+pub const EVENT_SMOKE: u8 = 5;
+/// Smoke per cell, 0 to this. Fires add a little each tick; it rises, pools
+/// under ceilings, soaks slowly into the walls, and escapes through vents.
+pub const SMOKE_MAX: i32 = 1_000;
+/// Smoke a lit hearth gives off per tick. Slow on purpose: one hearth in the
+/// start cave takes about three days to get thick, so it is a day-3 problem,
+/// not a day-1 one.
+pub const SMOKE_PER_TICK: i32 = 2;
+/// Walled cells lose this fraction of their smoke to the rock each tick.
+pub const SMOKE_SOAK_DIV: i32 = 8_000;
+/// Smoke a vent clears from its cell each tick: a strong draught, so a vent
+/// above the fire swallows the whole column and the ceiling drains towards it.
+pub const VENT_CLEAR: i32 = SMOKE_MAX;
+/// From this much smoke a cell is smoky: light is dimmed and survivors cough.
+pub const SMOKY: i32 = 400;
 /// Refugees can arrive at dawn from this day on, every other day.
 pub const REFUGEE_FIRST_DAY: u64 = 3;
 /// A refugee only joins a colony with this much food to spare.
@@ -94,6 +110,10 @@ pub struct Sim {
     /// The part of `light` that comes from hearths. Only this warms.
     pub firelight: Vec<u8>,
     /// Coal in the colony stockpile.
+    /// Smoke per cell; see [`SMOKE_MAX`].
+    pub smoke: Vec<i32>,
+    /// Whether [`EVENT_SMOKE`] has been sent.
+    pub smoke_warned: bool,
     pub coal: i32,
     /// Stone from digging rock. Everything you stack is built from it.
     pub stone: i32,
@@ -136,6 +156,8 @@ impl Sim {
             temperature: vec![START_TEMP_CK; n],
             light: vec![0; n],
             firelight: vec![0; n],
+            smoke: vec![0; n],
+            smoke_warned: false,
             coal: START_COAL,
             stone: START_STONE,
             food: START_FOOD,
@@ -207,6 +229,7 @@ impl Sim {
             self.apply(c);
         }
         self.buildings_tick();
+        self.smoke_tick();
         self.update_light();
         self.water_tick();
         self.maintain_jobs();
@@ -255,8 +278,9 @@ impl Sim {
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
                 Building::Hearth if self.hearth_lit(i) => {
-                    // Fire gives off heat.
+                    // Fire gives off heat and smoke.
                     self.temperature[i] += 150;
+                    self.smoke[i] = (self.smoke[i] + SMOKE_PER_TICK).min(SMOKE_MAX);
                     if burn {
                         self.hearth_fuel[i] -= 1;
                     }
@@ -285,6 +309,7 @@ impl Sim {
             }
         };
         eat(&self.tick.to_le_bytes());
+        eat(&[self.smoke_warned as u8]);
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.food.to_le_bytes());
@@ -292,6 +317,7 @@ impl Sim {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
             eat(&self.hearth_fuel[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());
+            eat(&self.smoke[i].to_le_bytes());
         }
         for c in &self.colonists {
             c.hash_into(&mut eat);

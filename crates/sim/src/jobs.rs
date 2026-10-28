@@ -48,6 +48,7 @@ pub fn build_cost(b: Building) -> (i32, i32) {
     match b {
         Building::Hearth => (HEARTH_COST, 4),
         Building::Lamp => (LAMP_COST, 1),
+        Building::Vent => (0, 3),
         Building::Ladder => (0, 1),
         Building::MushroomBed => (0, 2),
         Building::Bed => (0, 3),
@@ -150,18 +151,19 @@ impl Sim {
     }
 
     /// Whether `b`'s whole picture at (x, y) is in open cells and, for all but
-    /// a ladder, stands on solid ground (not water) all the way across.
+    /// a ladder or a vent, stands on solid ground (not water) all the way across.
     pub fn fits(&self, x: u32, y: u32, b: Building) -> bool {
         let r = reach(b) as i32;
         (-r..=r).all(|dx| {
             let (cx, cy) = (x as i32 + dx, y as i32);
-            self.open(cx, cy) && (b == Building::Ladder || (cy + 1 < self.height as i32 && self.elements[self.idx(cx as u32, cy as u32 + 1)].is_diggable()))
+            self.open(cx, cy) && (!Self::needs_floor(b) || (cy + 1 < self.height as i32 && self.elements[self.idx(cx as u32, cy as u32 + 1)].is_diggable()))
         })
     }
 
-    /// Whether `b` needs solid floor under it. Ladders hang on their own.
+    /// Whether `b` needs solid floor under it. Ladders hang on their own, and
+    /// a vent is bored into the rock wherever the smoke pools, ceilings included.
     pub fn needs_floor(b: Building) -> bool {
-        !matches!(b, Building::None | Building::Ladder)
+        !matches!(b, Building::None | Building::Ladder | Building::Vent)
     }
 
     /// Whether the cell is the floor under a building, so digging it out would

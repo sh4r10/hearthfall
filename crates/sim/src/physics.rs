@@ -1,6 +1,6 @@
-//! Environment: light, water and heat.
+//! Environment: light, smoke, water and heat.
 
-use crate::{Building, Element, Sim, DARK_BELOW, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::{Building, Element, Sim, DARK_BELOW, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
 
 impl Sim {
@@ -17,6 +17,67 @@ impl Sim {
         self.light.copy_from_slice(&self.firelight);
         let lamps: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.buildings[i] == Building::Lamp).collect();
         flood_light(self.width, self.height, &self.elements, &lamps, lamp_radius, &mut self.light);
+        // Smoke dims the light: a smoky cave shrinks the lit and warm area,
+        // which lets the cold and the Shades in closer. Thick smoke cuts up
+        // to 70%, so the fire itself always stays warm.
+        for i in 0..self.light.len() {
+            let keep = 1_000 - self.smoke[i].clamp(0, SMOKE_MAX) * 700 / SMOKE_MAX;
+            self.light[i] = (self.light[i] as i32 * keep / 1_000) as u8;
+            self.firelight[i] = (self.firelight[i] as i32 * keep / 1_000) as u8;
+        }
+    }
+
+    /// Smoke rises: most of what a cell holds moves up until the cell above
+    /// is full, so it piles up under ceilings and only then builds downwards.
+    /// Under a ceiling it creeps sideways into open neighbours with less.
+    /// Walled cells lose a sliver to the rock. Fluxes come from a snapshot so
+    /// the result does not depend on iteration order. Vents then clear their
+    /// cells. Sends [`EVENT_SMOKE`] the first time any cell gets smoky.
+    pub(crate) fn smoke_tick(&mut self) {
+        let (w, h) = (self.width as usize, self.height as usize);
+        let snap = self.smoke.clone();
+        let open = |i: usize| self.elements[i].is_open();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * w + x;
+                if !open(i) || snap[i] == 0 {
+                    continue;
+                }
+                let up = y.checked_sub(1).map(|ny| ny * w + x).filter(|&j| open(j));
+                if let Some(j) = up {
+                    let flow = (snap[i] * 3 / 4).min(SMOKE_MAX - snap[j]).max(0);
+                    self.smoke[i] -= flow;
+                    self.smoke[j] += flow;
+                } else {
+                    for j in [x.checked_sub(1).map(|nx| y * w + nx), (x + 1 < w).then(|| i + 1)].into_iter().flatten().filter(|&j| open(j)) {
+                        let flow = (snap[i] - snap[j]).max(0) / 8;
+                        self.smoke[i] -= flow;
+                        self.smoke[j] += flow;
+                    }
+                }
+                let walled = [x.checked_sub(1).map(|nx| y * w + nx), (x + 1 < w).then(|| i + 1), y.checked_sub(1).map(|ny| ny * w + x), (y + 1 < h).then(|| i + w)]
+                    .into_iter()
+                    .flatten()
+                    .any(|j| matches!(self.elements[j], Element::Dirt | Element::Rock));
+                if walled {
+                    self.smoke[i] -= snap[i] / SMOKE_SOAK_DIV;
+                }
+            }
+        }
+        // Vents draw last, so what flowed into one this tick is gone by the end of it.
+        for i in 0..self.buildings.len() {
+            if self.buildings[i] == Building::Vent {
+                self.smoke[i] = (self.smoke[i] - VENT_CLEAR).max(0);
+            }
+        }
+        if !self.smoke_warned && self.smoke.iter().any(|&s| s >= SMOKY) {
+            self.smoke_warned = true;
+            self.push_event(EVENT_SMOKE, 0);
+        }
+    }
+
+    pub fn is_smoky(&self, i: usize) -> bool {
+        self.smoke[i] >= SMOKY
     }
 
     /// Where hearth light will reach after nightfall if every lit hearth stays

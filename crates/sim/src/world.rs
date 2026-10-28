@@ -37,8 +37,8 @@ impl Element {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Building {
     None = 0,
-    // 1 was the oxygen diffuser, shelved with air. Numbers stay put so the
-    // client's Building enum and saved replays keep their meaning.
+    /// A bored hole with a bellows: clears the smoke in its cell.
+    Vent = 1,
     Ladder = 2,
     /// Burns fuel to light and warm the area around it.
     Hearth = 3,

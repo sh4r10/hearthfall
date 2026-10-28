@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, SMOKY, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -23,6 +23,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal.', building: Building.Hearth },
   { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
+  { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
@@ -33,6 +34,7 @@ const HINTS: Record<Tool, string> = {
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
   lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
+  vent: '<b>Vent:</b> place where the Warmth view shows smoke pooling. Fires smoke slowly, and thick smoke dims the light.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
   deconstruct: '<b>Remove:</b> click a building, or shift-drag a box over several. A survivor takes each down and salvages half its cost.',
   cancel: '<b>Cancel:</b> click an order, or shift-drag a box over many. Right-click or right-drag cancels with any tool.',
@@ -142,6 +144,7 @@ function renderRoster(frame: Frame) {
       : activity === 'Walking' && job ? `Heading off ${job}`
       : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
       : activity === 'Sleeping' ? 'Asleep'
+      : activity === 'Idle' && frame.smoke[c[1] * frame.width + c[0]] >= SMOKY ? 'Coughing in the smoke'
       : activity === 'Idle' ? 'Warming up by the fire'
       : activity;
     card.querySelector('.needs')!.innerHTML = NEEDS.map(([label, o, name]) => needBar(label, c[o], name)).join('');
@@ -166,6 +169,9 @@ function announce(frame: Frame) {
     } else if (kind === EVENT_SHADE_ATTACK) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
       glyph = 'shade';
+    } else if (kind === EVENT_SMOKE) {
+      logLine('Smoke is gathering under the ceiling. Dig a flue up from the fire, or build a <b>vent</b> where it pools.', 'vent', 'warn');
+      continue;
     } else if (kind === EVENT_ARRIVAL) {
       logLine(`<b>${name}</b> followed the firelight down to you.`, 'people', 'info');
       continue;
@@ -345,7 +351,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
   const key = e.key.toLowerCase();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);

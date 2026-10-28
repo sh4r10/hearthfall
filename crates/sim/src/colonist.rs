@@ -173,7 +173,10 @@ impl Sim {
         } else {
             col.energy = (col.energy - if col.activity == Activity::Working { 10 } else { 6 }).max(0);
         }
-        let comfort = (col.warmth + col.fullness + col.energy + col.sleep_quality) / 4 - if dark { 2_500 } else { 0 };
+        let smoky = self.smoke[i] >= crate::SMOKY;
+        let col = &mut self.colonists[c];
+        // The dark is miserable and smoke makes everyone cough.
+        let comfort = (col.warmth + col.fullness + col.energy + col.sleep_quality) / 4 - if dark { 2_500 } else { 0 } - if smoky { 2_000 } else { 0 };
         col.mood += (comfort.clamp(0, STAT_MAX) - col.mood) / 200;
 
         if col.warmth <= 0 {
@@ -225,8 +228,9 @@ impl Sim {
         match col.activity {
             Activity::Sleeping => {
                 let rested = col.energy >= STAT_MAX * 95 / 100 || (!self.is_night() && col.energy >= STAT_MAX * 7 / 10);
-                // Nobody sleeps through a Shade.
-                if rested || self.under_attack(c) {
+                // Nobody sleeps through a Shade, and the cold wakes anyone whose
+                // spot stopped being warm (the light shrinks at night).
+                if rested || self.under_attack(c) || col.warmth < COLD_BELOW {
                     let col = &mut self.colonists[c];
                     col.activity = Activity::Idle;
                     col.bed = None;
@@ -443,11 +447,15 @@ impl Sim {
         }
 
         // Arrived: work it off. Role specialists work faster, low mood slows everyone.
+        let coughing = self.smoke[self.idx(self.colonists[c].x, self.colonists[c].y)] >= crate::SMOKY;
         let col = &mut self.colonists[c];
         col.activity = Activity::Working;
         let mut speed = if self.jobs[k].kind.role() == col.role { 3 } else { 2 };
         if col.mood < STAT_MAX * 3 / 10 {
             speed = 1;
+        }
+        if coughing {
+            speed = (speed - 1).max(1);
         }
         self.jobs[k].progress += speed;
         if self.jobs[k].progress >= self.work_needed(&self.jobs[k]) {
