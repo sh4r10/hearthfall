@@ -67,6 +67,16 @@ fn value_noise(seed: u64, x: i32, y: i32, shift: u32) -> i32 {
     (top * (size - fy) + bottom * fy) >> (2 * shift)
 }
 
+/// Coal seams in the start room's shell, as (x0, y0, x1, y1) boxes relative to
+/// the hearth: one in each side wall and one under the floor. About 60 coal.
+const START_SEAMS: [Seam; 3] = [Seam(-10, -3, -9, -1), Seam(9, -3, 10, -1), Seam(2, 1, 5, 2)];
+struct Seam(i32, i32, i32, i32);
+impl Seam {
+    fn contains(&self, &(x, y): &(i32, i32)) -> bool {
+        (self.0..=self.2).contains(&x) && (self.1..=self.3).contains(&y)
+    }
+}
+
 pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
     let (w, h) = (width as i32, height as i32);
     let (cx, cy) = (w / 2, h / 2);
@@ -75,17 +85,22 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
         for x in 0..w {
             let n = (value_noise(seed, x, y, 4) * 3 + value_noise(seed ^ 0xA5A5, x, y, 2)) / 4;
             let (dx, dy) = (x - cx, y - cy);
-            // Side view: y grows downwards. Carve a starting room with a solid
-            // floor under it so the colonists have somewhere to stand.
+            // Side view: y grows downwards. Carve a starting room and wrap it
+            // in a shell of dirt two cells thick, so nobody wanders into a
+            // random cave and falls somewhere they can't climb out of before
+            // the player has dug anything. Coal seams sit in the shell where
+            // they can be seen from inside, so the first fuel is never a hunt.
             let element = if dx.abs() <= 8 && (-4..=0).contains(&dy) {
                 Element::Floor
-            } else if dx.abs() <= 9 && (1..=2).contains(&dy) {
+            } else if START_SEAMS.iter().any(|s| s.contains(&(dx, dy))) {
+                Element::Coal
+            } else if dx.abs() <= 10 && (-6..=2).contains(&dy) {
                 Element::Dirt
             } else if n < 70 {
                 Element::Floor
             } else if n < 90 {
                 Element::Water
-            } else if value_noise(seed ^ 0xC0A1, x, y, 2) > 200 {
+            } else if value_noise(seed ^ 0xC0A1, x, y, 2) > 190 {
                 Element::Coal // veins scattered through the rock
             } else if n < 160 {
                 Element::Dirt

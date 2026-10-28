@@ -103,7 +103,7 @@ fn hearth_lights_the_start_room_and_burns_its_fuel() {
     for _ in 0..200 {
         sim.step(&[]);
     }
-    assert_eq!(sim.hearth_fuel[centre], fuel - 10);
+    assert_eq!(sim.hearth_fuel[centre], fuel - 5);
 }
 
 #[test]
@@ -434,4 +434,71 @@ fn buildings_never_float() {
     sim.buildings[lamp] = Building::Lamp;
     sim.step(&[Command::Dig { x: 12, y: 21 }]);
     assert!(sim.jobs.is_empty());
+}
+
+#[test]
+fn the_start_room_is_sealed_with_coal_in_its_walls() {
+    for seed in [0, 3, 42, 1234, 99_999] {
+        let sim = Sim::new(seed, 160, 110);
+        let (cx, cy) = (80i32, 55i32);
+        // Nothing reachable on foot lies outside the shell, so nobody can fall
+        // into a random cave before the player digs.
+        // Open cells flood-fill from the hearth; every move a survivor can
+        // make goes through open cells, so this bounds where they can get to.
+        let mut seen = vec![false; sim.elements.len()];
+        let mut stack = vec![(cx, cy)];
+        while let Some((x, y)) = stack.pop() {
+            let i = (y * 160 + x) as usize;
+            if seen[i] || sim.elements[i] != Element::Floor {
+                continue;
+            }
+            seen[i] = true;
+            assert!((x - cx).abs() <= 8 && (-4..=0).contains(&(y - cy)), "seed {seed}: ({x}, {y}) is open outside the start room");
+            stack.extend([(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]);
+        }
+        let coal = sim.elements.iter().enumerate().filter(|&(i, &e)| {
+            let (x, y) = (i as i32 % 160, i as i32 / 160);
+            e == Element::Coal && (x - cx).abs() <= 10 && (-6..=2).contains(&(y - cy))
+        }).count();
+        assert!(coal >= 14, "seed {seed}: only {coal} coal cells in the start shell");
+    }
+}
+
+#[test]
+fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
+    let mut sim = sealed_room(4, 64, (10, 30, 54, 30));
+    let centre = sim.idx(32, 30);
+    sim.buildings[centre] = Building::Hearth;
+    sim.hearth_fuel[centre] = 40;
+    sim.colonists.truncate(1);
+    sim.colonists[0].x = 33;
+    sim.colonists[0].y = 30;
+    sim.colonists[0].role = sim::Role::Digger;
+    // A dig far out in the dark, past the firelight. Once they are at work
+    // there, the cold gets to them.
+    sim.step(&[Command::Dig { x: 55, y: 30 }]);
+    let mut turned_back = false;
+    for _ in 0..600 {
+        sim.step(&[]);
+        if sim.colonists[0].activity == Activity::Working {
+            sim.colonists[0].warmth = sim.colonists[0].warmth.min(sim::STAT_MAX * 3 / 10);
+        }
+        let c = &sim.colonists[0];
+        if c.job.is_none() && c.heading == sim::HEADING_WARM {
+            turned_back = true;
+        }
+    }
+    let c = &sim.colonists[0];
+    assert!(turned_back, "never headed back to the fire");
+    assert!(c.alive(), "froze on the job");
+    assert!(sim.is_warm(sim.idx(c.x, c.y)), "ended up at ({}, {}), not by the fire", c.x, c.y);
+}
+
+#[test]
+fn a_colony_left_alone_survives_its_first_night() {
+    let mut sim = Sim::new(42, 160, 110);
+    for _ in 0..sim::DAY_TICKS {
+        sim.step(&[]);
+    }
+    assert!(sim.colonists.iter().all(|c| c.alive()), "someone died on day 1 with no orders given");
 }

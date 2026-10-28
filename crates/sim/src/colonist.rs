@@ -66,8 +66,19 @@ pub struct Colonist {
     pub bed: Option<u32>,
     /// Why they died, one of the `CAUSE_` values. `CAUSE_ALIVE` until then.
     pub cause: u8,
+    /// What the current walk is for when it is not a job: one of the `HEADING_` values.
+    pub heading: u8,
     timer: u32,
 }
+
+/// Just walking (fleeing the dark, or nothing).
+pub const HEADING_NONE: u8 = 0;
+/// Going to the fire to warm up.
+pub const HEADING_WARM: u8 = 1;
+/// Below this warmth a survivor drops what they are doing and goes to the fire.
+pub const COLD_BELOW: i32 = STAT_MAX * 4 / 10;
+/// A survivor warming up by the fire takes no work until this warm again.
+pub const WARMED_ABOVE: i32 = STAT_MAX * 7 / 10;
 
 impl Colonist {
     pub fn new(x: u32, y: u32, role: Role) -> Self {
@@ -86,6 +97,7 @@ impl Colonist {
             path: Vec::new(),
             bed: None,
             cause: CAUSE_ALIVE,
+            heading: HEADING_NONE,
             timer: 0,
         }
     }
@@ -103,7 +115,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.timer as i32] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.breath, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32] {
             eat(&v.to_le_bytes());
         }
     }
@@ -147,7 +159,7 @@ impl Sim {
         } else if !dark {
             col.warmth - LIT_COLD_DRAIN - starve // lamp light: cold, but the dark isn't biting
         } else {
-            col.warmth - if night { 30 } else { 15 } - starve
+            col.warmth - if night { 24 } else { 12 } - starve
         }
         .min(STAT_MAX)
             - if attacked { SHADE_DRAIN } else { 0 };
@@ -263,8 +275,30 @@ impl Sim {
             col.activity = Activity::Idle;
         }
 
+        // Already on the way somewhere for a need: keep going, then act on arrival.
+        if self.colonists[c].heading != HEADING_NONE {
+            if !self.colonists[c].path.is_empty() && !self.step_along(c) {
+                self.colonists[c].path.clear();
+            }
+            if self.colonists[c].path.is_empty() {
+                let col = &mut self.colonists[c];
+                col.activity = Activity::Idle;
+                col.heading = HEADING_NONE;
+            }
+            return;
+        }
+
         let col = &self.colonists[c];
+        let here = self.idx(col.x, col.y);
         // Needs come before errands.
+        if col.warmth < COLD_BELOW && !self.is_warm(here) {
+            // Too cold to carry on: back to the fire, whatever the job.
+            self.release_job(c);
+            if self.seek_warmth(c, HEADING_WARM) {
+                return;
+            }
+        }
+        let col = &self.colonists[c];
         if col.fullness < STAT_MAX * 35 / 100 && self.food > 0 && col.activity != Activity::Working {
             self.release_job(c);
             self.food -= 1;
@@ -300,7 +334,9 @@ impl Sim {
                     return;
                 }
                 self.colonists[c].timer += 1;
-                if self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
+                // Someone still thawing out by the fire stays put.
+                let thawing = self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here);
+                if !thawing && self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
                     return;
                 }
                 if self.colonists[c].timer % 10 == 5 && self.flee_to_light(c) {
@@ -449,7 +485,8 @@ impl Sim {
     }
 
     /// Without a bed, lie down on a free patch of floor: where they stand if it
-    /// is free, else the nearest free one within [`BED_REACH`], lit if possible.
+    /// is free, else the nearest free one within [`BED_REACH`], by the fire if
+    /// possible, else at least in the light.
     /// A spot is free when nothing is built there, no hearth is beside it and
     /// nobody else sleeps (or means to) within a cell of it, so sleepers never
     /// pile up on each other or on the fire. Returns false if there is none.
@@ -457,20 +494,20 @@ impl Sim {
         let col = &self.colonists[c];
         let here = self.idx(col.x, col.y);
         let field = self.field_from(col.x, col.y);
-        let mut best: Option<(bool, i32, usize)> = None; // (dark, distance, cell): lower is better
+        let mut best: Option<(bool, bool, i32, usize)> = None; // (cold, dark, distance, cell): lower is better
         for i in 0..self.buildings.len() {
             let d = field.dist[i];
             if d > BED_REACH || !self.floor_free(c, i) {
                 continue;
             }
-            let key = (self.is_dark(i), d, i);
+            let key = (!self.is_warm(i), self.is_dark(i), d, i);
             if best.map_or(true, |b| key < b) {
                 best = Some(key);
             }
         }
-        let Some((dark, _, spot)) = best else { return false };
-        // Stay put if here is free and no better lit spot is on offer.
-        let spot = if self.floor_free(c, here) && (dark || !self.is_dark(here)) { here } else { spot };
+        let Some((cold, dark, _, spot)) = best else { return false };
+        // Stay put if here is free and no warmer or better lit spot is on offer.
+        let spot = if self.floor_free(c, here) && (cold || self.is_warm(here)) && (dark || !self.is_dark(here)) { here } else { spot };
         let path = self.path_to(&field, spot);
         let col = &mut self.colonists[c];
         col.bed = Some(spot as u32);
@@ -507,6 +544,34 @@ impl Sim {
         !self.colonists.iter().enumerate().any(|(o, other)| {
             o != c && other.alive() && (other.bed.map_or(false, |b| near(b as usize)) || (other.activity == Activity::Sleeping && near(self.idx(other.x, other.y))))
         })
+    }
+
+    /// Head for the nearest cell in firelight they can stand in, to warm up. Returns false if they are already in firelight or none is
+    /// in reach.
+    fn seek_warmth(&mut self, c: usize, heading: u8) -> bool {
+        let col = &self.colonists[c];
+        if self.is_warm(self.idx(col.x, col.y)) {
+            return false;
+        }
+        let field = self.field_from(col.x, col.y);
+        let mut best: Option<usize> = None;
+        for i in 0..self.firelight.len() {
+            let d = field.dist[i];
+            if d != UNREACHED && d <= BED_REACH && self.is_warm(i) && best.map_or(true, |b| d < field.dist[b]) {
+                let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
+                if self.supported(x, y) {
+                    best = Some(i);
+                }
+            }
+        }
+        let Some(to) = best else { return false };
+        let path = self.path_to(&field, to);
+        let col = &mut self.colonists[c];
+        col.path = path;
+        col.heading = heading;
+        col.timer = 0;
+        col.activity = Activity::Walking;
+        true
     }
 
     /// An idle survivor caught in the dark heads for the nearest lit cell they

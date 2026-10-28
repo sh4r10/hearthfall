@@ -13,7 +13,7 @@ mod rng;
 mod shades;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, LIT_COLD_DRAIN, STAT_MAX};
+pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
 pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use shades::{
@@ -31,10 +31,10 @@ pub const SUFFOCATE_BELOW_MG: i32 = 300;
 /// Ticks per full day. The last 40% of each day is night.
 pub const DAY_TICKS: u64 = 1200;
 /// A lit hearth burns one unit of its fuel this often.
-pub const HEARTH_BURN_TICKS: u64 = 20;
+pub const HEARTH_BURN_TICKS: u64 = 40;
 /// A mushroom bed in the dark grows a ration this often.
 pub const MUSHROOM_TICKS: u64 = 400;
-pub const START_COAL: i32 = 16;
+pub const START_COAL: i32 = 24;
 pub const START_FOOD: i32 = 20;
 /// How far hearth light reaches through open cells, by day and by night.
 pub const LIGHT_RADIUS_DAY: i32 = 13;
