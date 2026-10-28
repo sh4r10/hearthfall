@@ -21,7 +21,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
   { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.' },
   { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', cost: HEARTH_COST },
-  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food, but only in the dark, away from the fire.' },
+  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.' },
   { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back into a room the fire is choking.' },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', cost: LAMP_COST },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.' },
@@ -31,7 +31,7 @@ const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock to mark it, or shift-drag across many cells. Look for the black coal seams.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
   hearth: `<b>Hearth:</b> costs ${HEARTH_COST} coal. Light up a new part of the caves.`,
-  mushroom: '<b>Mushrooms:</b> place a bed outside the light. It grows food only in the dark.',
+  mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
   diffuser: '<b>Oxygen:</b> place in a room with stale air.',
   lamp: `<b>Lamp:</b> costs ${LAMP_COST} coal. Light a tunnel so Shades keep out of it.`,
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
@@ -325,7 +325,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
   const key = e.key.toLowerCase();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', x: 'cancel' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', '6': 'lamp', '7': 'bed', x: 'cancel' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', o: 'air', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);

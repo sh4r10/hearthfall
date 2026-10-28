@@ -223,7 +223,8 @@ impl Sim {
                         self.hearth_fuel[i] -= 1;
                     }
                 }
-                Building::MushroomBed if grow && self.is_dark(i) => self.food += 1,
+                // Mushrooms shun the fire's light and heat; lamp light doesn't bother them.
+                Building::MushroomBed if grow && !self.is_warm(i) => self.food += 1,
                 _ => {}
             }
         }
