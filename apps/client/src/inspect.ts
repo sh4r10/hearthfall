@@ -113,7 +113,7 @@ export class Inspector {
       const c = f.colonists.subarray(who * COLONIST_STRIDE, (who + 1) * COLONIST_STRIDE);
       title = this.names[who % this.names.length];
       glyph = 'people';
-      status = `${ROLES[c[2]]} · ${doing(c, frame)}`;
+      status = `${ROLES[c[2]]} · ${doing(c)}`;
       body = `<div class="needs">${NEEDS.map(([label, o, name]) => needBar(label, c[o], name)).join('')}</div>` +
         NEEDS.map(([label, o]) => row(label, `${Math.round((c[o] / STAT_MAX) * 100)}%`)).join('');
     } else if (b === Building.Hearth) {
