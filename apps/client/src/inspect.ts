@@ -3,7 +3,7 @@
 
 import {
   ACTIVITIES, BLOCK_REASONS, Building, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_REFUEL, JOB_STRIDE,
-  LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, SMOKY, STAT_MAX, type Frame, type ToWorker,
+  CARRY_MAX, ITEM_NAMES, Item, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, SMOKY, STAT_MAX, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
 
@@ -16,6 +16,7 @@ export function doing(c: ArrayLike<number>, frame?: Frame) {
   const smoky = !!frame && frame.smoke[c[1] * frame.width + c[0]] >= SMOKY;
   const job = c[11] >= 0 ? JOB_NAMES[c[11]] : '';
   return activity === 'Dead' ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
+    : c[13] && activity === 'Walking' ? `Carrying ${ITEM_NAMES[c[13]]} to the stockpile`
     : activity === 'Walking' && job ? `Heading off ${job}`
     : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
     : activity === 'Sleeping' ? 'Asleep'
@@ -63,7 +64,7 @@ export class Inspector {
 
   /** Whether there is anything at (x, y) worth a panel. */
   has(f: Frame, x: number, y: number) {
-    return this.survivorAt(f, x, y) >= 0 || f.buildings[y * f.width + x] !== Building.None || this.jobAt(f, x, y) >= 0 || f.elements[y * f.width + x] !== Element.Floor;
+    return this.survivorAt(f, x, y) >= 0 || f.buildings[y * f.width + x] !== Building.None || f.pileItem[y * f.width + x] !== 0 || this.jobAt(f, x, y) >= 0 || f.elements[y * f.width + x] !== Element.Floor;
   }
 
   open(x: number, y: number, f: Frame) {
@@ -113,7 +114,7 @@ export class Inspector {
       const c = f.colonists.subarray(who * COLONIST_STRIDE, (who + 1) * COLONIST_STRIDE);
       title = this.names[who % this.names.length];
       glyph = 'people';
-      status = `${ROLES[c[2]]} · ${doing(c)}`;
+      status = `${ROLES[c[2]]} · ${doing(c)}${c[13] ? ` · carrying ${c[14]} ${ITEM_NAMES[c[13]]}` : ''}`;
       body = `<div class="needs">${NEEDS.map(([label, o, name]) => needBar(label, c[o], name)).join('')}</div>` +
         NEEDS.map(([label, o]) => row(label, `${Math.round((c[o] / STAT_MAX) * 100)}%`)).join('');
     } else if (b === Building.Hearth) {
@@ -150,6 +151,19 @@ export class Inspector {
       status = growing ? 'Growing' : 'Too close to the fire to grow';
       body = row('Grows', `1 ration every ${seconds(MUSHROOM_TICKS, this.tps)}`) + row('Light', f.light[i] >= DARK_BELOW ? 'Lamp lit: safe from Shades' : 'Dark: Shades can reach it') +
         (growing ? '' : '<p class="note"><em>Mushrooms shun firelight. Move it further from the hearth.</em></p>');
+    } else if (b === Building.Stockpile) {
+      const loose: Record<number, number> = {};
+      for (let j = 0; j < f.pileItem.length; j++) if (f.pileItem[j]) loose[f.pileItem[j]] = (loose[f.pileItem[j]] ?? 0) + f.pileAmount[j];
+      title = 'Stockpile'; glyph = 'stockpile'; status = 'Where hauled goods are kept';
+      body = row('Coal in stock', String(f.coal)) + row('Stone in stock', String(f.stone)) + row('Food in stock', String(f.food)) +
+        row('Still lying about', Object.keys(loose).length ? Object.entries(loose).map(([k, n]) => `${n} ${ITEM_NAMES[Number(k)]}`).join(', ') : 'nothing') +
+        '<p class="note">Dug goods only count once a survivor carries them here. Haulers wait for dawn before fetching from the dark.</p>';
+    } else if (f.pileItem[i] && who < 0) {
+      const what = ITEM_NAMES[f.pileItem[i]];
+      const waiting = f.night && f.light[i] < DARK_BELOW;
+      title = `Pile of ${what}`; glyph = f.pileItem[i] === Item.Coal ? 'coal' : 'stone';
+      status = !f.buildings.includes(Building.Stockpile) ? 'No stockpile to take it to' : waiting ? 'In the dark: it waits for dawn' : 'Waiting for a hauler';
+      body = row('Amount', `${f.pileAmount[i]} ${what}`) + row('Trips', String(Math.ceil(f.pileAmount[i] / CARRY_MAX)));
     } else if (b === Building.Ladder) {
       title = 'Ladder'; glyph = 'ladder'; status = 'Survivors climb it';
     } else if (b === Building.Cairn) {

@@ -294,6 +294,46 @@ registerModel('cairn', (variant = 0) => {
   return g;
 });
 
+/** A stockpile: a low plank pallet three cells wide with a marker stake. Children named empty, half and full show how much is in stock. */
+registerModel('stockpile', () => {
+  const g = new THREE.Group();
+  const plank = mat('#8a6440');
+  for (const z of [-0.12, 0.12]) g.add(mesh(new THREE.BoxGeometry(2.2, 0.08, 0.18), plank, 0, 0.06, z));
+  const stake = mesh(new THREE.BoxGeometry(0.06, 0.7, 0.06), mat('#6b4a2f'), -1.0, 0.4, -0.1);
+  const flag = mesh(new THREE.BoxGeometry(0.22, 0.14, 0.02), mat('#b8402e'), -0.88, 0.66, -0.1);
+  g.add(stake, flag);
+  const coal = [mat('#2e2c31'), mat('#242327'), mat('#38353a')];
+  const heap = (name: string, lumps: number, spread: number) => {
+    const h = new THREE.Group();
+    h.name = name;
+    for (let i = 0; i < lumps; i++) {
+      const r = mesh(lumpGeometry(i * 7 + 2, 0.13), coal[i % 3], (rand(i) - 0.5) * spread, 0.16 + rand(i + 5) * 0.12 * (lumps / 8), (rand(i + 11) - 0.5) * 0.25);
+      h.add(r);
+    }
+    return h;
+  };
+  const empty = new THREE.Group();
+  empty.name = 'empty';
+  g.add(empty, heap('half', 6, 1.0), heap('full', 14, 1.7));
+  return g;
+});
+
+/** A loose heap of goods on the floor, left by digging until someone hauls it. */
+function pile(colours: string[]) {
+  return (variant = 0) => {
+    const g = new THREE.Group();
+    const m = colours.map((c) => mat(c));
+    for (let i = 0; i < 5; i++) {
+      const r = mesh(lumpGeometry(variant * 5 + i, 0.1), m[i % m.length], (rand(variant + i) - 0.5) * 0.45, 0.07 + (i === 4 ? 0.1 : 0), (rand(variant * 3 + i) - 0.5) * 0.2);
+      r.rotation.set(rand(i) * 3, rand(i + 2) * 3, 0);
+      g.add(r);
+    }
+    return g;
+  };
+}
+registerModel('pile-coal', pile(['#2e2c31', '#242327', '#38353a']));
+registerModel('pile-stone', pile(['#6b665f', '#57524c', '#7a746b']));
+
 /** A lamp: a post with a brass lantern whose glass glows; the renderer adds the light. */
 /** A vent: a stone-collared bore into the rock with a leather bellows at its foot. */
 registerModel('vent', () => {

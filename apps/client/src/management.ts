@@ -1,7 +1,7 @@
 // Colony management controls: game speed, order priorities and the alert for
 // orders that are stuck. Kept apart from main.ts so each stays readable.
 
-import { BLOCK_NONE, BLOCK_REASONS, Building, DEFAULT_PRIORITY, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_REFUEL, JOB_STRIDE, MAX_PRIORITY, type Frame, type ToWorker } from './protocol';
+import { BLOCK_NONE, BLOCK_REASONS, Building, DEFAULT_PRIORITY, JOB_BUILD, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, MAX_PRIORITY, type Frame, type ToWorker } from './protocol';
 import { icon } from './icons';
 import type { WorldView } from './world-view';
 
@@ -88,7 +88,7 @@ export class PriorityBrush {
 // --- Stuck orders --------------------------------------------------------------------
 
 const BUILDING_WORDS: Record<number, string> = {
-  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
+  [Building.Stockpile]: 'stockpile', [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
   [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed',
 };
 
@@ -97,6 +97,7 @@ function orderName(kind: number, building: number) {
   if (kind === JOB_DIG) return 'A dig';
   if (kind === JOB_BUILD) return `A ${thing}`;
   if (kind === JOB_REFUEL) return 'A hearth';
+  if (kind === JOB_HAUL) return 'A pile';
   if (kind === JOB_DECONSTRUCT) return `Taking down a ${thing}`;
   return 'An order';
 }

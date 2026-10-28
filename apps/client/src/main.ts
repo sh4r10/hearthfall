@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -25,12 +25,14 @@ const TOOLS: ToolInfo[] = [
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
+  { tool: 'stockpile', key: '8', label: 'Stockpile', icon: 'stockpile', tip: 'Where dug coal and stone go. Nothing counts until a survivor carries it here, so build one near where you dig.', building: Building.Stockpile },
   { tool: 'priority', key: 'P', label: 'Priority', icon: 'priority', tip: 'Repaint how urgent orders are, from 1 to 9. Survivors take the most urgent order they can reach first.' },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. A building\'s floor can\'t be dug: remove the building first.',
+  stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
@@ -367,7 +369,7 @@ window.addEventListener('keydown', (e) => {
   // With the Priority tool out, the number keys pick the level instead of a tool.
   if (tool === 'priority' && /^[1-9]$/.test(key)) return brush.set(Number(key));
   if (key === 'escape' && inspector.cell) return inspector.close();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', d: 'deconstruct', x: 'cancel', p: 'priority' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', d: 'deconstruct', x: 'cancel', p: 'priority' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
@@ -410,7 +412,7 @@ function applies(t: Tool, f: Frame, i: number) {
   // Priority repaints any order, and a hearth keeps its refuel priority even between refuels.
   if (t === 'priority' && f.buildings[i] === Building.Hearth) return true;
   for (let k = 0; k < f.jobs.length; k += JOB_STRIDE) {
-    if (f.jobs[k] === x && f.jobs[k + 1] === y && (t === 'priority' || f.jobs[k + 2] !== JOB_REFUEL)) return true;
+    if (f.jobs[k] === x && f.jobs[k + 1] === y && (t === 'priority' || (f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_HAUL))) return true;
   }
   return false;
 }

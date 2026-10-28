@@ -39,6 +39,8 @@ function sendFrame(s: WebSim) {
     nightFirelight: s.night_firelight(),
     hearthFuel: s.hearth_fuel(),
     refuelPriority: s.refuel_priority(),
+    pileItem: s.pile_item(),
+    pileAmount: s.pile_amount(),
     temperature: s.temperature(),
     smoke: s.smoke(),
     colonists: s.colonists(),
@@ -46,7 +48,7 @@ function sendFrame(s: WebSim) {
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.refuelPriority, frame.temperature, frame.smoke, frame.colonists, frame.jobs, frame.events, frame.shades].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.colonists, frame.jobs, frame.events, frame.shades].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -83,6 +85,7 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       lamp: () => s.build(x, y, Building.Lamp),
       vent: () => s.build(x, y, Building.Vent),
       bed: () => s.build(x, y, Building.Bed),
+      stockpile: () => s.build(x, y, Building.Stockpile),
     })[msg.tool]();
   } else if (msg.type === 'build' && sim) {
     sim.build(msg.x, msg.y, msg.building);

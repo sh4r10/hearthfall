@@ -4,7 +4,7 @@
 import { BUILD_COST, Building, Element, JOB_BUILD, JOB_STRIDE, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_NIGHT, REACH, type Frame } from './protocol';
 
 export const BUILDING_NAMES: Record<number, string> = {
-  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.MushroomBed]: 'mushroom bed',
+  [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.Stockpile]: 'stockpile', [Building.MushroomBed]: 'mushroom bed',
   [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Vent]: 'vent', [Building.Cairn]: 'cairn',
 };
 

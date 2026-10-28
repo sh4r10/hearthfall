@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed';
+export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed' | 'stockpile';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -33,6 +33,9 @@ export interface Frame {
   hearthFuel: Int32Array;
   /** Priority each hearth's refuel errands get, by cell. */
   refuelPriority: Uint8Array;
+  /** What lies loose on each cell (an Item number, 0 for nothing) and how much; see WebSim::pile_item. */
+  pileItem: Uint8Array;
+  pileAmount: Int32Array;
   temperature: Int32Array;
   /** Smoke per cell, 0..=255 (SMOKE_MAX in the sim); see WebSim::smoke. */
   smoke: Uint8Array;
@@ -48,7 +51,7 @@ export interface Frame {
 
 export type FromWorker = Frame;
 
-export const COLONIST_STRIDE = 13;
+export const COLONIST_STRIDE = 15;
 export const JOB_STRIDE = 8;
 export const EVENT_STRIDE = 3;
 export const SHADE_STRIDE = 3;
@@ -76,22 +79,28 @@ export const DARK_BELOW = 40;
 
 // Mirror the enums in crates/sim/src/world.rs. Building 1 was the oxygen diffuser; the number stays unused.
 export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
-export const Building = { None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7 } as const;
-export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
+export const Building = { None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7, Stockpile: 8 } as const;
+/** Loose goods, matching sim::Item; 0 is nothing. The 14th and 15th colonist fields are what they carry and how much. */
+export const Item = { Coal: 1, Stone: 2 } as const;
+export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone' };
+/** Most a survivor carries in one trip; must match CARRY_MAX in crates/sim/src/haul.rs. */
+export const CARRY_MAX = 10;
+export const ROLES = ['Digger', 'Builder', 'Firekeeper', 'Hauler'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
-export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down'] as const;
+export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down', 'hauling goods'] as const;
 /** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
-export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3;
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4;
 /** Order priorities, the seventh job field; must match DEFAULT_PRIORITY and MAX_PRIORITY in crates/sim/src/jobs.rs. */
 export const DEFAULT_PRIORITY = 5, MAX_PRIORITY = 9;
 /** Why an order is stuck, the eighth job field; must match the BLOCK_ values in crates/sim/src/orders.rs. */
-export const BLOCK_NONE = 0, BLOCK_UNREACHABLE = 1, BLOCK_NO_COAL = 2, BLOCK_NO_STONE = 3, BLOCK_UNDER_BUILDING = 4, BLOCK_NO_HANDS = 5;
+export const BLOCK_NONE = 0, BLOCK_UNREACHABLE = 1, BLOCK_NO_COAL = 2, BLOCK_NO_STONE = 3, BLOCK_UNDER_BUILDING = 4, BLOCK_NO_HANDS = 5, BLOCK_NO_STOCKPILE = 6;
 export const BLOCK_REASONS: Record<number, string> = {
   [BLOCK_UNREACHABLE]: "can't be reached",
   [BLOCK_NO_COAL]: 'needs more coal',
   [BLOCK_NO_STONE]: 'needs more stone',
   [BLOCK_UNDER_BUILDING]: 'is under a building nobody is taking down',
   [BLOCK_NO_HANDS]: 'has nobody free to do it',
+  [BLOCK_NO_STOCKPILE]: 'has no stockpile to go to',
 };
 /** What each building costs as [coal, stone]; must match build_cost in crates/sim/src/jobs.rs. */
 export const BUILD_COST: Record<number, [number, number]> = {
@@ -101,10 +110,11 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.Ladder]: [0, 1],
   [Building.MushroomBed]: [0, 2],
   [Building.Bed]: [0, 3],
+  [Building.Stockpile]: [0, 2],
 };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
 /** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */
-export const REACH: Record<number, number> = { [Building.Hearth]: 1, [Building.MushroomBed]: 1 };
+export const REACH: Record<number, number> = { [Building.Hearth]: 1, [Building.MushroomBed]: 1, [Building.Stockpile]: 1 };
 /**
  * The cell of the building standing on (x, y), if (x, y) is its floor; ladders
  * need none. Mirrors held_up_by in crates/sim/src/jobs.rs, which refuses to

@@ -10,9 +10,8 @@ Ids are the asset ids in `art-codex/assets.json`; `*` matches any part of an id.
 | `*-side-*`, `*-front-*`, `*-back-*` | Source | Painted body parts. `compose_character.py` builds the animation strips from them, and the game uses those strips. | Indirectly, through the `anim` strips |
 | `*-pose-sleep-ground`, `*-pose-cold` | Source | The composed `sleep` and `cold` strips are built from these poses. | Indirectly, through the `anim` strips |
 | `prop-hammer`, `prop-pickaxe` | Source | Baked into the `build` and `dig` strips. The pickaxe is also the dig marker (cropped by the importer). | Indirectly |
-| `prop-coal-sack` | Source, planned | Baked into the `carry` strip. Shown on its own once survivors haul goods. | Hauling, in the colony management thread |
-| `item-coal-chunk`, `item-ration` | Planned | Nothing is carried or dropped on the ground yet. | Hauling and stockpiles, in the colony management thread |
-| `building-stockpile-*` | Planned | There is no stockpile building yet. Coal and food are a colony-wide count. | Stockpiles, in the colony management thread |
+| `prop-coal-sack` | Source | Baked into the `carry` strip, which survivors walk with while hauling. | Indirectly, through the `carry` strip |
+| `item-ration` | Planned | Food isn't dropped on the ground; mushroom beds put rations straight into stock. | Food hauling, if added |
 | `prop-lantern` | Planned | Nothing in the game carries a lantern yet. | Refugees following the light down, and night errands |
 | `building-diffuser-on`, `building-diffuser-off`, `icon-diffuser`, `icon-breath` | Retired | Air is shelved: the oxygen diffuser and the breath need are gone from the game. | Nothing, unless air comes back |
 | `building-lamp-off` | Unused | Under the current rules a lamp never goes out. | A lamp that needs fuel, if one is added |

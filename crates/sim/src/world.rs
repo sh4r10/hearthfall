@@ -51,6 +51,8 @@ pub enum Building {
     Lamp = 6,
     /// Somewhere to sleep well. One sleeper at a time, and blocks nothing.
     Bed = 7,
+    /// Where hauled goods go. Coal and stone only count once they are here.
+    Stockpile = 8,
 }
 
 /// Temperatures are in centi-kelvin.
