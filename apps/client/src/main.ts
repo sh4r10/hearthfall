@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_STRIDE, LAMP_COST, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  ACTIVITIES, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, EVENT_DEATH, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -16,24 +16,24 @@ const NEEDS: [label: string, offset: number, icon: string][] = [
 ];
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
-interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; cost?: number }
+interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number }
 const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
-  { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.' },
-  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', cost: HEARTH_COST },
-  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.' },
-  { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back where the fire has used it up. Fresh-cut rock breathes and walls slowly soak up smoke, so most shafts clear on their own.' },
-  { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', cost: LAMP_COST },
-  { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.' },
+  { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
+  { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal and air.', building: Building.Hearth },
+  { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
+  { tool: 'diffuser', key: '5', label: 'Oxygen', icon: 'diffuser', tip: 'Puts fresh air back where the fire has used it up. Fresh-cut rock breathes and walls slowly soak up smoke, so most shafts clear on their own.', building: Building.OxygenDiffuser },
+  { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
+  { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Remove orders you have marked.' },
 ];
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag across many cells. Look for the black coal seams.',
+  dig: '<b>Dig:</b> click rock to mark it, or shift-drag across many cells. Black seams give coal, grey rock gives stone.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb.',
-  hearth: `<b>Hearth:</b> costs ${HEARTH_COST} coal. Light up a new part of the caves.`,
+  hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
   diffuser: '<b>Oxygen:</b> place where the Air view shows a room going stale. Survivors step out of bad air by themselves and go back once they can breathe.',
-  lamp: `<b>Lamp:</b> costs ${LAMP_COST} coal. Light a tunnel so Shades keep out of it.`,
+  lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
   cancel: '<b>Cancel:</b> click or drag over orders to remove them.',
 };
@@ -264,6 +264,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
     `<b>Day ${day}</b><span>${icon(frame.night ? 'moon' : 'sun', 12)}${frame.night ? 'Dawn' : 'Night'} in ${untilChange}s</span>`;
   stats.innerHTML =
     stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
+    stat('stone', 'Stone', frame.stone, frame.stone < 2) +
     stat('food', 'Food', frame.food, frame.food < 5) +
     stat('people', 'Survivors', `${alive}/${total}`, alive < total);
   renderRoster(frame);
@@ -280,9 +281,18 @@ function onFrame(event: MessageEvent<FromWorker>) {
 
 // --- Tools ---------------------------------------------------------------------
 
+/** The coal and stone a building costs, as a small badge on its tool. */
+function costBadge(building?: number) {
+  const [coal, stone] = building !== undefined ? BUILD_COST[building] ?? [0, 0] : [0, 0];
+  if (!coal && !stone) return '';
+  const parts = [coal ? `${icon('coal', 10)}${coal}` : '', stone ? `${icon('stone', 10)}${stone}` : ''].filter(Boolean).join('');
+  const words = [coal ? `${coal} coal` : '', stone ? `${stone} stone` : ''].filter(Boolean).join(' and ');
+  return `<span class="cost" title="Costs ${words}">${parts}</span>`;
+}
+
 $('tools').innerHTML = TOOLS.map((t) =>
   `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
-    <kbd>${t.key}</kbd>${t.cost ? `<span class="cost" title="Costs ${t.cost} coal">${icon('coal', 10)}${t.cost}</span>` : ''}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
+    <kbd>${t.key}</kbd>${costBadge(t.building)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
 $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');

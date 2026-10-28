@@ -35,12 +35,20 @@ pub const ROLE_PRIORITY_TICKS: u64 = 100;
 /// Firekeepers top up a hearth once its fuel falls below this.
 pub const REFUEL_BELOW: i32 = 20;
 
-/// Coal a building costs to build.
-pub fn build_cost(b: Building) -> i32 {
+/// Stone gained from digging one rock cell.
+pub const STONE_PER_CELL: i32 = 2;
+
+/// What a building costs, as (coal, stone). Coal is for anything that burns
+/// or glows, stone for everything you stack. Paid when the build finishes.
+pub fn build_cost(b: Building) -> (i32, i32) {
     match b {
-        Building::Hearth => HEARTH_COST,
-        Building::Lamp => LAMP_COST,
-        _ => 0,
+        Building::Hearth => (HEARTH_COST, 4),
+        Building::Lamp => (LAMP_COST, 1),
+        Building::Ladder => (0, 1),
+        Building::MushroomBed => (0, 2),
+        Building::Bed => (0, 3),
+        Building::OxygenDiffuser => (2, 6),
+        Building::None | Building::Cairn => (0, 0),
     }
 }
 
@@ -124,7 +132,8 @@ impl Sim {
         match job.kind {
             JobKind::Dig => self.elements[i].is_diggable() && !self.holds_up_building(job.x, job.y),
             JobKind::Build(b) => {
-                self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= build_cost(b)
+                let (coal, stone) = build_cost(b);
+                self.elements[i].is_open() && self.buildings[i] == Building::None && self.coal >= coal && self.stone >= stone
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
         }
@@ -147,8 +156,10 @@ impl Sim {
         let i = self.idx(job.x, job.y);
         match job.kind {
             JobKind::Dig => {
-                if self.elements[i] == Element::Coal {
-                    self.coal += COAL_PER_CELL;
+                match self.elements[i] {
+                    Element::Coal => self.coal += COAL_PER_CELL,
+                    Element::Rock => self.stone += STONE_PER_CELL,
+                    _ => {}
                 }
                 self.elements[i] = Element::Floor;
                 // Rock holds air in its pores: a fresh cut breathes, so a shaft
@@ -156,7 +167,9 @@ impl Sim {
                 self.oxygen[i] = crate::START_OXYGEN_MG;
             }
             JobKind::Build(b) => {
-                self.coal -= build_cost(b);
+                let (coal, stone) = build_cost(b);
+                self.coal -= coal;
+                self.stone -= stone;
                 if b == Building::Hearth {
                     self.hearth_fuel[i] = 10;
                 }

@@ -292,12 +292,13 @@ fn lamps_light_cells_without_warming_them() {
 fn builders_build_lamps_for_coal() {
     let mut sim = sealed_room(11, 40, (5, 10, 30, 20));
     sim.coal = 3;
+    sim.stone = 1;
     sim.step(&[Command::Build { x: 12, y: 20, building: Building::Lamp }]);
     for _ in 0..400 {
         sim.step(&[]);
     }
     assert_eq!(sim.buildings[sim.idx(12, 20)], Building::Lamp, "jobs: {:?}", sim.jobs);
-    assert_eq!(sim.coal, 3 - sim::LAMP_COST);
+    assert_eq!((sim.coal, sim.stone), (3 - sim::LAMP_COST, 0));
 }
 
 #[test]

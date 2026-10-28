@@ -75,6 +75,10 @@ impl WebSim {
         self.sim.coal
     }
 
+    pub fn stone(&self) -> i32 {
+        self.sim.stone
+    }
+
     pub fn food(&self) -> i32 {
         self.sim.food
     }

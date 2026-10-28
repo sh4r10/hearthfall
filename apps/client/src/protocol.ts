@@ -16,6 +16,7 @@ export interface Frame {
   width: number;
   height: number;
   coal: number;
+  stone: number;
   food: number;
   night: boolean;
   elements: Uint8Array;
@@ -70,10 +71,17 @@ export const Building = { None: 0, OxygenDiffuser: 1, Ladder: 2, Hearth: 3, Mush
 export const ROLES = ['Digger', 'Builder', 'Firekeeper'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
 export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth'] as const;
-/** Coal a hearth costs; must match HEARTH_COST in crates/sim/src/jobs.rs. */
-export const HEARTH_COST = 8;
-/** Coal a lamp costs; must match LAMP_COST in crates/sim/src/jobs.rs. */
-export const LAMP_COST = 2;
+/** What each building costs as [coal, stone]; must match build_cost in crates/sim/src/jobs.rs. */
+export const BUILD_COST: Record<number, [number, number]> = {
+  [Building.Hearth]: [8, 4],
+  [Building.Lamp]: [2, 1],
+  [Building.Ladder]: [0, 1],
+  [Building.MushroomBed]: [0, 2],
+  [Building.Bed]: [0, 3],
+  [Building.OxygenDiffuser]: [2, 6],
+};
+export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
+export const LAMP_COST = BUILD_COST[Building.Lamp][0];
 /** Fuel a full hearth holds, and ticks each unit burns for; must match HEARTH_CAPACITY and HEARTH_BURN_TICKS. */
 export const HEARTH_CAPACITY = 40;
 export const HEARTH_BURN_TICKS = 40;

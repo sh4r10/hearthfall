@@ -163,6 +163,7 @@ body.night .clock-text span { color: var(--warn); }
   position: absolute; top: 4px; left: 4px; display: flex; align-items: center; gap: 2px;
   font-size: 9px; font-weight: 700; line-height: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
 }
+.tool .cost .icon + .icon { margin-left: 3px; }
 .tool .cost .icon { width: 10px; height: 10px; }
 
 #tooltip {

@@ -13,6 +13,7 @@ function sendFrame(s: WebSim) {
     width: s.width(),
     height: s.height(),
     coal: s.coal(),
+    stone: s.stone(),
     food: s.food(),
     night: s.is_night(),
     elements: s.elements(),

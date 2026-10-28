@@ -14,7 +14,7 @@ mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_SUFFOCATED, CAUSE_TAKEN, HEADING_AIR, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use jobs::{build_cost, reach, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -35,6 +35,8 @@ pub const HEARTH_BURN_TICKS: u64 = 40;
 /// A mushroom bed in the dark grows a ration this often.
 pub const MUSHROOM_TICKS: u64 = 400;
 pub const START_COAL: i32 = 24;
+/// Enough stone for a couple of ladders and a bed before the first rock is cut.
+pub const START_STONE: i32 = 6;
 pub const START_FOOD: i32 = 20;
 /// How far hearth light reaches through open cells, by day and by night.
 pub const LIGHT_RADIUS_DAY: i32 = 13;
@@ -91,6 +93,8 @@ pub struct Sim {
     pub firelight: Vec<u8>,
     /// Coal in the colony stockpile.
     pub coal: i32,
+    /// Stone from digging rock. Everything you stack is built from it.
+    pub stone: i32,
     /// Rations in the colony stockpile.
     pub food: i32,
     pub colonists: Vec<Colonist>,
@@ -133,6 +137,7 @@ impl Sim {
             light: vec![0; n],
             firelight: vec![0; n],
             coal: START_COAL,
+            stone: START_STONE,
             food: START_FOOD,
             colonists,
             jobs: Vec::new(),
@@ -248,6 +253,7 @@ impl Sim {
         };
         eat(&self.tick.to_le_bytes());
         eat(&self.coal.to_le_bytes());
+        eat(&self.stone.to_le_bytes());
         eat(&self.food.to_le_bytes());
         for i in 0..self.elements.len() {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
