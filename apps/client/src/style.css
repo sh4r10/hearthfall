@@ -171,6 +171,7 @@ body.night .clock-text span { color: var(--warn); }
   background: var(--panel-solid); border: 1px solid var(--edge-hi); border-radius: 10px;
   font-size: 13px; line-height: 1.45; color: var(--muted); box-shadow: 0 10px 30px rgba(3, 6, 10, 0.5);
 }
+#tooltip em { display: block; margin-top: 6px; font-style: normal; color: var(--warn); }
 #tooltip b { display: block; color: var(--ink); font-size: 13px; font-weight: 700; margin-bottom: 2px; }
 
 #hint {
@@ -216,7 +217,7 @@ body.night .clock-text span { color: var(--warn); }
 
 /* --- Map views ------------------------------------------------------------ */
 .tool.nudge { animation: pulse-tool 1.2s ease-in-out infinite; }
-.tool.reveal { animation: reveal 0.5s ease-out, pulse-tool 1.2s ease-in-out 0.5s infinite; }
+.tool.reveal { animation: reveal 0.5s ease-out; }
 @keyframes reveal { from { opacity: 0; transform: translateY(6px) scale(0.9); } }
 #legend {
   position: fixed; z-index: 5; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(100px + env(safe-area-inset-bottom, 0px));

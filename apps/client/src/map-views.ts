@@ -5,7 +5,7 @@
 
 import type { Overlay } from './world-view';
 import {
-  Building, COLONIST_STRIDE, DARK_BELOW, DAY_TICKS, Element, HEARTH_BURN_TICKS, STAT_MAX, type Frame,
+  Building, COLONIST_STRIDE, DARK_BELOW, DAY_TICKS, Element, HEARTH_BURN_TICKS, STAT_MAX, SUFFOCATE_BELOW_MG, type Frame,
 } from './protocol';
 import { STALE_BELOW_MG } from './overlay-shader';
 import { icon } from './icons';
@@ -38,9 +38,10 @@ const list = (names: string[]) => names.length < 3 ? names.join(' and ') : `${na
 export class MapViews {
   /** Which views the player has been given this run. */
   private open = new Set<MapView['overlay']>(['warmth']);
-  private opened = new Set<Overlay>();
-  private nudged = false;
+  /** Views whose current nudge the player has already answered by opening them. */
+  private acknowledged = new Set<Overlay>();
   private fuelWarned = false;
+  private warnedNight = false;
   private legend = document.getElementById('legend')!;
   private legendFor?: string;
 
@@ -54,10 +55,11 @@ export class MapViews {
     return o === 'none' || this.open.has(o);
   }
 
-  /** Call when the player switches view. */
+  /** Call when the player switches view: opening a view answers its nudge. */
   shown(o: Overlay) {
-    this.opened.add(o);
-    document.querySelector(`[data-overlay="${o}"]`)?.classList.remove('nudge');
+    if (o === 'none') return;
+    this.acknowledged.add(o);
+    this.nudge(o, '');
   }
 
   update(frame: Frame, overlay: Overlay) {
@@ -66,25 +68,39 @@ export class MapViews {
     this.renderLegend(frame, overlay);
   }
 
+  /**
+   * A button pulses only while something needs doing soon and the player hasn't
+   * looked yet; hovering it says why. An empty reason stops it.
+   */
+  private nudge(o: MapView['overlay'], reason: string) {
+    const el = document.querySelector<HTMLElement>(`[data-overlay="${o}"]`);
+    if (!el) return;
+    el.dataset.baseTip ??= el.dataset.tip;
+    const on = !!reason && !this.acknowledged.has(o);
+    el.classList.toggle('nudge', on);
+    el.dataset.tip = on ? `${el.dataset.baseTip}<em>${reason}</em>` : el.dataset.baseTip;
+  }
+
   private reveal(o: MapView['overlay'], tool?: string) {
     this.open.add(o);
     for (const el of [document.querySelector(`[data-overlay="${o}"]`), tool && document.querySelector(`[data-tool="${tool}"]`)]) {
       if (!(el instanceof HTMLElement)) continue;
       el.hidden = false;
-      el.classList.add('reveal', 'nudge');
+      el.classList.add('reveal');
+      el.addEventListener('animationend', () => el.classList.remove('reveal'), { once: true });
     }
   }
 
   private progress(frame: Frame) {
-    // Before the first night, point at the warmth view: it shows how far the fire will reach in the dark.
+    // The first evening, point at the warmth view while the night ahead will leave someone or something in the cold.
     const into = frame.tick % DAY_TICKS;
     const nightAt = (DAY_TICKS * 6) / 10;
-    if (!this.nudged && !frame.night && frame.tick < DAY_TICKS && nightAt - into < 400) {
-      this.nudged = true;
-      if (!this.opened.has('warmth')) {
-        document.querySelector('[data-overlay="warmth"]')?.classList.add('nudge');
-        this.notice('Night is coming, and the fire reaches less far in the dark. Press <b>W</b> to see where it will stay warm.', 'moon', 'info');
-      }
+    const soon = !frame.night && frame.tick < DAY_TICKS && nightAt - into < 400;
+    const losing = soon ? this.losingWarmth(frame) : 0;
+    this.nudge('warmth', losing ? `Night in ${Math.ceil((nightAt - into) / 10)} s, and the fire will reach less far: open to see where it stays warm.` : '');
+    if (losing && !this.warnedNight && !this.acknowledged.has('warmth')) {
+      this.warnedNight = true;
+      this.notice('Night is coming, and the fire reaches less far in the dark. Press <b>W</b> to see where it will stay warm.', 'moon', 'info');
     }
 
     // Air only matters once something is using it up: give the view (and the diffuser) then.
@@ -92,6 +108,38 @@ export class MapViews {
       this.reveal('air', 'diffuser');
       this.notice('The air near the fire is going stale. The <b>Air</b> view (O) and the <b>Oxygen</b> diffuser are now open.', 'oxygen', 'warn');
     }
+    // After that, the Air button pulses only while a survivor is close to suffocating:
+    // losing breath, or in air at twice the suffocation level or less.
+    if (this.open.has('air')) {
+      const short = this.inStaleAir(frame, SUFFOCATE_BELOW_MG * 2, true);
+      if (!short.length) this.acknowledged.delete('air'); // trouble over: the next bout nudges again
+      this.nudge('air', short.length ? `${list(short)} ${short.length === 1 ? 'is' : 'are'} running short of air.` : '');
+    }
+  }
+
+  /** Survivors and beds in the firelight now that will be out of it tonight. */
+  private losingWarmth(f: Frame) {
+    let n = 0;
+    for (let i = 0; i < f.colonists.length; i += COLONIST_STRIDE) {
+      if (f.colonists[i + 3] === 5) continue;
+      const c = f.colonists[i + 1] * f.width + f.colonists[i];
+      if (f.firelight[c] >= DARK_BELOW && f.nightFirelight[c] < DARK_BELOW) n++;
+    }
+    for (let c = 0; c < f.buildings.length; c++) {
+      if (f.buildings[c] === Building.Bed && f.firelight[c] >= DARK_BELOW && f.nightFirelight[c] < DARK_BELOW) n++;
+    }
+    return n;
+  }
+
+  /** Living survivors in air below `below` mg (or, with `breathless`, already losing breath). */
+  private inStaleAir(f: Frame, below = STALE_BELOW_MG, breathless = false) {
+    const short: string[] = [];
+    for (let k = 0, i = 0; i < f.colonists.length; i += COLONIST_STRIDE, k++) {
+      if (f.colonists[i + 3] === 5) continue;
+      const thin = f.oxygen[f.colonists[i + 1] * f.width + f.colonists[i]] < below;
+      if (thin || (breathless && f.colonists[i + 4] < STAT_MAX * 0.9)) short.push(this.names[k % this.names.length]);
+    }
+    return short;
   }
 
   /** Someone short of breath, or stale air where the colony lives. */
@@ -173,12 +221,7 @@ export class MapViews {
 
   /** What the air map means right now: who can't breathe, and whether a fire is choking. */
   private airVerdict(f: Frame): [string, string] {
-    const short: string[] = [];
-    for (let k = 0, i = 0; i < f.colonists.length; i += COLONIST_STRIDE, k++) {
-      if (f.colonists[i + 3] === 5) continue;
-      const c = f.colonists[i + 1] * f.width + f.colonists[i];
-      if (f.oxygen[c] < STALE_BELOW_MG) short.push(this.names[k % this.names.length]);
-    }
+    const short = this.inStaleAir(f);
     let choking = 0;
     for (let c = 0; c < f.buildings.length; c++) if (f.buildings[c] === Building.Hearth && f.oxygen[c] < STALE_BELOW_MG) choking++;
     const lines: string[] = [];
