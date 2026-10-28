@@ -400,6 +400,14 @@ def check_figures(root, chars, rig, results):
                 r.check(x0 > 2 and x1 < fig.width - 3 and y0 > 2, "stacked figure touches the frame edge")
                 share = main_share(np.asarray(fig.getchannel("A")))
                 r.check(share >= 0.97, f"{100 * (1 - share):.0f}% of the stacked figure is detached: a gap between parts")
+                # A neck gap: rows between the head and the coat that only a braid or a scarf tail bridges.
+                al = np.asarray(fig.getchannel("A")) >= OPAQUE
+                widths = [int(np.ptp(np.nonzero(row)[0])) + 1 if row.any() else 0 for row in al]
+                torso_w = max(widths[200:250]) if max(widths[200:250]) else 1
+                solid = [int(row.sum()) for row in al]
+                neck = min(solid[150:200])
+                r.check(neck >= 0.3 * torso_w, f"the figure pinches to {neck} px between y=150 and 200 "
+                                               f"(coat is {torso_w} px wide): a gap between head and torso")
                 spec = rig["views"][view]["parts"]
                 alphas = {}
                 for part in spec:

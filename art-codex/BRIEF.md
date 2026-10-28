@@ -84,7 +84,7 @@ The game interface is being rebuilt in a clean, modern style, so UI icons are **
 
 ## Workflow
 
-1. **Batch by batch.** Do batch 1 completely, check it, commit it and push it before starting batch 2. Batch 1 is what the game needs now: the first two survivors (Esk and Mara), the redone terrain, water, the redone buildings, props, items and effects, plus the title screen: story scene 1 and the HEARTHFALL wordmark.
+1. **Batch by batch.** Do batch 1 completely, check it, commit it and push it before starting batch 2. Batch 1 is what the game needs now: the first two survivors (Esk and Mara), the redone terrain, water, the redone buildings, props, items and effects.
 2. **Characters first, turnaround first.** For each survivor, make `turnaround.png` and get it right before anything else. Then make every other image of that character with the turnaround attached as the reference image, and say "the same character as the reference, same proportions, same colours". Follow the build steps in CHARACTERS.md.
 3. **Generate big, deliver exact.** Generate at a larger size (for example 1024 or 1536 px), then cut out, clean and downscale with Lanczos to the exact listed size. Do the cleanup in a script (Pillow and numpy are fine) and keep the scripts in `art-codex/tools/`.
 4. **Transparency.** If your image tool can output a transparent background, use it. Otherwise generate on a flat mid-grey `#7f7f7f` background and remove it, including enclosed pockets (between an arm and the body, between ladder rungs), with no grey fringe on the outline.
