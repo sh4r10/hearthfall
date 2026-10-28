@@ -9,10 +9,11 @@ import { lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
 import { terrainMaterial } from './terrain-shader';
+import { AIR_SCALE, OVERLAY_MODE, overlayMaterial } from './overlay-shader';
 import './sprites';
 import { BED_TOP, type SurvivorAnim } from './sprites';
 
-export type Overlay = 'none' | 'oxygen' | 'co2' | 'temperature';
+export type Overlay = 'none' | 'warmth' | 'air';
 
 // Side-on low-poly 3D, seen from the front. The sim grid lies in the XY plane
 // (sim y grows downwards, world y upwards) and z points at the camera:
@@ -167,6 +168,9 @@ export class WorldView {
   private waterTex?: THREE.DataTexture;
   private terrainShader?: THREE.ShaderMaterial;
   private gasTex!: THREE.DataTexture;
+  private fieldTex!: THREE.DataTexture;
+  private marksTex!: THREE.DataTexture;
+  private overlayShader!: THREE.ShaderMaterial;
   private latest?: Frame;
   private lastElements?: Uint8Array;
   private lastBuildings?: Uint8Array;
@@ -270,6 +274,13 @@ export class WorldView {
     haze.position.z = 0.55;
     haze.renderOrder = 2;
     this.scene.add(haze);
+    this.fieldTex = this.gridTexture();
+    this.marksTex = this.gridTexture();
+    this.overlayShader = overlayMaterial(this.fieldTex, this.marksTex, this.width, this.height);
+    const map = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), this.overlayShader);
+    map.position.z = -0.05; // over the cave, under the sprites
+    map.renderOrder = 1;
+    this.scene.add(map);
 
     const count = 160;
     const geo = new THREE.BufferGeometry();
@@ -738,37 +749,56 @@ export class WorldView {
     this.lightTex.needsUpdate = true;
   }
 
+  /** CO2 hangs low as a faint murk in the plain view. */
   private paintGas(frame: Frame) {
     const gas = this.gasTex.image.data as Uint8Array;
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const c = y * this.width + x;
         const i = this.texIndex(x, y);
-        let r = 0, g = 0, b = 0, alpha = 0;
-        if (frame.elements[c] === Element.Floor) {
-          if (this.overlay === 'oxygen') {
-            const t = Math.min(frame.oxygen[c] / 1800, 1);
-            [r, g, b, alpha] = [70, 150 + 100 * t, 255, 30 + 150 * t];
-          } else if (this.overlay === 'co2') {
-            const t = Math.min(frame.co2[c] / 1800, 1);
-            [r, g, b, alpha] = [190, 200, 80, 30 + 150 * t];
-          } else if (this.overlay === 'temperature') {
-            const t = Math.min(Math.max((frame.temperature[c] - 27_315) / 6_000, 0), 1);
-            [r, g, b, alpha] = [255 * t, 70, 255 * (1 - t), 140];
-          } else {
-            const t = Math.min(frame.co2[c] / 2500, 1);
-            [r, g, b, alpha] = [110, 120, 60, t * 90]; // CO2 hangs low as a murk
-          }
-        }
-        gas[i] = r; gas[i + 1] = g; gas[i + 2] = b; gas[i + 3] = alpha;
+        const t = frame.elements[c] === Element.Floor && this.overlay === 'none' ? Math.min(frame.co2[c] / 2500, 1) : 0;
+        gas[i] = 110; gas[i + 1] = 120; gas[i + 2] = 60; gas[i + 3] = t * 90;
       }
     }
     this.gasTex.needsUpdate = true;
   }
 
+  /** Fills the map view's field texture; see overlay-shader.ts for the channels. */
+  private paintField(frame: Frame) {
+    if (this.overlay === 'none') return;
+    const field = this.fieldTex.image.data as Uint8Array;
+    const marks = this.marksTex.image.data as Uint8Array;
+    const warmth = this.overlay === 'warmth';
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const c = y * this.width + x;
+        const i = this.texIndex(x, y);
+        const open = frame.elements[c] === Element.Floor;
+        if (warmth) {
+          field[i] = frame.firelight[c];
+          field[i + 1] = frame.light[c];
+          field[i + 2] = frame.nightFirelight[c];
+        } else {
+          field[i] = Math.min(frame.oxygen[c] / AIR_SCALE, 1) * 255;
+          field[i + 1] = field[i + 2] = 0;
+        }
+        field[i + 3] = open ? 255 : 0;
+        marks[i] = frame.elements[c] === Element.Coal ? 255 : 0;
+      }
+    }
+    this.fieldTex.needsUpdate = true;
+    this.marksTex.needsUpdate = true;
+    const u = this.overlayShader.uniforms;
+    u.uMode.value = OVERLAY_MODE[this.overlay];
+    u.uForecast.value = frame.night ? 0 : 1;
+  }
+
   setOverlay(overlay: Overlay) {
     this.overlay = overlay;
-    if (this.latest) this.paintGas(this.latest);
+    if (this.latest) {
+      this.paintGas(this.latest);
+      this.paintField(this.latest);
+    }
   }
 
   applyFrame(frame: Frame, _ticksPerSecond: number) {
@@ -789,6 +819,7 @@ export class WorldView {
     this.computeShade(frame);
     if (first) this.shade.set(this.shadeTarget);
     this.paintGas(frame);
+    this.paintField(frame);
     this.updateMarkers(frame);
 
     this.survivors.forEach((s, i) => {
@@ -1128,6 +1159,9 @@ export class WorldView {
       for (const l of this.lamps) l.intensity = 4 + Math.sin(t * 9 + l.position.x) * 0.3;
       this.lightSprites(t);
       if (this.terrainShader) this.terrainShader.uniforms.uTime.value = t;
+      const u = this.overlayShader.uniforms;
+      u.uTime.value = t;
+      u.uFade.value += ((this.overlay === 'none' ? 0 : 1) - u.uFade.value) * Math.min(dt * 10, 1);
     }
 
     const dist = this.view.span / 2 / Math.tan(THREE.MathUtils.degToRad(FOV / 2));

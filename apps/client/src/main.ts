@@ -4,6 +4,7 @@ import {
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
+import { MAP_VIEWS, MapViews } from './map-views';
 import SimWorker from './sim.worker.ts?worker&inline';
 
 const TICKS_PER_SECOND = 10;
@@ -25,12 +26,6 @@ const TOOLS: ToolInfo[] = [
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', cost: LAMP_COST },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Remove orders you have marked.' },
-];
-const OVERLAYS: { overlay: Overlay; key: string; label: string; icon: string; tip: string }[] = [
-  { overlay: 'none', key: 'Esc', label: 'View', icon: 'view', tip: 'The plain view of the caves.' },
-  { overlay: 'oxygen', key: 'O', label: 'Air', icon: 'oxygen', tip: 'Where the breathable air is.' },
-  { overlay: 'co2', key: 'C', label: 'Smoke', icon: 'co2', tip: 'Carbon dioxide from the fire. It sinks and pools.' },
-  { overlay: 'temperature', key: 'T', label: 'Heat', icon: 'heat', tip: 'Warm and cold areas.' },
 ];
 const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock to mark it, or shift-drag across many cells. Look for the black coal seams.',
@@ -172,14 +167,21 @@ function announce(frame: Frame) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
       glyph = 'shade';
     } else continue;
-    const line = document.createElement('li');
-    line.className = 'panel';
-    line.innerHTML = `${icon(glyph, 16)}<span>${text}</span>`;
-    log.prepend(line);
-    setTimeout(() => line.classList.add('fade'), 8000);
-    setTimeout(() => line.remove(), 9000);
+    logLine(text, glyph);
   }
 }
+
+function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' = 'danger') {
+  const line = document.createElement('li');
+  line.className = `panel ${tone}`;
+  line.innerHTML = `${icon(glyph, 16)}<span>${html}</span>`;
+  log.prepend(line);
+  const stay = tone === 'danger' ? 8000 : 12000;
+  setTimeout(() => line.classList.add('fade'), stay);
+  setTimeout(() => line.remove(), stay + 1000);
+}
+
+const views = new MapViews(NAMES, logLine);
 
 // --- First-night tutorial ------------------------------------------------------
 
@@ -267,6 +269,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
   renderRoster(frame);
   renderDepth(frame);
   tutorialStep(frame);
+  views.update(frame, world.overlay);
   document.body.classList.toggle('night', frame.night);
   const over = $('gameover');
   if (alive === 0 && over.hidden) {
@@ -280,9 +283,11 @@ function onFrame(event: MessageEvent<FromWorker>) {
 $('tools').innerHTML = TOOLS.map((t) =>
   `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
     <kbd>${t.key}</kbd>${t.cost ? `<span class="cost" title="Costs ${t.cost} coal">${icon('coal', 10)}${t.cost}</span>` : ''}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
-$('overlays').innerHTML = OVERLAYS.map((o) =>
-  `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}">
+$('overlays').innerHTML = MAP_VIEWS.map((o) =>
+  `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
+// The diffuser only matters once the air does; it opens with the Air view.
+(document.querySelector('[data-tool="diffuser"]') as HTMLElement).hidden = true;
 
 document.querySelectorAll<HTMLElement>('[data-tip]').forEach((el) => {
   el.addEventListener('pointerenter', () => {
@@ -305,21 +310,24 @@ function setTool(t: Tool) {
   hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}<br>Drag to look around, scroll to zoom.</div>`;
 }
 function setOverlay(o: Overlay) {
+  if (!views.isOpen(o)) return;
   world.setOverlay(o);
   selectButton('data-overlay', o);
+  views.shown(o);
 }
 setTool('dig');
 setOverlay('none');
 
 document.querySelectorAll<HTMLButtonElement>('[data-tool]').forEach((b) => (b.onclick = () => setTool(b.dataset.tool as Tool)));
-document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) => (b.onclick = () => setOverlay(b.dataset.overlay as Overlay)));
+document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
+  (b.onclick = () => setOverlay(world.overlay === b.dataset.overlay ? 'none' : b.dataset.overlay as Overlay)));
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLSelectElement || !worker) return;
   const key = e.key.toLowerCase();
   const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'diffuser', x: 'cancel' };
-  if (tools[key]) setTool(tools[key]);
-  const overlays: Record<string, Overlay> = { o: 'oxygen', c: 'co2', t: 'temperature', escape: 'none' };
+  if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
+  const overlays: Record<string, Overlay> = { w: 'warmth', o: 'air', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
 });
 
