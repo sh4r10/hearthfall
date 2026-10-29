@@ -1,8 +1,7 @@
 //! Environment: light, smoke, water and heat.
 
 use crate::research::GRATE_RADIUS;
-use crate::{Building, Element, Sim, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, NIGHT_FULL};
-use crate::world::water_outlet;
+use crate::{Building, Element, Sim, WATER_FULL, WATER_MIN, WATER_WET, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, NIGHT_FULL};
 
 impl Sim {
     /// Flood light outwards from every lit hearth and every lamp through
@@ -129,33 +128,105 @@ impl Sim {
         self.buildings[i] == Building::Hearth && self.hearth_fuel[i] > 0
     }
 
-    /// Water falls into open cells below, and flows sideways towards drops.
-    /// Moving water swaps places with the open cell it fills, taking its heat along.
+    /// Water as a volume per cell (`water`, 0..=WATER_FULL), ONI style:
+    ///
+    /// 1. Gravity: each cell, bottom row first, pours into the open cell below
+    ///    until that is full. Water falls one cell a tick.
+    /// 2. Spreading: a resting cell (nothing to fall into) gives each lower
+    ///    side neighbour half the difference, so a cell never gives away more
+    ///    than it has. All sideways flows are worked out from the same
+    ///    snapshot, so the order of cells does not matter. A pool therefore
+    ///    levels out and then holds still (differences of 1 are left alone).
+    /// 3. Resting cells below WATER_MIN dry up, counted in `water_lost`.
+    ///
+    /// There is no upward pressure: a full column does not push water up a
+    /// side pipe. Elements follow volume (see [`WATER_WET`]); heat stays put.
     pub(crate) fn water_tick(&mut self) {
-        let (w, h) = (self.width as i32, self.height as i32);
-        let mut moved = vec![false; self.elements.len()];
-        let left_first = self.tick % 2 == 0;
+        let (w, h) = (self.width as usize, self.height as usize);
+        let fluid = |e: Element| matches!(e, Element::Floor | Element::Water);
+        // Gravity, in place from the bottom up. Water in a cell that is no
+        // longer open (rock laid over it in a test, say) is lost.
+        let mut any = false;
         for y in (0..h).rev() {
-            for k in 0..w {
-                let x = if left_first { k } else { w - 1 - k };
-                let i = self.idx(x as u32, y as u32);
-                if self.elements[i] != Element::Water || moved[i] {
+            for x in 0..w {
+                let i = y * w + x;
+                let v = self.water[i];
+                if v == 0 {
                     continue;
                 }
-                let target = if self.open(x, y + 1) {
-                    Some((x, y + 1))
-                } else {
-                    let dir = if self.rng.below(2) == 0 { -1 } else { 1 };
-                    [dir, -dir].into_iter().find_map(|d| water_outlet(&self.elements, w, h, x, y, d))
-                };
-                if let Some((tx, ty)) = target {
-                    let j = self.idx(tx as u32, ty as u32);
-                    self.elements.swap(i, j);
-                    self.temperature.swap(i, j);
-                    moved[j] = true;
+                if !fluid(self.elements[i]) {
+                    self.water_lost += v as i64;
+                    self.water[i] = 0;
+                    continue;
+                }
+                any = true;
+                if y + 1 < h && fluid(self.elements[i + w]) {
+                    let m = v.min(WATER_FULL - self.water[i + w]);
+                    self.water[i] -= m;
+                    self.water[i + w] += m;
                 }
             }
         }
+        if !any {
+            return;
+        }
+        // A cell rests when it cannot fall any further.
+        let rests = |s: &Sim, i: usize| i / w + 1 >= h || !fluid(s.elements[i + w]) || s.water[i + w] >= WATER_FULL;
+        self.water_flow.fill(0);
+        for y in 0..h {
+            for x in 0..w.saturating_sub(1) {
+                let (a, b) = (y * w + x, y * w + x + 1);
+                let (va, vb) = (self.water[a], self.water[b]);
+                if va == vb || !fluid(self.elements[a]) || !fluid(self.elements[b]) {
+                    continue;
+                }
+                let (from, to, diff) = if va > vb { (a, b, va - vb) } else { (b, a, vb - va) };
+                if diff < 2 || !rests(self, from) {
+                    continue;
+                }
+                let f = diff / 2;
+                self.water_flow[from] -= f;
+                self.water_flow[to] += f;
+            }
+        }
+        for i in 0..self.water.len() {
+            self.water[i] += self.water_flow[i];
+            let v = self.water[i];
+            if v > 0 && v < WATER_MIN && rests(self, i) {
+                self.water_lost += v as i64;
+                self.water[i] = 0;
+            }
+            self.sync_water_element(i);
+        }
+    }
+
+    /// Make the cell's element agree with its water: wet enough means [`Element::Water`].
+    fn sync_water_element(&mut self, i: usize) {
+        match self.elements[i] {
+            Element::Floor if self.water[i] >= WATER_WET => self.elements[i] = Element::Water,
+            Element::Water if self.water[i] < WATER_WET => self.elements[i] = Element::Floor,
+            _ => {}
+        }
+    }
+
+    /// Remove up to `amount` water from cell `i` (a bucket, a pump) and return what came out.
+    pub fn take_water(&mut self, i: usize, amount: i32) -> i32 {
+        let taken = amount.clamp(0, self.water[i]);
+        self.water[i] -= taken;
+        self.sync_water_element(i);
+        taken
+    }
+
+    /// Pour up to `amount` water into cell `i` (a drip, a refund) and return what fitted.
+    /// Cells that are not open hold none.
+    pub fn add_water(&mut self, i: usize, amount: i32) -> i32 {
+        if !matches!(self.elements[i], Element::Floor | Element::Water) {
+            return 0;
+        }
+        let added = amount.clamp(0, WATER_FULL - self.water[i]);
+        self.water[i] += added;
+        self.sync_water_element(i);
+        added
     }
 
     pub(crate) fn conduct_heat(&mut self) {

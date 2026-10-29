@@ -407,6 +407,8 @@ impl Sim {
                 if b == Building::Tile {
                     self.elements[i] = Element::Tile;
                     self.smoke[i] = 0;
+                    self.water_lost += self.water[i] as i64;
+                    self.water[i] = 0;
                 } else {
                     self.buildings[i] = b;
                 }

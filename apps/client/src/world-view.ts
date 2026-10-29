@@ -236,6 +236,7 @@ export class WorldView {
   private overlayShader!: THREE.ShaderMaterial;
   private latest?: Frame;
   private lastElements?: Uint8Array;
+  private lastWater?: Uint8Array;
   private lastBuildings?: Uint8Array;
   private lastGrates?: Uint8Array;
   private clock = new THREE.Clock();
@@ -615,6 +616,21 @@ export class WorldView {
           if (above) set(x, y - 1, y - lv, 0, 255);
         } else if (y === streamTo) set(x, y, y + 1 - lv, 0, 255, true);
         else set(x, y, 1, y - lv, 0);
+      }
+    }
+    // True fill from the sim's per-cell volume: the surface cell holds exactly its volume,
+    // and a partly wet cell below the Water threshold still shows its puddle.
+    const vol = this.latest?.water;
+    if (vol) {
+      for (let c = 0; c < vol.length; c++) {
+        const v = vol[c], i = this.texIndex(c % w, Math.floor(c / w));
+        if (elements[c] === Element.Water) {
+          if (data[i + 2] === 255 && v < 255) data[i] = v;
+        } else if (v > 0) {
+          data[i] = v;
+          data[i + 1] = 0;
+          data[i + 2] = 255;
+        } else data[i] = 0;
       }
     }
     this.waterTex!.needsUpdate = true;
@@ -1181,6 +1197,8 @@ export class WorldView {
       else this.updateWater(frame.elements);
       this.updateStreams(frame.elements);
     }
+    if (this.lastWater && frame.water.some((v, i) => v !== this.lastWater![i])) this.updateWater(frame.elements);
+    this.lastWater = frame.water;
     const gratesChanged = !this.lastGrates || frame.hearthGrate.some((g, i) => g !== this.lastGrates![i]);
     if (!this.lastBuildings || gratesChanged || frame.buildings.some((b, i) => b !== this.lastBuildings![i])) {
       if (this.lastBuildings) this.builtOrRemoved(this.lastBuildings, frame.buildings);
