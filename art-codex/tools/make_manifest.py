@@ -318,6 +318,49 @@ TRAIT_TEXT = {"hardy": "a shield with a snowflake", "night-owl": "an owl head", 
 for t, sym in TRAIT_TEXT.items():
     add(f"trait-{t}", f"ui/traits/{t}.png", 128, 128, batch=3, kind="icon", anchor="centre",
         prompt=f"{UI_ICON} Trait glyph for '{t.replace('-', ' ')}': {sym}.")
+# ---------------------------------------------------------------- batch 4 additions: rooms and tiles, cooking, toolbar categories, day cycle
+# The game has code-built fallbacks for all of these, so nothing waits on them.
+
+add("tex-tile", "terrain/tile.png", 512, 512, batch=4, kind="texture", alpha=False, seamless=True, anchor="none",
+    prompt="Seamless tileable texture, fills the whole square, no outlines around the tile, flat even light. Built stone tile: laid cut-stone blocks with thin mortar lines, "
+           "in rows like a neat wall, cool grey (#5a5b5f #7a7873 with a lighter block here and there) a shade lighter than the cave rock, one crisp shadow edge on each block. "
+           "Survivors stack it to make platforms, bridges and walls; the game draws it through the terrain shader like rock, dirt and coal. "
+           "Same 4x4-cell tiling rules as tex-rock: one tile covers 4x4 cells (128 px per cell), so no feature bigger than about 180 px.")
+for i, sym, extra in [
+    ("tile", "a stack of three blocks", ""),
+    ("door", "a doorway with the door ajar", ""),
+    ("room-bedroom", "a bed under a small roof or arch (a room label for the inspect panel)", "Optional."),
+    ("room-hearth", "a campfire under a small roof or arch (a room label for the inspect panel)", "Optional."),
+    ("room-cellar", "a barrel under a small roof or arch (a room label for the inspect panel)", "Optional."),
+    ("meal", "a skewer with roast mushrooms, for the food stat and the morale breakdown", ""),
+    ("skill-dig", "a pickaxe head (skill glyph for the Colony screen and the stranger card)", "Optional."),
+    ("skill-build", "a hammer (skill glyph for the Colony screen and the stranger card)", "Optional."),
+    ("skill-fire", "a flame (skill glyph for the Colony screen and the stranger card)", "Optional."),
+    ("skill-haul", "a sack (skill glyph for the Colony screen and the stranger card)", "Optional."),
+    ("cat-build", "a ladder crossed with a stone block (toolbar category: building)", ""),
+    ("cat-fire", "a flame over a small lantern (toolbar category: fire and light)", ""),
+    ("cat-living", "a bedroll with a mushroom (toolbar category: living)", ""),
+    ("cat-industry", "an anvil with a flask (toolbar category: industry)", ""),
+    ("dusk", "a sun half-sunk under a horizon line with a down arrow (clock glyph: dusk)", ""),
+    ("dawn", "a sun half-risen over a horizon line with an up arrow (clock glyph: dawn)", ""),
+]:
+    add(f"icon-{i}", f"ui/icons/{i}.png", 128, 128, batch=4, kind="icon", anchor="centre",
+        prompt=f"{UI_ICON} Subject: {sym}. Same family as the batch 2 and 3 icons.",
+        notes=extra)
+
+add("prop-spit", "props/spit.png", 384, 160, batch=4, kind="sprite",
+    prompt="A green-stick roasting spit set across the front of a hearth: two forked green sticks standing in the ground at either end of the hearth's stone ring, "
+           "a straight green stick laid across them with three skewered roast mushrooms (pale lilac caps #c9b6e4 #9d86c4 gone browned at the edges) and a small cord crank loop at one end. "
+           "Same canvas, scale and ground line as buildings/hearth.png (384x160), so it lines up exactly when drawn over the hearth. No flame, no stones (the hearth is a separate sprite).",
+    notes="Drawn over the hearth only while a cooking errand is under way. Paint it on top of building-hearth as a guide, then remove the hearth so only the spit remains.")
+for name in CAST:
+    add(f"{name}-pose-cook", f"characters/{name}/poses/cook.png", 320, 320, frames=4, batch=4, kind="pose", character=name,
+        prompt=f"{CHAR_TEXT[name]}. Crouched at a hearth, side view facing right, turning a roasting spit: the far mitten steadies the stick, the near mitten turns the crank, "
+               "the spit itself and the hearth are not painted (the game draws them: leave them out). Frame 1: mitten at the top of the turn. Frame 2: a quarter turn, mitten forward. "
+               "Frame 3: mitten at the bottom. Frame 4: mitten coming back up, a small satisfied smile. Same crouch and feet in every frame; only the near arm and face change. "
+               + POSE_SCALE_RULE,
+        notes="Generate all four frames in one image so they match. Same frame and feet line (y=304) as the other poses; the spit sits about one cell in front of the figure.")
+
 add("wordmark", "ui/wordmark.png", 1600, 480, batch=2, kind="sprite", anchor="centre",
     prompt="The word HEARTHFALL as a painted logo: chunky hand-cut capital letters like carved, charred wood, warm ember light catching the top edges, frost on the bottom edges, a small flame rising from the crossbar of the first A. Transparent background. The text must be spelled exactly HEARTHFALL, and nothing else may be written.")
 
@@ -356,7 +399,7 @@ lines = ["# Asset list", "",
          "Generated from `tools/make_manifest.py`; do not edit by hand. Sizes are per frame; a strip of N frames is N times as wide.",
          "`compose` rows are built by `tools/compose_character.py`, not painted.", ""]
 titles = {1: "Batch 1: fix what looks bad now", 2: "Batch 2: the full cast, the story and the interface",
-          3: "Batch 3: a deeper, bigger colony, and fixes from play-testing", 4: "Batch 4: the endgame"}
+          3: "Batch 3: a deeper, bigger colony, and fixes from play-testing", 4: "Batch 4: the endgame, rooms and tiles, cooking, toolbar categories and the day cycle"}
 for b in (1, 2, 3, 4):
     group = [a for a in assets if a["batch"] == b]
     lines += [f"## {titles[b]} ({len(group)} files)", "",

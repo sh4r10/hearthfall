@@ -113,6 +113,17 @@ Seeing batches 1 and 2 in the game showed a few problems. Fix them at the start 
 
 Then make the rest of batch 3 in this order: the ladder pieces and climbing poses, the stockpiles, piles and items that survivors haul, the new terrain (iron ore, crystal, gravel, ice, deep rock and the layer back walls), the new buildings (coke oven, smelter, lens bench, hearth grate, crystal lamp, workbench and the rest), the research pose, the creatures, and the interface icons last.
 
+## Batch 4 additions
+
+Alongside the endgame assets already listed under batch 4, the game gained a few systems that want art. They are small and independent; make them after the endgame set, or whenever convenient:
+
+- **Rooms and tiles:** `tex-tile` (built stone tile, seamless like the other terrain), `icon-tile`, `icon-door`, and three optional room labels for the inspect panel (`icon-room-bedroom`, `icon-room-hearth`, `icon-room-cellar`). The door sprites themselves are already in batch 3.
+- **Cooking:** `prop-spit` (a roasting spit over the hearth, same canvas as `building-hearth`), a `cook` pose for all six survivors (`<name>-pose-cook`, 4 frames, same scale rule as the other poses), `icon-meal`, and four optional skill glyphs (`icon-skill-dig`, `-build`, `-fire`, `-haul`).
+- **Toolbar categories:** `icon-cat-build`, `icon-cat-fire`, `icon-cat-living`, `icon-cat-industry`.
+- **The day cycle:** clock glyphs `icon-dusk` and `icon-dawn`, to sit beside the batch 2 `icon-day` and `icon-night`.
+
+All the new icons are solid white glyphs in the same family as the batch 2 and 3 icons. Rows marked "Optional." in ASSETS.md can be skipped. The game has code-built fallbacks for everything in this section, so nothing blocks: deliver whatever is ready and the game picks it up on the next import.
+
 ## Folder layout
 
 ```
