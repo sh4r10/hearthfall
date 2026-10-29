@@ -21,7 +21,7 @@ export const nameOf = (c: ArrayLike<number>) => CAST[c[C_WHO]] ?? 'Someone';
 export const nameAt = (f: Frame, i: number) => nameOf(row(f, i));
 const dead = (c: ArrayLike<number>) => ACTIVITIES[c[3]] === 'Dead';
 
-function portrait(c: ArrayLike<number>, size: number) {
+export function portrait(c: ArrayLike<number>, size: number) {
   const url = artUrl(`survivor-${c[C_WHO]}-portrait`);
   return `<span class="portrait" style="width:${size}px;height:${size}px;${url ? `background-image:url(${url})` : ''}"></span>`;
 }
