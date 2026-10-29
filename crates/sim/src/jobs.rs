@@ -23,8 +23,10 @@ pub enum JobKind {
     Upgrade,
     /// Roast raw rations at a lit hearth into better meals; see `people::COOK_RAW`.
     Cook,
-    /// Fill a bucket at a pool and carry it to a dry mushroom bed; see `farm.rs`.
+    /// Fill a bucket at a pool (or at the water stock) and carry it to a dry mushroom bed; see `farm.rs`.
     Water,
+    /// Fill a bucket at a pool and carry it to a cistern or barrel; see `water.rs`.
+    Fetch,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,6 +60,8 @@ pub const ROLE_PRIORITY_TICKS: u64 = 100;
 /// Firekeepers top up a hearth once its fuel falls below this.
 pub const REFUEL_BELOW: i32 = 20;
 
+/// Stone a cistern costs.
+pub const CISTERN_STONE: i32 = 4;
 /// Stone gained from digging one rock cell.
 pub const STONE_PER_CELL: i32 = 3;
 /// Stone gained from digging one dirt cell: dirt is full of small stones.
@@ -86,7 +90,8 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::CrystalLamp => (0, 1),
         Building::Tile => (0, TILE_STONE),
         Building::Door => (0, 3),
-        Building::None | Building::Cairn => (0, 0),
+        Building::Cistern => (0, CISTERN_STONE),
+        Building::None | Building::Cairn | Building::WaterBarrel => (0, 0),
     }
 }
 
@@ -110,7 +115,7 @@ pub fn refund(b: Building) -> (i32, i32) {
 /// Whether the player may order `b` taken down. Cairns are memorials the sim
 /// places, so they stay.
 pub fn removable(b: Building) -> bool {
-    !matches!(b, Building::None | Building::Cairn | Building::Tile)
+    !matches!(b, Building::None | Building::Cairn | Building::Tile | Building::WaterBarrel)
 }
 
 /// How many cells either side of its own a building's picture reaches. Two
@@ -118,7 +123,7 @@ pub fn removable(b: Building) -> bool {
 /// so they never draw over each other.
 pub fn reach(b: Building) -> u32 {
     match b {
-        Building::Hearth | Building::MushroomBed | Building::Stockpile | Building::ResearchBench | Building::Smelter => 1,
+        Building::Hearth | Building::MushroomBed | Building::Stockpile | Building::ResearchBench | Building::Smelter | Building::Cistern => 1,
         _ => 0,
     }
 }
@@ -135,7 +140,7 @@ impl JobKind {
             JobKind::Refine => Role::Firekeeper,
             JobKind::Upgrade => Role::Builder,
             JobKind::Cook => Role::Firekeeper,
-            JobKind::Water => Role::Hauler,
+            JobKind::Water | JobKind::Fetch => Role::Hauler,
         }
     }
 
@@ -152,6 +157,7 @@ impl JobKind {
             // 5 to 7 are kept for research and refining.
             JobKind::Cook => 8,
             JobKind::Water => 9,
+            JobKind::Fetch => 10,
         }
     }
 }
@@ -163,6 +169,8 @@ impl Sim {
         let lane = |k: JobKind| match k {
             JobKind::Haul => 1,
             JobKind::Cook => 2,
+            JobKind::Water => 3,
+            JobKind::Fetch => 4,
             _ => 0,
         };
         if self.jobs.iter().any(|j| j.x == x && j.y == y && lane(j.kind) == lane(kind)) {
@@ -174,14 +182,14 @@ impl Sim {
             JobKind::Refuel => self.refuel_priority[self.idx(x, y)],
             JobKind::Research => RESEARCH_PRIORITY,
             // Refining and cooking are never urgent: the fires come first.
-            JobKind::Refine | JobKind::Cook | JobKind::Water => DEFAULT_PRIORITY - 1,
+            JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch => DEFAULT_PRIORITY - 1,
             _ => DEFAULT_PRIORITY,
         };
         self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook | JobKind::Water)) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -330,6 +338,8 @@ impl Sim {
         self.refuel_priority[i] = DEFAULT_PRIORITY;
         self.buildings[i] = Building::None;
         self.bed_water[i] = 0;
+        // Whatever a tank held is lost with it.
+        self.empty_store(i);
     }
 
     pub(crate) fn job_doable(&self, job: &Job) -> bool {
@@ -350,7 +360,8 @@ impl Sim {
             JobKind::Refine => self.refine_doable(i),
             JobKind::Upgrade => self.buildings[i] == Building::Hearth && !self.hearth_grate[i] && self.iron >= GRATE_IRON,
             JobKind::Cook => self.buildings[i] == Building::Hearth && self.hearth_lit(i) && self.food >= crate::people::COOK_RAW && self.coal > 0,
-            JobKind::Water => self.elements[i] == Element::Water && self.any_thirsty_bed() && !(self.is_curfew() && self.is_dark(i)),
+            JobKind::Water => self.water_errand_doable(i),
+            JobKind::Fetch => self.fetch_doable(i),
         }
     }
 
@@ -378,7 +389,7 @@ impl Sim {
             JobKind::Refine => 120,
             JobKind::Upgrade => 100,
             JobKind::Cook => 60,
-            JobKind::Water => crate::farm::FILL_WORK,
+            JobKind::Water | JobKind::Fetch => crate::farm::FILL_WORK,
         }
     }
 
@@ -442,7 +453,7 @@ impl Sim {
                 self.hearth_grate[i] = true;
             }
             // The colonist picks up the bucket; see `Sim::fill_bucket`.
-            JobKind::Water => {}
+            JobKind::Water | JobKind::Fetch => {}
             JobKind::Cook => {
                 self.food -= crate::people::COOK_RAW;
                 self.coal -= 1;
@@ -466,6 +477,7 @@ impl Sim {
         }
         self.raise_cook_job();
         self.raise_water_jobs();
+        self.raise_fetch_jobs();
         let mut k = 0;
         while k < self.jobs.len() {
             let job = &self.jobs[k];
@@ -480,7 +492,8 @@ impl Sim {
                 // Left alone once started, so a batch isn't lost to a stock tick.
                 JobKind::Refine => job.claimed_by.is_none() && !self.refine_doable(self.idx(job.x, job.y)),
                 JobKind::Upgrade => self.buildings[self.idx(job.x, job.y)] != Building::Hearth || self.hearth_grate[self.idx(job.x, job.y)],
-                JobKind::Water => self.elements[self.idx(job.x, job.y)] != Element::Water || !self.any_thirsty_bed(),
+                JobKind::Water => !self.water_errand_valid(self.idx(job.x, job.y)),
+                JobKind::Fetch => !self.fetch_valid(self.idx(job.x, job.y)),
             };
             if stale {
                 let job = self.jobs.remove(k);

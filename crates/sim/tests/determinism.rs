@@ -32,7 +32,17 @@ fn sealed_room(seed: u64, size: u32, room: (u32, u32, u32, u32)) -> Sim {
     }
     sim.water.fill(0);
     sim.water_lost = 0;
+    sim.water_store.fill(0);
+    sim.water_stock = 0;
     sim
+}
+
+/// A full water barrel at (x, y), for a sealed room whose survivors must last days.
+fn add_barrel(sim: &mut Sim, x: u32, y: u32) {
+    let i = sim.idx(x, y);
+    sim.buildings[i] = Building::WaterBarrel;
+    sim.water_store[i] = sim::START_WATER;
+    sim.water_stock = sim::START_WATER;
 }
 
 /// Total water in the world plus what has dried up, which must never change.
@@ -593,6 +603,22 @@ fn the_set_maps_let_a_colony_through_four_nights_untouched() {
             }
         }
         assert!(sim.colonists.iter().all(|c| c.alive()), "seed {seed}: someone died within four days with no orders given");
+        // The barrel carried them: they drank from it, and thirst never became the cause of anything by day 4.
+        assert!(sim.water_stock < sim::START_WATER, "seed {seed}: nobody drank");
+        assert!(sim.colonists.iter().all(|c| c.parched == 0 || c.thirst == 0), "seed {seed}: parched counter without thirst");
+    }
+}
+
+#[test]
+fn a_new_map_starts_with_its_water_at_rest() {
+    for seed in [1, 7, 1234, 99_999] {
+        let mut sim = Sim::new(seed, 160, 110);
+        sim.colonists.clear();
+        let before = sim.water.clone();
+        for _ in 0..300 {
+            sim.step(&[]);
+        }
+        assert!(before == sim.water, "seed {seed}: water moved after generation");
     }
 }
 
@@ -691,6 +717,7 @@ fn smoke_pools_under_the_ceiling_and_a_vent_clears_it() {
     sim.buildings[hearth] = Building::Hearth;
     sim.hearth_fuel[hearth] = 40;
     sim.coal = 500;
+    add_barrel(&mut sim, 30, 30);
     for (c, x) in [(0, 28), (1, 36)] {
         sim.colonists[c].x = x;
         sim.colonists[c].y = 30;

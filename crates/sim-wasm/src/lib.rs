@@ -15,7 +15,7 @@ pub struct WebSim {
 const BLOCKERS_EVERY: u64 = 10;
 
 /// Values per colonist in [`WebSim::colonists`].
-pub const COLONIST_STRIDE: usize = 18 + 3 * sim::SKILLS + 2 + sim::MORALE_PARTS + 3;
+pub const COLONIST_STRIDE: usize = 18 + 3 * sim::SKILLS + 2 + sim::MORALE_PARTS + 4;
 /// Values per job in [`WebSim::jobs`].
 pub const JOB_STRIDE: usize = 8;
 /// Values per event in [`WebSim::events`].
@@ -50,6 +50,7 @@ impl WebSim {
             12 => Building::CokeOven,
             13 => Building::Smelter,
             14 => Building::CrystalLamp,
+            16 => Building::Cistern,
             _ => return,
         };
         self.queued.push(Command::Build { x, y, building });
@@ -131,6 +132,30 @@ impl WebSim {
 
     pub fn food(&self) -> i32 {
         self.sim.food
+    }
+
+    /// Drinking water in stock (units; a drink is `sim::DRINK_UNITS`), and what the barrel and cisterns hold at most.
+    pub fn water_stock(&self) -> i32 {
+        self.sim.water_stock
+    }
+
+    pub fn water_capacity(&self) -> i32 {
+        self.sim.water_capacity()
+    }
+
+    /// The part of the stock that sits in cisterns (the barrel's share excluded).
+    pub fn water_in_cisterns(&self) -> i32 {
+        self.sim.cistern_water()
+    }
+
+    /// What the living drink in a day, in the same units.
+    pub fn water_per_day(&self) -> i32 {
+        self.sim.water_per_day()
+    }
+
+    /// Drinking water held in each barrel or cistern, by cell (0 elsewhere).
+    pub fn water_store(&self) -> Vec<i32> {
+        self.sim.water_store.clone()
     }
 
     /// Roast meals cooked at a hearth.
@@ -228,7 +253,6 @@ impl WebSim {
         self.sim.night_firelight()
     }
 
-    /// Smoke per cell scaled to 0..=255; see `sim::SMOKE_MAX`.
     /// Water in each mushroom bed's cell, 0..=100 (`sim::WATER_MAX`), plus 128 if the bed waters
     /// itself from a pool beside it. 0 on cells without a mushroom bed.
     pub fn bed_water(&self) -> Vec<u8> {
@@ -243,6 +267,7 @@ impl WebSim {
         self.sim.room_kind.clone()
     }
 
+    /// Smoke per cell scaled to 0..=255; see `sim::SMOKE_MAX`.
     pub fn smoke(&self) -> Vec<u8> {
         self.sim.smoke.iter().map(|&s| (s * 255 / sim::SMOKE_MAX) as u8).collect()
     }
@@ -254,20 +279,20 @@ impl WebSim {
     /// Flat, `COLONIST_STRIDE` values each: x, y, role, activity, warmth,
     /// energy, fullness, mood, sleep quality (needs out of 10000), then the
     /// job's x and y (-1 if none) and its kind, then the cause of death
-    /// (0 alive, 1 froze, 2 taken by a Shade), then what they carry (a
+    /// (0 alive, 1 froze, 2 taken by a Shade, 3 thirst), then what they carry (a
     /// `sim::Item` number, 0 for nothing) and how much. Then who they are:
     /// cast index, trait bits, knack skill; then per skill (`sim::SKILLS` of
     /// them) the level, then the percent to each next level, then the errand
     /// preferences; morale, expectation, the morale parts (`sim::MORALE_`
     /// order); last meal, warmth they turn back to the fire at, and ticks
-    /// between looking for work.
+    /// between looking for work, and finally thirst (out of 10000, like the other needs).
     pub fn colonists(&self) -> Vec<i32> {
         let s = &self.sim;
         s.colonists.iter().enumerate().flat_map(|(i, c)| row(s, c, Some(i))).collect()
     }
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
-    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade, 8 cook, 9 water: fill a bucket at the pool at x, y), building (to build, or to take down), progress percent,
+    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade, 8 cook, 9 water: fill a bucket at the pool (or tank) at x, y for a mushroom bed, 10 fetch: fill a bucket at the pool at x, y for the water stock), building (to build, or to take down), progress percent,
     /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
     /// `sim::BLOCK_` value, 0 if it isn't).
     pub fn jobs(&mut self) -> Vec<i32> {
@@ -338,5 +363,6 @@ fn row(s: &sim::Sim, c: &sim::Colonist, index: Option<usize>) -> [i32; COLONIST_
     r[t] = c.last_meal as i32;
     r[t + 1] = c.temper.cold_at;
     r[t + 2] = c.temper.eagerness as i32;
+    r[t + 3] = c.thirst;
     r
 }

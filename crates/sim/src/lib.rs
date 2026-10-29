@@ -17,11 +17,13 @@ mod research;
 mod rng;
 mod rooms;
 mod shades;
+mod water;
 mod world;
 
 pub use farm::{WATER_MAX, WATER_LOW, IRRIGATION_REACH};
-pub use colonist::{Activity, Colonist, Role, MISERABLE, WORK_UNIT, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, rare_cost, CRYSTAL_PER_CELL, ORE_PER_CELL, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW, TILE_STONE};
+pub use water::{container_capacity, BARREL_CAPACITY, BED_STOCK_MIN, BUCKET, CISTERN_CAPACITY, COLLAPSE_FROM_DAY, DRINK, DRINK_UNITS, FETCH_ROOM, START_WATER, THIRST_DRAIN, WATER_ERRANDS_FROM_DAY};
+pub use colonist::{Activity, Colonist, Role, MISERABLE, WORK_UNIT, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_DRINK, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX, CAUSE_THIRST};
+pub use jobs::{CISTERN_STONE, build_cost, rare_cost, CRYSTAL_PER_CELL, ORE_PER_CELL, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW, TILE_STONE};
 pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_CRYSTAL, BLOCK_NO_IRON, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use haul::{Item, CARRY_MAX};
 pub use research::{Tech, COAL_RESERVE, COKE_COAL, COKE_FUEL, COKE_KEEP, COKE_MADE, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, RESEARCH_PRIORITY, RESEARCH_STINT, SMELT_ORE, TECHS};
@@ -53,6 +55,10 @@ pub const START_STONE: i32 = 12;
 pub const START_FOOD: i32 = 20;
 /// The starting stockpile stands this many cells left of the first hearth.
 pub const START_STOCKPILE_LEFT: u32 = 6;
+/// The water barrel stands this many cells left of the first hearth, beside the stockpile.
+pub const START_BARREL_LEFT: u32 = 4;
+/// Most water passes `Sim::new` spends letting generated pools come to rest.
+pub const WATER_SETTLE_PASSES: u32 = 8_000;
 /// How far hearth light reaches through open cells, by day and by night.
 pub const LIGHT_RADIUS_DAY: i32 = 13;
 pub const LIGHT_RADIUS_NIGHT: i32 = 8;
@@ -179,6 +185,12 @@ pub struct Sim {
     pub bed_water: Vec<i32>,
     /// Whether [`EVENT_WATERED`] has been sent.
     pub water_noted: bool,
+    /// Drinking water held in each barrel or cistern, by cell; see `water.rs`.
+    pub water_store: Vec<i32>,
+    /// Drinking water in stock: the sum of `water_store`.
+    pub water_stock: i32,
+    /// Water carried out of pools or tanks that was then lost (a dropped bucket, a tank taken down).
+    pub water_spilled: i64,
     pub coal: i32,
     /// Stone from digging rock. Everything you stack is built from it.
     pub stone: i32,
@@ -228,6 +240,9 @@ impl Sim {
         hearth_fuel[start] = HEARTH_CAPACITY;
         // A stockpile in the start cave, so the first dug coal has somewhere to go.
         buildings[start - START_STOCKPILE_LEFT as usize] = Building::Stockpile;
+        // The water barrel stands just right of it, holding the starting water.
+        let barrel = start - START_BARREL_LEFT as usize;
+        buildings[barrel] = Building::WaterBarrel;
         let mut sim = Sim {
             width,
             height,
@@ -251,6 +266,9 @@ impl Sim {
             room_kind: vec![rooms::ROOM_NONE; n],
             bed_water: vec![0; n],
             water_noted: false,
+            water_store: vec![0; n],
+            water_stock: 0,
+            water_spilled: 0,
             coal: START_COAL,
             stone: START_STONE,
             food: START_FOOD,
@@ -275,6 +293,9 @@ impl Sim {
         };
         // Esk and Mara, either side of the hearth. Everyone else follows the firelight down later.
         sim.first_two(cx, cy);
+        sim.water_store[barrel] = START_WATER;
+        sim.water_stock = START_WATER;
+        sim.settle_water();
         sim.rooms_tick();
         sim.update_light();
         sim
@@ -331,6 +352,21 @@ impl Sim {
         self.colonists.iter().filter(|c| c.alive()).count()
     }
 
+    /// Run the water passes (flow and pressure, nothing else) until nothing
+    /// moves or [`WATER_SETTLE_PASSES`] are used, so a new map starts at rest
+    /// instead of sloshing about for thousands of ticks.
+    fn settle_water(&mut self) {
+        let mut before = Vec::new();
+        for _ in 0..WATER_SETTLE_PASSES {
+            before.clone_from(&self.water);
+            let lost = self.water_lost;
+            self.water_tick();
+            if self.water == before && self.water_lost == lost {
+                break;
+            }
+        }
+    }
+
     /// Advance one tick. `commands` are the inputs scheduled for this tick, in
     /// the order the server assigned them.
     pub fn step(&mut self, commands: &[Command]) {
@@ -371,7 +407,7 @@ impl Sim {
                 }
             }
             Command::Deconstruct { x, y } if self.in_bounds(x, y) => self.order_deconstruct(x, y),
-            Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) && self.unlocked(building) => {
+            Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn | Building::WaterBarrel) && self.unlocked(building) => {
                 if self.room_for(x, y, building) {
                     self.add_job(x, y, JobKind::Build(building));
                 }
@@ -450,6 +486,8 @@ impl Sim {
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.water_lost.to_le_bytes());
+        eat(&self.water_stock.to_le_bytes());
+        eat(&self.water_spilled.to_le_bytes());
         eat(&self.food.to_le_bytes());
         eat(&self.meals.to_le_bytes());
         match &self.stranger {
@@ -475,6 +513,7 @@ impl Sim {
             eat(&self.room_id[i].to_le_bytes());
             eat(&[self.room_kind[i]]);
             eat(&self.bed_water[i].to_le_bytes());
+            eat(&self.water_store[i].to_le_bytes());
         }
         for c in &self.colonists {
             c.hash_into(&mut eat);

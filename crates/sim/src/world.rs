@@ -82,6 +82,11 @@ pub enum Building {
     /// A plank door in a timber frame, two cells tall. Survivors pass; smoke and Shades don't.
     /// The cells it closes off can make a room (see `rooms.rs`).
     Door = 10,
+    /// The start cave's water barrel: holds the starting drinking water. Placed by
+    /// the sim, never built, and never taken down.
+    WaterBarrel = 15,
+    /// A stone tank that holds drinking water carried over from a pool in buckets.
+    Cistern = 16,
 }
 
 /// Temperatures are in centi-kelvin.

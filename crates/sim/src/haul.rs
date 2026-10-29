@@ -17,6 +17,8 @@ pub enum Item {
     Crystal = 4,
     /// A bucket of water on its way to a mushroom bed. Never lies in a pile or goes to stock.
     Water = 5,
+    /// A bucket of water on its way to a cistern or barrel. Never lies in a pile or goes to stock.
+    StockWater = 6,
 }
 
 impl Item {
@@ -27,6 +29,7 @@ impl Item {
             3 => Some(Item::Ore),
             4 => Some(Item::Crystal),
             5 => Some(Item::Water),
+            6 => Some(Item::StockWater),
             _ => None,
         }
     }
@@ -129,7 +132,7 @@ impl Sim {
             Item::Stone => self.stone += amount,
             Item::Ore => self.ore += amount,
             Item::Crystal => self.crystal += amount,
-            Item::Water => {}
+            Item::Water | Item::StockWater => {}
         }
     }
 
@@ -194,8 +197,9 @@ impl Sim {
     /// Put down whatever the survivor carries where they stand.
     pub(crate) fn drop_load(&mut self, c: usize) {
         if let Some((item, amount)) = self.colonists[c].carrying.take() {
-            // A bucket spilt is just gone.
-            if item == Item::Water {
+            // A bucket spilt is just gone, and counted.
+            if matches!(item, Item::Water | Item::StockWater) {
+                self.water_spilled += amount as i64;
                 return;
             }
             let col = &self.colonists[c];
@@ -206,8 +210,10 @@ impl Sim {
 
     /// Carry the load to the nearest stockpile and put it in stock there.
     pub(crate) fn deliver(&mut self, c: usize) {
-        if matches!(self.colonists[c].carrying, Some((Item::Water, _))) {
-            return self.deliver_water(c);
+        match self.colonists[c].carrying {
+            Some((Item::Water, _)) => return self.deliver_water(c),
+            Some((Item::StockWater, _)) => return self.deliver_stock(c),
+            _ => {}
         }
         let (x, y) = (self.colonists[c].x, self.colonists[c].y);
         let w = self.width as usize;

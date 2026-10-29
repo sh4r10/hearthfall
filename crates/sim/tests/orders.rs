@@ -20,7 +20,7 @@ fn stuck_orders_say_why() {
     let mut sim = Sim::new(7, 128, 96);
     let (cx, cy) = (sim.width / 2, sim.height / 2);
     sim.coal = 0;
-    sim.apply_commands(&[Command::Dig { x: cx, y: sim.height - 3 }, Command::Build { x: cx - 4, y: cy, building: Building::Lamp }]);
+    sim.apply_commands(&[Command::Dig { x: cx, y: sim.height - 3 }, Command::Build { x: cx + 4, y: cy, building: Building::Lamp }]);
     let blockers = sim.job_blockers();
     assert_eq!(blockers, vec![BLOCK_UNREACHABLE, BLOCK_NO_COAL]);
     sim.coal = 10;

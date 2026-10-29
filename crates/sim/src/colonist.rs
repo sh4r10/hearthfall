@@ -13,6 +13,7 @@ pub const STAT_MAX: i32 = 10_000;
 pub const CAUSE_ALIVE: u8 = 0;
 pub const CAUSE_FROZE: u8 = 1;
 pub const CAUSE_TAKEN: u8 = 2;
+pub const CAUSE_THIRST: u8 = 3;
 
 /// Warmth lost per tick in lamp light: not warm, but not the biting dark either.
 pub const LIT_COLD_DRAIN: i32 = 5;
@@ -46,6 +47,8 @@ pub enum Activity {
     Sleeping = 3,
     Eating = 4,
     Dead = 5,
+    /// Drinking from a tank or the edge of a pool; see `water.rs`.
+    Drinking = 6,
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +63,10 @@ pub struct Colonist {
     pub energy: i32,
     /// Drains over time, refilled by eating.
     pub fullness: i32,
+    /// Drains over time, refilled by drinking. A full day at 0 is deadly (see `water.rs`).
+    pub thirst: i32,
+    /// Ticks in a row spent at thirst 0.
+    pub parched: u32,
     /// Drifts towards how well their needs are met. Low mood slows work.
     pub mood: i32,
     /// How restful their last sleep was: warm, lit spots sleep best.
@@ -90,13 +97,15 @@ pub struct Colonist {
     pub last_meal: u8,
     /// Where they last slept, a `people::SLEPT_` value.
     pub slept: u8,
-    timer: u32,
+    pub(crate) timer: u32,
 }
 
 /// Just walking (fleeing the dark, or nothing).
 pub const HEADING_NONE: u8 = 0;
 /// Going to the fire to warm up.
 pub const HEADING_WARM: u8 = 1;
+/// Going to a tank or the edge of a pool to drink.
+pub const HEADING_DRINK: u8 = 2;
 /// Below this warmth a survivor drops what they are doing and goes to the fire.
 pub const COLD_BELOW: i32 = STAT_MAX * 4 / 10;
 /// A survivor warming up by the fire takes no work until this warm again.
@@ -116,6 +125,8 @@ impl Colonist {
             warmth: STAT_MAX,
             energy: STAT_MAX * 8 / 10,
             fullness: STAT_MAX * 7 / 10,
+            thirst: crate::water::START_THIRST,
+            parched: 0,
             mood: STAT_MAX * 7 / 10,
             sleep_quality: STAT_MAX * 7 / 10,
             job: None,
@@ -149,7 +160,7 @@ impl Colonist {
     }
 
     pub(crate) fn hash_into(&self, eat: &mut impl FnMut(&[u8])) {
-        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32, self.carrying.map_or(0, |(i, _)| i as i32), self.carrying.map_or(0, |(_, n)| n)] {
+        for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.thirst, self.parched as i32, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32, self.carrying.map_or(0, |(i, _)| i as i32), self.carrying.map_or(0, |(_, n)| n)] {
             eat(&v.to_le_bytes());
         }
         eat(&[self.who, self.knack, self.last_meal, self.slept]);
@@ -204,6 +215,8 @@ impl Sim {
             - if attacked { SHADE_DRAIN } else { 0 };
         let hunger = if col.has(people::TRAIT_BIG_APPETITE) { 5 } else if col.has(people::TRAIT_LIGHT_EATER) { 3 } else { 4 };
         col.fullness = (col.fullness - hunger).max(0);
+        col.thirst = (col.thirst - crate::water::THIRST_DRAIN).max(0);
+        col.parched = if col.thirst == 0 { col.parched + 1 } else { 0 };
         if col.carrying.is_some() && col.activity == Activity::Walking {
             col.train(people::SKILL_HAUL);
         }
@@ -241,10 +254,19 @@ impl Sim {
         let col = &mut self.colonists[c];
         col.mood += (target - col.mood) / 200;
 
-        if col.warmth <= 0 {
+        // Cold takes anyone at 0 warmth; thirst only after a full day at 0, and never before day 4.
+        let col = &self.colonists[c];
+        let cause = if col.warmth <= 0 {
+            Some(if attacked { CAUSE_TAKEN } else { CAUSE_FROZE })
+        } else if self.thirst_collapse(col.parched) {
+            Some(CAUSE_THIRST)
+        } else {
+            None
+        };
+        if let Some(cause) = cause {
             self.drop_load(c);
             let col = &mut self.colonists[c];
-            col.cause = if attacked { CAUSE_TAKEN } else { CAUSE_FROZE };
+            col.cause = cause;
             col.warmth = col.warmth.max(0);
             col.activity = Activity::Dead;
             col.path.clear();
@@ -270,7 +292,7 @@ impl Sim {
     }
 
     /// Let go of the errand, and set down anything being carried: a need comes first.
-    fn release_job(&mut self, c: usize) {
+    pub(crate) fn release_job(&mut self, c: usize) {
         self.drop_load(c);
         if let Some(id) = self.colonists[c].job {
             if let Some(job) = self.jobs.iter_mut().find(|j| j.id == id) {
@@ -305,6 +327,14 @@ impl Sim {
                     let col = &mut self.colonists[c];
                     col.activity = Activity::Idle;
                     col.bed = None;
+                }
+                return;
+            }
+            Activity::Drinking => {
+                let col = &mut self.colonists[c];
+                col.timer += 1;
+                if col.timer >= crate::water::DRINK_TICKS {
+                    col.activity = Activity::Idle;
                 }
                 return;
             }
@@ -349,7 +379,11 @@ impl Sim {
             if self.colonists[c].path.is_empty() {
                 let col = &mut self.colonists[c];
                 col.activity = Activity::Idle;
+                let drinking = col.heading == HEADING_DRINK;
                 col.heading = HEADING_NONE;
+                if drinking {
+                    self.begin_drink(c);
+                }
             }
             return;
         }
@@ -381,6 +415,11 @@ impl Sim {
             col.timer = 0;
             return;
         }
+        // Thirst: tanks first, else the edge of a pool in the light. Looks again every few ticks.
+        if col.thirst < col.temper.hungry_at && col.activity != Activity::Working && self.tick % 8 == c as u64 % 8 && self.seek_drink(c) {
+            return;
+        }
+        let col = &self.colonists[c];
         let tired = col.energy < col.temper.tired_at || (self.is_night() && col.energy < col.temper.tired_at * 2 && !col.has(people::TRAIT_NIGHT_OWL));
         if tired && col.activity != Activity::Working {
             self.release_job(c);
@@ -572,8 +611,9 @@ impl Sim {
                 let i = self.idx(job.x, job.y);
                 self.pick_up(c, i);
             }
-            if job.kind == JobKind::Water {
-                self.fill_bucket(c);
+            if matches!(job.kind, JobKind::Water | JobKind::Fetch) {
+                let i = self.idx(job.x, job.y);
+                self.fill_bucket(c, i, job.kind);
             }
         }
     }

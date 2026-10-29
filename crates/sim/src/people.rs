@@ -53,7 +53,7 @@ impl JobKind {
             JobKind::Dig => SKILL_DIG,
             JobKind::Build(_) | JobKind::Deconstruct | JobKind::Upgrade => SKILL_BUILD,
             JobKind::Refuel | JobKind::Cook | JobKind::Refine => SKILL_FIRE,
-            JobKind::Haul | JobKind::Water => SKILL_HAUL,
+            JobKind::Haul | JobKind::Water | JobKind::Fetch => SKILL_HAUL,
             JobKind::Research => SKILL_RESEARCH,
         }
     }
@@ -124,7 +124,8 @@ pub const MORALE_DARK: usize = 3;
 pub const MORALE_SMOKE: usize = 4;
 pub const MORALE_HARDSHIP: usize = 5;
 pub const MORALE_TEMPER: usize = 6;
-pub const MORALE_PARTS: usize = 7;
+pub const MORALE_THIRST: usize = 7;
+pub const MORALE_PARTS: usize = 8;
 /// Mood settles here when morale exactly meets expectations, and moves this
 /// much per point above or below.
 pub const MOOD_AT_PAR: i32 = STAT_MAX * 6 / 10;
@@ -247,6 +248,10 @@ impl Sim {
         if col.mood < STAT_MAX * 3 / 10 {
             speed /= 2;
         }
+        // Parched: nothing left to drink for a while, and it shows.
+        if col.thirst == 0 {
+            speed /= 2;
+        }
         if coughing {
             speed -= 10;
         }
@@ -273,6 +278,8 @@ impl Sim {
             _ => 0,
         };
         p[MORALE_FIRE] = self.is_warm(i) as i32;
+        // Thirsty: below the point where they would go for a drink.
+        p[MORALE_THIRST] = if col.thirst < col.temper.hungry_at { -2 } else { 0 };
         if self.is_dark(i) {
             p[MORALE_DARK] = if col.has(TRAIT_AFRAID_OF_DARK) { -4 } else if col.has(TRAIT_NIGHT_OWL) { -1 } else { -2 };
         }
