@@ -39,6 +39,8 @@ const paths: Record<string, string> = {
   water: '<path d="M12 3c3.5 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-11Z"/><path d="M9.5 15a2.5 2.5 0 0 0 2.5 2.5"/>',
   thirst: '<path d="M12 3c3.5 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-11Z"/><path d="M9 14h6"/>',
   cistern: '<path d="M4 8c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z"/><path d="M4 8v10c0 1.7 3.6 3 8 3s8-1.3 8-3V8"/><path d="M4 14c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  'drip-catcher': '<path d="M12 2c1.8 2.4 3 4 3 5.6a3 3 0 0 1-6 0C9 6 10.2 4.4 12 2Z"/><path d="M5 14h14l-1.5 6h-11Z"/><path d="M8 17h8"/>',
+  'hand-pump': '<path d="M5 6l8-2"/><path d="M13 4v5"/><path d="M7 9h10v10H7Z"/><path d="M17 11h3l1 3"/><path d="M5 19h14"/>',
   skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.5 1.2 4 3 5v3h8v-3c1.8-1 3-2.5 3-5a7 7 0 0 0-7-7Z"/><circle cx="9.5" cy="10.5" r="1.5"/><circle cx="14.5" cy="10.5" r="1.5"/>',
 };
 

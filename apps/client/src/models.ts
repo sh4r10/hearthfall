@@ -364,6 +364,70 @@ registerModel('cistern', () => {
   return g;
 });
 
+/** A falling drop for a drip: two small beads that fall from the ceiling and fade, looping. Stands on y = 0 and falls from y = 0.9. `userData.animate(t)` moves it. */
+registerModel('fx-drip', () => {
+  const g = new THREE.Group();
+  const drops = [0, 1].map((k) => {
+    const m = mesh(new THREE.SphereGeometry(0.035, 6, 4), new THREE.MeshBasicMaterial({ color: '#9cc4e4', transparent: true }), 0, 0.9, 0.2);
+    m.castShadow = false;
+    m.scale.y = 1.5;
+    g.add(m);
+    return m;
+  });
+  g.userData.animate = (t: number) => drops.forEach((m, k) => {
+    const phase = (t * 0.9 + k * 0.5) % 1;
+    m.position.y = 0.95 - phase * phase * 0.85;
+    (m.material as THREE.MeshBasicMaterial).opacity = phase < 0.85 ? 0.9 : 0.9 * (1 - (phase - 0.85) / 0.15);
+  });
+  return g;
+});
+
+/** A drip catcher: a small stone trough on the floor. Children named dry (an empty basin) and dripping (water in it and a drop falling from above). */
+registerModel('drip-catcher', () => {
+  const g = new THREE.Group();
+  const stone = [mat('#6b665f'), mat('#57524c'), mat('#7a746b')];
+  for (const [name, wet] of [['dry', false], ['dripping', true]] as const) {
+    const s = new THREE.Group();
+    s.name = name;
+    s.add(mesh(new THREE.BoxGeometry(0.62, 0.2, 0.4), stone[0], 0, 0.1, 0));
+    for (const x of [-0.26, 0.26]) s.add(mesh(new THREE.BoxGeometry(0.1, 0.28, 0.42), stone[1], x, 0.14, 0));
+    s.add(mesh(new THREE.BoxGeometry(0.4, 0.04, 0.3), mat(wet ? '#9cc4e4' : '#2a1d14', wet ? { emissive: '#4a7a9a', emissiveIntensity: 0.4 } : {}), 0, wet ? 0.22 : 0.21, 0));
+    if (wet) {
+      const drip = makeModel('fx-drip');
+      drip.position.y = 0.25;
+      s.add(drip);
+    }
+    g.add(s);
+  }
+  return g;
+});
+
+/** A hand pump: a stout iron tank on a wooden cradle, a pipe, a long handle and a spout. Children named off (handle up) and on (handle down, a stream from the spout). */
+registerModel('hand-pump', () => {
+  const g = new THREE.Group();
+  const iron = mat('#6f7a80', { metalness: 0.4 }), wood = mat('#8a6440'), brass = mat('#b08d4a');
+  g.add(mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.62, 8), iron, 0, 0.36, 0));
+  g.add(mesh(new THREE.TorusGeometry(0.36, 0.025, 4, 12), brass, 0, 0.5, 0).rotateX(Math.PI / 2));
+  for (const x of [-0.3, 0.3]) g.add(mesh(new THREE.BoxGeometry(0.1, 0.1, 0.5), wood, x, 0.05, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 6), iron, 0, 0.9, 0));
+  const spout = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 6), iron, 0.2, 0.82, 0);
+  spout.rotation.z = Math.PI / 2;
+  g.add(spout);
+  for (const [name, down] of [['off', false], ['on', true]] as const) {
+    const s = new THREE.Group();
+    s.name = name;
+    const handle = mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), wood, -0.3, 0, 0);
+    handle.rotation.z = down ? -0.35 : 0.35;
+    const arm = new THREE.Group();
+    arm.position.set(-0.05, 1.1, 0);
+    arm.add(handle);
+    s.add(arm);
+    if (down) s.add(mesh(new THREE.BoxGeometry(0.05, 0.5, 0.05), mat('#9cc4e4', { emissive: '#4a7a9a', emissiveIntensity: 0.5 }), 0.36, 0.55, 0));
+    g.add(s);
+  }
+  return g;
+});
+
 /** A loose heap of goods on the floor, left by digging until someone hauls it. */
 function pile(colours: string[]) {
   return (variant = 0) => {

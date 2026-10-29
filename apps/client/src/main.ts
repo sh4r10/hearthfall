@@ -1,7 +1,7 @@
 import { WorldView, type Overlay } from './world-view';
 import {
   heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY, EVENT_WATERED,
-  COKE_FUEL, Element, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, CISTERN_CAPACITY, DRINK_UNITS, type Frame, type FromWorker, type Tool, type ToWorker,
+  COKE_FUEL, DRIP_HOLD, DRIP_TICKS, Element, EVENT_DRIPPED, EVENT_PUMPED, PUMP_STINT, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, CISTERN_CAPACITY, DRINK_UNITS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -25,6 +25,8 @@ const TOOLS: ToolInfo[] = [
   { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
   { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal.', building: Building.Hearth },
   { tool: 'cistern', key: 'T', label: 'Cistern', icon: 'cistern', tip: `A stone tank for drinking water: holds ${CISTERN_CAPACITY} more. From day 2 a hauler fills buckets at a pool they can reach and carries them here. Survivors drink ${DRINK_UNITS} units each from the nearest tank, one drink a day.`, building: Building.Cistern },
+  { tool: 'drip-catcher', key: 'E', label: 'Drip catcher', icon: 'drip-catcher', tip: `A stone trough that catches the trickle from wet rock (rock touching water) up to 3 cells overhead. About a third of one survivor's daily drink, with no labour. If every tank is full it holds ${DRIP_HOLD} itself.`, building: Building.DripCatcher },
+  { tool: 'hand-pump', key: 'U', label: 'Hand pump', icon: 'hand-pump', tip: `Stands on a pool's edge within 3 cells of a cistern or the barrel. A survivor works it and each stint moves up to ${PUMP_STINT} units from the pool into the tank, with no walking: far quicker than bucket trips.`, building: Building.HandPump, tech: 4 },
   { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
@@ -51,6 +53,8 @@ const HINTS: Record<Tool, string> = {
   'crystal-lamp': '<b>Crystal lamp:</b> lights a long tunnel or a farm by itself.',
   tile: '<b>Tile:</b> click beside a floor or wall. Costs 1 stone; dig it to get it back.',
   door: '<b>Door:</b> wall a space off with tiles and a door to make a room.',
+  'drip-catcher': '<b>Drip catcher:</b> place it under wet rock: rock that touches water within 3 cells overhead.',
+  'hand-pump': '<b>Hand pump:</b> on the bank of a pool, within 3 cells of a cistern or the barrel.',
   cistern: '<b>Cistern:</b> place it in the light, near where a pool can be reached; haulers fill it from the pool.',
   stockpile: '<b>Stockpile:</b> place near your digging; haulers bring goods here.',
   ladder: '<b>Ladder:</b> click open cells, or shift-drag a line up a shaft.',
@@ -233,6 +237,12 @@ function announce(frame: Frame) {
       continue;
     } else if (kind === EVENT_WATERED) {
       logLine('Watered beds grow twice as fast. Beds by water water themselves.', 'mushroom', 'info');
+      continue;
+    } else if (kind === EVENT_DRIPPED) {
+      logLine(`A <b>drip catcher</b> caught its first drop. About ${Math.round(DAY_TICKS / DRIP_TICKS * 10) / 10} units a day, with no labour.`, 'water', 'info');
+      continue;
+    } else if (kind === EVENT_PUMPED) {
+      logLine(`The <b>hand pump</b> moved its first ${PUMP_STINT} units into the tanks.`, 'water', 'info');
       continue;
     } else if (kind === EVENT_ARRIVAL) {
       logLine(`<b>${name}</b> joins the colony.`, 'people', 'info');
@@ -477,7 +487,7 @@ function showUnlocked(f: Frame) {
 const CATEGORIES: { id: string; label: string; icon: string; tools: Tool[] }[] = [
   { id: 'build', label: 'Build', icon: 'build', tools: ['ladder', 'tile', 'door', 'stockpile'] },
   { id: 'fire', label: 'Fire and light', icon: 'hearth', tools: ['hearth', 'lamp', 'crystal-lamp', 'vent', 'grate'] },
-  { id: 'living', label: 'Living', icon: 'living', tools: ['bed', 'mushroom', 'cistern'] },
+  { id: 'living', label: 'Living', icon: 'living', tools: ['bed', 'mushroom', 'cistern', 'drip-catcher', 'hand-pump'] },
   { id: 'industry', label: 'Industry', icon: 'industry', tools: ['bench', 'coke', 'smelter'] },
 ];
 const categoryOf = (t: Tool) => CATEGORIES.find((c) => c.tools.includes(t));
@@ -604,7 +614,7 @@ window.addEventListener('keydown', (e) => {
   if (key === 'r') return research.toggle();
   const tools: Record<string, Tool> = {
     '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'tile', '0': 'door',
-    t: 'cistern', b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
+    t: 'cistern', e: 'drip-catcher', u: 'hand-pump', b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
   };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
@@ -747,7 +757,9 @@ function showPreview() {
   const light = radius ? `<span class="note">The glow is how far its ${building === Building.Hearth ? 'light and warmth reach' : 'light reaches'} at night.</span>` : '';
   const problem = spots.find((s) => s.fit === 'bad') ?? spots.find((s) => s.fit === 'wait');
   const why = problem ? `<em class="${problem.fit === 'bad' ? 'bad' : ''}">${problem.reason}</em>` : '';
-  showTip(`<b>${title}</b><span class="cost">${cost}</span>${light}${why}`);
+  const wet = spots.find((s) => s.note);
+  const note = wet ? `<span class="note">${wet.note}</span>` : '';
+  showTip(`<b>${title}</b><span class="cost">${cost}</span>${light}${note}${why}`);
 }
 function showTip(html: string) {
   if (!pointer) return;

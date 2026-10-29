@@ -1,7 +1,7 @@
 // Messages between the main thread and the simulation worker.
 
 export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed' | 'stockpile' | 'tile' | 'door'
-  | 'bench' | 'coke' | 'smelter' | 'crystal-lamp' | 'grate' | 'cistern';
+  | 'bench' | 'coke' | 'smelter' | 'crystal-lamp' | 'grate' | 'cistern' | 'drip-catcher' | 'hand-pump';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -39,6 +39,10 @@ export interface Frame {
   waterPerDay: number;
   /** Water held in each barrel or cistern, by cell (0 elsewhere). */
   waterStore: Int32Array;
+  /** Water a drip catcher holds itself while the tanks are full, by cell (0 elsewhere). */
+  dripHeld: Int32Array;
+  /** Drip catchers (DRIP_DRY or DRIP_WET) and hand pumps (PUMP_READY and the other PUMP_ values), by cell; 0 elsewhere. */
+  waterDevices: Uint8Array;
   /** Roast meals, cooked at a hearth and eaten first. */
   meals: number;
   /** The stranger waiting to be taken in, one COLONIST_STRIDE row, or empty. */
@@ -111,6 +115,8 @@ export const EVENT_STRANGER = 7;
 export const EVENT_TURNED_AWAY = 8;
 /** The first mushroom bed was watered. */
 export const EVENT_WATERED = 9;
+/** The first drip was caught, and the first stint at a hand pump was worked. */
+export const EVENT_DRIPPED = 10, EVENT_PUMPED = 11;
 /** A full mushroom bed, and the level under which a bucket is fetched; must match WATER_MAX and WATER_LOW in crates/sim/src/farm.rs. */
 export const WATER_MAX = 100, WATER_LOW = 50;
 /** Flag bit in Frame.bedWater: the bed has a pool within 2 cells and waters itself. */
@@ -160,7 +166,7 @@ export const isSolid = (e: number) => e === Element.Dirt || e === Element.Rock |
 /** Building.Tile is only ever a build order: the finished cell is Element.Tile. */
 export const Building = {
   None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7, Stockpile: 8, Tile: 9, Door: 10,
-  ResearchBench: 11, CokeOven: 12, Smelter: 13, CrystalLamp: 14, WaterBarrel: 15, Cistern: 16,
+  ResearchBench: 11, CokeOven: 12, Smelter: 13, CrystalLamp: 14, WaterBarrel: 15, Cistern: 16, DripCatcher: 17, HandPump: 18,
 } as const;
 /** Room kinds, matching sim::ROOM_* in crates/sim/src/rooms.rs. */
 export const ROOM_NONE = 0, ROOM_PLAIN = 1, ROOM_HEARTH = 2, ROOM_BEDROOM = 3, ROOM_CELLAR = 4;
@@ -181,13 +187,13 @@ export const CARRY_MAX = 10;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper', 'Hauler', 'Researcher'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead', 'Drinking'] as const;
 /** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
-export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8, JOB_WATER = 9, JOB_FETCH = 10;
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8, JOB_WATER = 9, JOB_FETCH = 10, JOB_PUMP = 11;
 export const JOB_NAMES: Record<number, string> = {
   [JOB_DIG]: 'digging', [JOB_BUILD]: 'building', [JOB_REFUEL]: 'refuelling a hearth', [JOB_DECONSTRUCT]: 'taking a building down', [JOB_HAUL]: 'hauling goods',
-  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms', [JOB_WATER]: 'fetching water for the beds', [JOB_FETCH]: 'fetching water for the cistern',
+  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms', [JOB_WATER]: 'fetching water for the beds', [JOB_FETCH]: 'fetching water for the cistern', [JOB_PUMP]: 'working the pump',
 };
 /** Orders the colony raises itself, which the player can't cancel. */
-export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK, JOB_WATER, JOB_FETCH];
+export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK, JOB_WATER, JOB_FETCH, JOB_PUMP];
 
 // --- Who survivors are: see crates/sim/src/people.rs --------------------------------
 
@@ -198,7 +204,7 @@ export const SKILLS = [
   { name: 'Digging', icon: 'dig', errands: 'Digging rock, dirt and coal' },
   { name: 'Building', icon: 'ladder', errands: 'Building and taking buildings down' },
   { name: 'Firekeeping', icon: 'hearth', errands: 'Feeding hearths and roasting mushrooms' },
-  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile, and water to the cisterns and mushroom beds' },
+  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile, water to the cisterns and mushroom beds, and working the hand pump' },
   { name: 'Research', icon: 'research', errands: 'Studying at a research bench' },
 ] as const;
 export const MAX_LEVEL = 10;
@@ -263,9 +269,11 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.Tile]: [0, 1],
   [Building.Door]: [0, 3],
   [Building.Cistern]: [0, 4],
+  [Building.DripCatcher]: [0, 2],
+  [Building.HandPump]: [0, 4],
 };
 /** What a building costs in rarer goods as [iron, crystal]; must match rare_cost in crates/sim/src/jobs.rs. */
-export const RARE_COST: Record<number, [number, number]> = { [Building.CrystalLamp]: [0, 2] };
+export const RARE_COST: Record<number, [number, number]> = { [Building.CrystalLamp]: [0, 2], [Building.HandPump]: [2, 0] };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
 /** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */
 export const REACH: Record<number, number> = {
@@ -295,6 +303,11 @@ export const BARREL_CAPACITY = 60, CISTERN_CAPACITY = 60;
 export const WATER_ERRANDS_FROM_DAY = 2, COLLAPSE_FROM_DAY = 4;
 /** What a tank holds at most, by Building number. */
 export const TANK_CAPACITY: Record<number, number> = { [Building.WaterBarrel]: BARREL_CAPACITY, [Building.Cistern]: CISTERN_CAPACITY };
+/** Drip catchers and hand pumps; must match crates/sim/src/drip.rs and pump.rs. */
+export const DRIP_TICKS = 360, DRIP_REACH = 3, DRIP_HOLD = 10;
+export const DRIP_DRY = 1, DRIP_WET = 2;
+export const PUMP_STINT = 100, PUMP_REACH = 3, PUMP_ROOM = 10, PUMP_WORK = 20;
+export const PUMP_READY = 1, PUMP_NO_WATER = 2, PUMP_NO_TANK = 3, PUMP_TANKS_FULL = 4;
 /** The goals card asks for this much water in cisterns. */
 export const CISTERN_GOAL = 40;
 /** Fuel a full hearth holds, and ticks each unit burns for; must match HEARTH_CAPACITY and HEARTH_BURN_TICKS. */
@@ -320,6 +333,8 @@ export const TECHS: TechInfo[] = [
     unlocks: 'Fit a hearth with an <b>iron grate</b> for 3 iron: it burns a third less coal, its warmth reaches 2 cells further and it smokes half as much.' },
   { name: 'Crystal lens', icon: 'crystal-lamp', cost: 1400, needs: 0, tool: 'crystal-lamp',
     unlocks: 'The <b>crystal lamp</b> throws light twice as far as a lamp, for 2 crystal. Crystal is found deep in hard rock.' },
+  { name: 'Pumps', icon: 'water', cost: 1200, needs: 1, tool: 'hand-pump',
+    unlocks: 'The <b>hand pump</b> (4 stone, 2 iron) stands on a pool\'s edge within 3 cells of a cistern: a survivor works it and each stint moves up to 100 units straight into the tank, with no walking: far quicker than buckets. Later, pumps will drain flooded galleries.' },
 ];
 export const knows = (f: { known: number }, tech: number) => (f.known & (1 << tech)) !== 0;
 

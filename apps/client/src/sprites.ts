@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { artTexture, artUrl } from './art';
-import { registerModel } from './models';
+import { makeModel, registerModel } from './models';
 
 // Painted sprites from apps/client/art/ replace the code-built models of the
 // same name whenever the image exists. Each sprite is a flat card standing in
@@ -156,6 +156,44 @@ for (const [model, base, height] of [['water-barrel', 'water-barrel', 192], ['ci
     const g = new THREE.Group();
     for (const state of ['empty', 'half', 'full']) {
       const m = card(`${base}-${state}`, height * PX);
+      m.name = state;
+      m.position.y = -0.02;
+      m.renderOrder = 3;
+      g.add(m);
+    }
+    return g;
+  });
+}
+
+// The drip catcher comes in dry and dripping, with a falling drop above it while it drips. The art is requested
+// in art/codex batch 4 as building-drip-catcher-dry and -dripping, with an fx-drip strip for the drop; until it arrives the code-built drop shows.
+if (has('drip-catcher-dry', 'drip-catcher-dripping')) {
+  registerModel('drip-catcher', () => {
+    const g = new THREE.Group();
+    for (const state of ['dry', 'dripping']) {
+      const s = new THREE.Group();
+      s.name = state;
+      const m = card(`drip-catcher-${state}`, 128 * PX);
+      m.position.y = -0.02;
+      m.renderOrder = 3;
+      s.add(m);
+      if (state === 'dripping') {
+        const drip = makeModel('fx-drip');
+        drip.position.y = 0.25;
+        s.add(drip);
+      }
+      g.add(s);
+    }
+    return g;
+  });
+}
+
+// The hand pump (2 x 2 cells of art on a one-cell footprint): off, and on while a survivor works it.
+if (has('water-pump-off', 'water-pump-on')) {
+  registerModel('hand-pump', () => {
+    const g = new THREE.Group();
+    for (const state of ['off', 'on']) {
+      const m = card(`water-pump-${state}`, 1.5);
       m.name = state;
       m.position.y = -0.02;
       m.renderOrder = 3;

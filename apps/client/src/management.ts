@@ -89,7 +89,7 @@ export class PriorityBrush {
 
 const BUILDING_WORDS: Record<number, string> = {
   [Building.Stockpile]: 'stockpile', [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth',
-  [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Cistern]: 'cistern',
+  [Building.MushroomBed]: 'mushroom bed', [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Cistern]: 'cistern', [Building.DripCatcher]: 'drip catcher', [Building.HandPump]: 'hand pump',
 };
 
 function orderName(kind: number, building: number) {

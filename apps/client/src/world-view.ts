@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_RETREATING, SHADE_STRIDE, nightLevel, STAT_MAX, Item, TANK_CAPACITY, type Frame } from './protocol';
+import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, DRIP_WET, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_PUMP, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_RETREATING, SHADE_STRIDE, nightLevel, STAT_MAX, Item, TANK_CAPACITY, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -147,6 +147,8 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Door]: 'door',
   [Building.WaterBarrel]: 'water-barrel',
   [Building.Cistern]: 'cistern',
+  [Building.DripCatcher]: 'drip-catcher',
+  [Building.HandPump]: 'hand-pump',
 };
 /** Model for each loose good. */
 /** Multiplies the light tint of a mushroom bed with no water in it. */
@@ -994,7 +996,7 @@ export class WorldView {
     const busy = new Set<number>();
     for (let k = 0; k < frame.jobs.length; k += JOB_STRIDE) {
       const kind = frame.jobs[k + 2];
-      if ((kind === JOB_RESEARCH || kind === JOB_REFINE) && frame.jobs[k + 4] > 0 && frame.jobs[k + 5]) busy.add(frame.jobs[k + 1] * frame.width + frame.jobs[k]);
+      if ((kind === JOB_RESEARCH || kind === JOB_REFINE || kind === JOB_PUMP) && frame.jobs[k + 4] > 0 && frame.jobs[k + 5]) busy.add(frame.jobs[k + 1] * frame.width + frame.jobs[k]);
     }
     for (const b of this.buildings.children) {
       const on = b.getObjectByName('on');
@@ -1047,6 +1049,18 @@ export class WorldView {
       for (const state of ['empty', 'half', 'full']) {
         const o = b.getObjectByName(state);
         if (o) o.visible = state === level;
+      }
+    }
+  }
+
+  /** Drip catchers show dry or dripping; the drop only falls while it drips. */
+  private showDrips(frame: Frame) {
+    for (const b of this.buildings.children) {
+      if (frame.buildings[b.userData.cell] !== Building.DripCatcher) continue;
+      const wet = frame.waterDevices[b.userData.cell] === DRIP_WET;
+      for (const [name, show] of [['dry', !wet], ['dripping', wet]] as const) {
+        const o = b.getObjectByName(name);
+        if (o) o.visible = show;
       }
     }
   }
@@ -1288,6 +1302,7 @@ export class WorldView {
     this.updatePiles(frame);
     this.fillStockpiles(frame);
     this.fillTanks(frame);
+    this.showDrips(frame);
     this.showWorking(frame);
     this.swingDoors(frame);
 

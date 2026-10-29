@@ -43,7 +43,7 @@ const count = (f: Frame, b: number) => { let n = 0; for (let i = 0; i < f.buildi
 const GOALS: Goal[] = [
   { title: 'Store 40 coal', tool: 'dig', text: 'Dig coal seams and haul it to the stockpile. Every fire, and every meal, runs on it.',
     done: (f) => f.coal >= 40, progress: (f) => `${f.coal} / 40 coal` },
-  { title: 'Build a cistern and fill it to 40', tool: 'cistern', text: 'A <b>cistern</b> (in <b>Living</b>) holds drinking water. From day 2 haulers fill it with buckets from a pool they can reach, so dig towards one. Everyone drinks a portion a day.',
+  { title: 'Build a cistern and fill it to 40', tool: 'cistern', text: 'A <b>cistern</b> (in <b>Living</b>) holds drinking water. From day 2 haulers fill it with buckets from a pool they can reach. A sealed pocket of water lies about five cells under the right-hand end of the cave floor: dig down from there. Everyone drinks a portion a day.',
     done: (f) => count(f, Building.Cistern) > 0 && f.waterInCisterns >= CISTERN_GOAL,
     progress: (f) => count(f, Building.Cistern) > 0 ? `${f.waterInCisterns} / ${CISTERN_GOAL} water` : 'no cistern yet' },
   { title: 'Start a study', tool: 'bench', text: 'Build a <b>research bench</b> (in <b>Industry</b>) in the light, then open Research and pick something to study.',

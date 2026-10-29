@@ -2,7 +2,7 @@
 // what it is doing and why. It reads every frame, so the numbers stay live.
 
 import {
-  ACTIVITIES, BLOCK_REASONS, Building, C_THIRST, C_TRAITS, CAUSES, DRINK_UNITS, JOB_FETCH, TANK_CAPACITY, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
+  ACTIVITIES, BLOCK_REASONS, DRIP_DRY, DRIP_HOLD, DRIP_REACH, DRIP_TICKS, DAY_TICKS, JOB_PUMP, PUMP_NO_TANK, PUMP_NO_WATER, PUMP_READY, PUMP_REACH, PUMP_STINT, PUMP_TANKS_FULL, Building, C_THIRST, C_TRAITS, CAUSES, DRINK_UNITS, JOB_FETCH, TANK_CAPACITY, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
   CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, JOB_WATER, BED_SELF_WATERING, WATER_LOW, WATER_MAX, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
@@ -227,6 +227,25 @@ export class Inspector {
         row('Colony stock', `${f.waterStock} of ${f.waterCapacity} (${drinks} drink${drinks === 1 ? '' : 's'})`) +
         row('Drinking', `${f.waterPerDay} a day for everyone`) +
         `<p class="note">${barrel ? 'The start cave\'s supply, enough for about three days. It cannot be moved.' : 'From day 2 a hauler fills a bucket at a pool they can reach and carries it here.'} Survivors drink ${DRINK_UNITS} units from the nearest tank.</p>`;
+    } else if (b === Building.DripCatcher) {
+      const dry = f.waterDevices[i] === DRIP_DRY, held = f.dripHeld[i];
+      title = 'Drip catcher'; glyph = 'water';
+      status = dry ? 'Dry' : 'Dripping';
+      body = row('Yield', dry ? 'None' : `1 unit every ${seconds(DRIP_TICKS, this.tps)} (${Math.round((DAY_TICKS / DRIP_TICKS) * 10) / 10} a day)`) +
+        (dry ? row('Why', '<em>No wet rock above.</em>') : '') +
+        row('Holding', held ? `${held} of ${DRIP_HOLD} (the tanks are full)` : 'nothing: it goes to the tanks') +
+        `<p class="note">Wet rock is rock touching water, within ${DRIP_REACH} cells overhead. A catcher sends what it collects to the first tank with room, and keeps up to ${DRIP_HOLD} itself while they are full.</p>`;
+    } else if (b === Building.HandPump) {
+      const state = f.waterDevices[i], busy = k >= 0 && f.jobs[k + 2] === JOB_PUMP && f.jobs[k + 5] === 1;
+      title = 'Hand pump'; glyph = 'water';
+      status = busy ? 'Being worked'
+        : state === PUMP_READY ? 'Ready: waiting for a free hand'
+        : state === PUMP_NO_WATER ? 'Idle: no water in the pool beside it'
+        : state === PUMP_NO_TANK ? `Idle: no cistern or barrel within ${PUMP_REACH} cells`
+        : state === PUMP_TANKS_FULL ? 'Idle: the tanks beside it are full' : '';
+      body = row('Rate', `up to ${PUMP_STINT} units a stint, with no walking`) +
+        row('Colony stock', `${f.waterStock} of ${f.waterCapacity}`) +
+        '<p class="note">A hauler works it while the tanks have room and the pool has water, in the light only. It really draws the pool down.</p>';
     } else if (f.pileItem[i] && who < 0) {
       const what = ITEM_NAMES[f.pileItem[i]];
       const waiting = f.night && f.light[i] < DARK_BELOW;
@@ -277,7 +296,7 @@ export class Inspector {
       body += `<h4>${ROOM_NAMES[room]}</h4><p class="note">${ROOM_EFFECTS[room]}</p>`;
     }
 
-    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_WATER && f.jobs[k + 2] !== JOB_FETCH && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
+    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_WATER && f.jobs[k + 2] !== JOB_FETCH && f.jobs[k + 2] !== JOB_PUMP && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
       const [kind, , progress, claimed, priority, blocked] = [f.jobs[k + 2], f.jobs[k + 3], f.jobs[k + 4], f.jobs[k + 5], f.jobs[k + 6], f.jobs[k + 7]];
       const name = JOB_NAMES[kind];
       body += `<h4>Order: ${name}</h4>` +
