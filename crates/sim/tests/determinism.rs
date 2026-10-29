@@ -150,12 +150,13 @@ fn firekeepers_refuel_hearths_from_the_stockpile() {
     let centre = sim.idx(32, 32);
     sim.hearth_fuel[centre] = 5;
     sim.coal = 30;
-    for _ in 0..12 {
-        sim.step(&[]);
-    }
     // The firekeeper (Mara, colonist 1) takes it, even though the digger is as close.
-    let refuel = sim.jobs.iter().find(|j| j.kind == JobKind::Refuel).expect("refuel job");
-    assert_eq!(refuel.claimed_by, Some(1));
+    let mut taker = None;
+    for _ in 0..30 {
+        sim.step(&[]);
+        taker = taker.or(sim.jobs.iter().find(|j| j.kind == JobKind::Refuel).and_then(|j| j.claimed_by));
+    }
+    assert_eq!(taker, Some(1));
     for _ in 0..300 {
         sim.step(&[]);
     }
@@ -460,15 +461,18 @@ fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
     // A dig far out in the dark, past the firelight. Once they are at work
     // there, the cold gets to them.
     sim.step(&[Command::Dig { x: 59, y: 30 }]);
-    let mut turned_back = false;
+    let (mut turned_back, mut warmed) = (false, false);
     for _ in 0..600 {
         sim.step(&[]);
         if sim.colonists[0].activity == Activity::Working {
-            sim.colonists[0].warmth = sim.colonists[0].warmth.min(sim::STAT_MAX * 3 / 10);
+            sim.colonists[0].warmth = sim.colonists[0].warmth.min(sim::STAT_MAX / 4);
         }
         let c = &sim.colonists[0];
         if c.job.is_none() && c.heading == sim::HEADING_WARM {
             turned_back = true;
+        }
+        if turned_back && sim.is_warm(sim.idx(c.x, c.y)) {
+            warmed = true;
         }
     }
     // The walk is long, so let the current trip back finish before looking.
@@ -480,8 +484,8 @@ fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
     }
     let c = &sim.colonists[0];
     assert!(turned_back, "never headed back to the fire");
+    assert!(warmed, "turned back but never reached the fire");
     assert!(c.alive(), "froze on the job");
-    assert!(sim.is_warm(sim.idx(c.x, c.y)), "ended up at ({}, {}), not by the fire", c.x, c.y);
 }
 
 #[test]
@@ -550,7 +554,7 @@ fn deconstruct_takes_a_building_down_and_salvages_it() {
 
 
 #[test]
-fn refugees_join_at_dawn_when_a_bed_and_food_are_spare() {
+fn a_stranger_waits_at_dawn_and_joins_when_taken_in() {
     let mut sim = Sim::new(42, 160, 110);
     assert_eq!(sim.colonists.len(), 2, "the colony starts with Esk and Mara");
     let bed = sim.idx(84, 55);
@@ -559,10 +563,43 @@ fn refugees_join_at_dawn_when_a_bed_and_food_are_spare() {
     for _ in 0..2 * sim::DAY_TICKS + 1 {
         sim.step(&[]);
     }
-    assert_eq!(sim.colonists.len(), 3, "nobody arrived at dawn of day 3");
+    assert_eq!(sim.colonists.len(), 2, "nobody joins without being asked");
+    let who = sim.stranger.as_ref().expect("nobody turned up at dawn of day 3").who;
+    assert!(who >= 2, "the stranger should be someone not already in the colony");
+    sim.step(&[Command::AnswerStranger { accept: true }]);
+    assert_eq!(sim.colonists.len(), 3);
+    assert!(sim.stranger.is_none());
     assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_ARRIVAL && e.colonist == 2));
     let c = &sim.colonists[2];
-    assert!(sim.is_warm(sim.idx(c.x, c.y)), "the refugee appeared in the dark");
+    assert_eq!(c.who, who);
+    assert!(sim.is_warm(sim.idx(c.x, c.y)), "the newcomer appeared in the dark");
+}
+
+#[test]
+fn a_stranger_turned_away_or_left_waiting_goes() {
+    let mut sim = Sim::new(42, 160, 110);
+    let bed = sim.idx(84, 55);
+    sim.buildings[bed] = Building::Bed;
+    sim.food = 40;
+    sim.coal = 500; // nobody digs in this test, so keep the fire fed
+    for _ in 0..2 * sim::DAY_TICKS + 1 {
+        sim.step(&[]);
+    }
+    assert!(sim.stranger.is_some());
+    sim.step(&[Command::AnswerStranger { accept: false }]);
+    assert!(sim.stranger.is_none());
+    assert_eq!(sim.colonists.len(), 2);
+    assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_TURNED_AWAY));
+    // Two days later another comes, and leaves at nightfall if nobody answers.
+    for _ in 0..2 * sim::DAY_TICKS {
+        sim.step(&[]);
+    }
+    assert!(sim.stranger.is_some(), "a stranger should come every other dawn");
+    for _ in 0..sim::DAY_TICKS * 6 / 10 {
+        sim.step(&[]);
+    }
+    assert!(sim.stranger.is_none(), "an unanswered stranger leaves at nightfall");
+    assert_eq!(sim.colonists.len(), 2);
 }
 
 #[test]

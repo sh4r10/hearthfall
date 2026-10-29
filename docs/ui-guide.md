@@ -47,7 +47,11 @@ Defined in `apps/client/src/style.css` and reused everywhere:
 - **Tool button:** a 22 px line icon over a 12 px 600 label, with the key badge in the top-right corner and the cost (if any) as a tiny coal icon and number in the top-left. Hovering shows a tooltip: an opaque `--panel-solid` box with a bold name, then one plain sentence.
 - **Icons:** line icons from `apps/client/src/icons.ts`, 24 px grid, `currentColor`, round caps. The stroke is 1.8 at 18 px and up, 2.1 at 13-16 px and 2.4 at 12 px and below, so small icons still read. Painted icons can replace them by name later.
 - **Need bar:** a 14 px icon and a 4 px rounded bar on a 8% white track. Ice blue when fine, amber under 50%, red under 25%; the icon takes the same colour when low.
-- **Survivor card:** a glass panel with a 38 px round portrait, the name in 600, the role picker as a quiet pill select (11 px, muted, hairline border, small chevron) on the right, one muted line saying what they're doing, then the need bars in two columns. The card border turns amber when any need is under 25%; a dead survivor's card greys out and their line turns red.
+- **Roster row:** the roster is a column of slim glass rows, 212 px wide, one per survivor, so six fit without scrolling (after Oxygen Not Included). Each row: a 30 px round portrait, the name in 600 13 px over one muted 11 px line saying what they're doing, an amber 7 px dot on the right when any need is under 25% (the border turns amber too), and a 2 px mood bar along the bottom (ice blue, amber under 50%, red under 25%). Hover tooltip: role, mood, morale against expectations and what is low. Click finds them: the camera centres and the inspect panel follows them. A dead survivor's row greys out and their line turns red.
+- **Trait chip:** an 11 px 600 pill, ice blue on `--accent-tint` for a good trait, amber on an 8% amber tint for a bad one; its tooltip says what it does.
+- **Skill cell:** the level in 700, a small ice-blue ★ on their knack, and a 3 px bar to the next level; tooltip has the percent.
+- **Stranger card:** a 300 px panel left of the roster with an `--accent-edge` border while someone waits: a 52 px portrait, an uppercase ice-blue kicker, the name in 800 18 px, their knack and starting role; trait chips; temperament in muted text; a skill list; a live "they leave at nightfall in Ns"; then a primary "Take them in" and a quiet "Turn away".
+- **Colony screen:** the top-bar "Colony" button (people icon, `kbd` C) opens a centred panel up to 860 px wide under the top bar, more opaque than other panels. A header with tabs (Vitals, Errands, Skills; active tab in the accent button style), the count "N of 6" and a close button; then one table with a sticky header (uppercase 10 px labels with a 14 px ice-blue icon) and a row per survivor split by hairlines, the dead last and dimmed. Names are buttons that find the survivor. Errand cells are 64 px buttons reading Off (dashed, dim), Low (muted), Normal (white) or High (accent style). A muted note under the table explains the tab. Esc or C closes it.
 - **Day clock:** a 28 px dial, ice blue for day and `--night` navy for night, with a white hand and centre dot; next to it "Day N" in 700 and the countdown in muted 600 (amber at night).
 - **Stats:** one panel of chips (icon, uppercase label, value in 16 px 700) separated by hairlines. A low stat turns amber and pulses gently.
 - **Depth gauge:** a panel beside the stats with a down-arrow icon in ice blue, "N m down" in 700, the layer name and cells to the next layer in muted 600, and five stacked 14 x 4 px bars on the right: ice blue for layers passed, half-strength for the current one, 14% white for the rest.
@@ -67,9 +71,10 @@ Defined in `apps/client/src/style.css` and reused everywhere:
 ## Layout
 
 - Title screen: the story illustration full-bleed, slowly drifting, darkened with a `--void` gradient from the bottom left where the kicker, the white wordmark, one paragraph and the buttons sit.
-- Top bar: the white "Hearthfall" wordmark, the day clock, the stats panel and the depth gauge, all 46 px tall.
+- Top bar: the white "Hearthfall" wordmark, the day clock, the stats panel the depth gauge, the stuck-orders chip and the Colony button, all 46 px tall.
 - Under the top bar: the event log on the left, the tutorial in the centre.
-- Right edge: survivor roster.
+- Right edge: survivor roster; the stranger card sits just left of it.
+- Centre, under the top bar: the Colony screen when open.
 - Bottom centre: one toolbar panel, order tools then a hairline divider then view overlays.
 - Bottom left, above the toolbar: a hint for the selected tool, with its icon in ice blue. Hidden below 1100 px.
 - Below 760 px the brand and stat labels hide, the roster narrows and moves below the top bar, and the toolbar scrolls sideways without a scrollbar. Nothing scrolls the page horizontally.

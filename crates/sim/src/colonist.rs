@@ -3,6 +3,7 @@
 use crate::nav::UNREACHED;
 use crate::haul::Item;
 use crate::jobs::JobKind;
+use crate::people::{self, Temper, PREF_NORMAL, PREF_OFF, SKILLS};
 use crate::{Building, Sim, EVENT_DEATH, SHADE_DRAIN};
 
 /// Every need runs from 0 (empty) to this.
@@ -74,6 +75,21 @@ pub struct Colonist {
     pub heading: u8,
     /// Goods on the way to a stockpile.
     pub carrying: Option<(Item, i32)>,
+    /// Which of the cast they are: an index into [`people::CAST`] and the art.
+    pub who: u8,
+    /// Trait bit flags, the `people::TRAIT_` values.
+    pub traits: u16,
+    /// The skill they took to first and learn fastest.
+    pub knack: u8,
+    pub temper: Temper,
+    /// Experience per skill; see [`people::level`].
+    pub xp: [i32; SKILLS],
+    /// How keen they are on each group of errands, by skill: a `people::PREF_` value.
+    pub prefs: [u8; SKILLS],
+    /// What they ate last, a `people::MEAL_` value.
+    pub last_meal: u8,
+    /// Where they last slept, a `people::SLEPT_` value.
+    pub slept: u8,
     timer: u32,
 }
 
@@ -85,6 +101,10 @@ pub const HEADING_WARM: u8 = 1;
 pub const COLD_BELOW: i32 = STAT_MAX * 4 / 10;
 /// A survivor warming up by the fire takes no work until this warm again.
 pub const WARMED_ABOVE: i32 = STAT_MAX * 7 / 10;
+/// Below this mood a survivor does nothing but keep the fires fed.
+pub const MISERABLE: i32 = STAT_MAX / 10;
+/// Job progress is counted in tenths of a unit of `Sim::work_needed`.
+pub const WORK_UNIT: i32 = 10;
 
 impl Colonist {
     pub fn new(x: u32, y: u32, role: Role) -> Self {
@@ -104,6 +124,14 @@ impl Colonist {
             cause: CAUSE_ALIVE,
             heading: HEADING_NONE,
             carrying: None,
+            who: 0,
+            traits: 0,
+            knack: 0,
+            temper: Temper { cold_at: COLD_BELOW, hungry_at: STAT_MAX * 35 / 100, tired_at: STAT_MAX / 4, eagerness: 10, fidget: 6 },
+            xp: [0; SKILLS],
+            prefs: [PREF_NORMAL; SKILLS],
+            last_meal: people::MEAL_NONE,
+            slept: people::SLEPT_NOWHERE,
             timer: 0,
         }
     }
@@ -124,6 +152,13 @@ impl Colonist {
         for v in [self.x as i32, self.y as i32, self.role as i32, self.activity as i32, self.warmth, self.energy, self.fullness, self.mood, self.sleep_quality, self.job.map_or(-1, |j| j as i32), self.path.len() as i32, self.bed.map_or(-1, |b| b as i32), self.cause as i32, self.heading as i32, self.timer as i32, self.carrying.map_or(0, |(i, _)| i as i32), self.carrying.map_or(0, |(_, n)| n)] {
             eat(&v.to_le_bytes());
         }
+        eat(&[self.who, self.knack, self.last_meal, self.slept]);
+        eat(&self.traits.to_le_bytes());
+        eat(&self.prefs);
+        for v in self.xp {
+            eat(&v.to_le_bytes());
+        }
+        self.temper.hash_into(eat);
     }
 }
 
@@ -155,16 +190,23 @@ impl Sim {
         let col = &mut self.colonists[c];
         let starving = col.fullness == 0;
         let starve = if starving { 10 } else { 0 };
+        // Some feel the dark's cold less, some more.
+        let bite = if night { 24 } else { 12 };
+        let bite = if col.has(people::TRAIT_FROSTBORN) { bite * 3 / 4 } else if col.has(people::TRAIT_THIN_BLOODED) { bite * 5 / 4 } else { bite };
         col.warmth = if warm {
             col.warmth + 40 - starve
         } else if !dark {
             col.warmth - LIT_COLD_DRAIN - starve // lamp light: cold, but the dark isn't biting
         } else {
-            col.warmth - if night { 24 } else { 12 } - starve
+            col.warmth - bite - starve
         }
         .min(STAT_MAX)
             - if attacked { SHADE_DRAIN } else { 0 };
-        col.fullness = (col.fullness - 4).max(0);
+        let hunger = if col.has(people::TRAIT_BIG_APPETITE) { 5 } else if col.has(people::TRAIT_LIGHT_EATER) { 3 } else { 4 };
+        col.fullness = (col.fullness - hunger).max(0);
+        if col.carrying.is_some() && col.activity == Activity::Walking {
+            col.train(people::SKILL_HAUL);
+        }
         if col.activity == Activity::Sleeping {
             // Warm, lit spots give a good night's sleep. A bed in the light
             // sleeps as well as anywhere even when a little cold, and rests faster.
@@ -179,17 +221,25 @@ impl Sim {
                 (false, false) if col.warmth > STAT_MAX * 7 / 10 => STAT_MAX,
                 (false, false) => 7_000,
             };
+            // Sound sleepers drop off anywhere; light sleepers need a bed.
+            let quality = if col.has(people::TRAIT_SOUND_SLEEPER) { quality.max(8_500) } else if col.has(people::TRAIT_LIGHT_SLEEPER) && !in_bed { quality * 2 / 3 } else { quality };
             col.sleep_quality += (quality - col.sleep_quality) / 50;
+            col.slept = match (in_bed, dark) {
+                _ if bedroom => people::SLEPT_BEDROOM,
+                (true, false) => people::SLEPT_BED_LIT,
+                (true, true) => people::SLEPT_BED_DARK,
+                (false, false) => people::SLEPT_FLOOR_LIT,
+                (false, true) => people::SLEPT_FLOOR_DARK,
+            };
             let rest = if bedroom { 60 } else if in_bed { 45 } else { 30 };
             col.energy = (col.energy + rest * col.sleep_quality / STAT_MAX).min(STAT_MAX);
         } else {
             col.energy = (col.energy - if col.activity == Activity::Working { 10 } else { 6 }).max(0);
         }
-        let smoky = self.smoke[i] >= crate::SMOKY;
+        // Mood drifts towards how their morale measures up to what they expect.
+        let target = self.mood_target(c);
         let col = &mut self.colonists[c];
-        // The dark is miserable and smoke makes everyone cough.
-        let comfort = (col.warmth + col.fullness + col.energy + col.sleep_quality) / 4 - if dark { 2_500 } else { 0 } - if smoky { 2_000 } else { 0 };
-        col.mood += (comfort.clamp(0, STAT_MAX) - col.mood) / 200;
+        col.mood += (target - col.mood) / 200;
 
         if col.warmth <= 0 {
             self.drop_load(c);
@@ -302,7 +352,7 @@ impl Sim {
         let col = &self.colonists[c];
         let here = self.idx(col.x, col.y);
         // Needs come before errands.
-        if col.warmth < COLD_BELOW && !self.is_warm(here) {
+        if col.warmth < col.temper.cold_at && !self.is_warm(here) {
             // Too cold to carry on: back to the fire, whatever the job.
             self.release_job(c);
             if self.seek_warmth(c, HEADING_WARM) {
@@ -310,15 +360,23 @@ impl Sim {
             }
         }
         let col = &self.colonists[c];
-        if col.fullness < STAT_MAX * 35 / 100 && self.food > 0 && col.activity != Activity::Working {
+        if col.fullness < col.temper.hungry_at && self.food + self.meals > 0 && col.activity != Activity::Working {
             self.release_job(c);
-            self.food -= 1;
+            // A roast meal if there is one, else a raw ration.
+            let meal = if self.meals > 0 {
+                self.meals -= 1;
+                people::MEAL_ROAST
+            } else {
+                self.food -= 1;
+                people::MEAL_RAW
+            };
             let col = &mut self.colonists[c];
+            col.last_meal = meal;
             col.activity = Activity::Eating;
             col.timer = 0;
             return;
         }
-        let tired = col.energy < STAT_MAX / 4 || (self.is_night() && col.energy < STAT_MAX / 2);
+        let tired = col.energy < col.temper.tired_at || (self.is_night() && col.energy < col.temper.tired_at * 2 && !col.has(people::TRAIT_NIGHT_OWL));
         if tired && col.activity != Activity::Working {
             self.release_job(c);
             if !self.go_to_bed(c) && !self.go_to_floor(c) {
@@ -335,8 +393,8 @@ impl Sim {
             }
             return;
         }
-        // Miserable survivors refuse to work.
-        if col.mood < STAT_MAX / 10 && col.job.is_some() {
+        // Miserable survivors refuse to work, except to keep the fire alive.
+        if col.mood < MISERABLE && col.job.is_some() && self.colonists[c].job.and_then(|id| self.jobs.iter().find(|j| j.id == id)).map_or(false, |j| j.kind != JobKind::Refuel) {
             self.release_job(c);
         }
 
@@ -359,13 +417,14 @@ impl Sim {
                 self.colonists[c].timer += 1;
                 // Someone still thawing out by the fire stays put.
                 let thawing = self.colonists[c].warmth < WARMED_ABOVE && self.is_warm(here);
-                if !thawing && self.colonists[c].timer % 10 == 0 && self.colonists[c].mood >= STAT_MAX / 10 && self.claim_job(c) {
+                let col = &self.colonists[c];
+                if !thawing && col.timer % col.temper.eagerness == 0 && self.claim_job(c) {
                     return;
                 }
                 if self.colonists[c].timer % 10 == 5 && self.flee_to_light(c) {
                     return;
                 }
-                if self.colonists[c].timer % 6 == 0 {
+                if self.colonists[c].timer % self.colonists[c].temper.fidget == 0 {
                     self.wander(c);
                 }
             }
@@ -382,9 +441,16 @@ impl Sim {
         let field = self.field_from(col.x, col.y);
         // Fetching goods is only worth it with a stockpile to take them to.
         let can_store = (0..self.buildings.len()).any(|i| self.buildings[i] == Building::Stockpile && field.dist[i] != UNREACHED);
-        let mut best: Option<(u8, i32, usize, usize)> = None; // (priority, score, job index, stand cell)
+        let miserable = col.mood < MISERABLE;
+        let mut best: Option<(u8, u8, i32, usize, usize)> = None; // (their preference, priority, score, job index, stand cell)
         for (k, job) in self.jobs.iter().enumerate() {
             if job.claimed_by.is_some() || !self.job_doable(job) || (job.kind == JobKind::Haul && !can_store) {
+                continue;
+            }
+            // Errands they have been told to leave alone, and anything but the
+            // fire when they are miserable.
+            let pref = col.prefs[job.kind.skill()];
+            if pref == PREF_OFF || (miserable && job.kind != JobKind::Refuel) {
                 continue;
             }
             // Leave work to the right specialist for a while, if there is one.
@@ -397,12 +463,12 @@ impl Sim {
             if job.kind.role() != col.role {
                 score += 25;
             }
-            // Higher priority first, then the nearest.
-            if best.map_or(true, |(p, s, _, _)| job.priority > p || (job.priority == p && score < s)) {
-                best = Some((job.priority, score, k, stand));
+            // Their own preference first, then the order's priority, then the nearest.
+            if best.map_or(true, |(f, p, s, _, _)| (pref, job.priority, -score) > (f, p, -s)) {
+                best = Some((pref, job.priority, score, k, stand));
             }
         }
-        let Some((_, _, k, stand)) = best else { return false };
+        let Some((_, _, _, k, stand)) = best else { return false };
         let path = self.path_to(&field, stand);
         let job = &mut self.jobs[k];
         job.claimed_by = Some(c as u32);
@@ -469,19 +535,16 @@ impl Sim {
             return;
         }
 
-        // Arrived: work it off. Role specialists work faster, low mood slows everyone.
-        let coughing = self.smoke[self.idx(self.colonists[c].x, self.colonists[c].y)] >= crate::SMOKY;
+        // Arrived: work it off, and get better at it. See `Sim::work_speed`.
+        let col = &self.colonists[c];
+        let coughing = self.smoke[self.idx(col.x, col.y)] >= crate::SMOKY && !col.has(people::TRAIT_IRON_LUNGS);
+        let kind = self.jobs[k].kind;
+        let speed = self.work_speed(c, kind, coughing);
         let col = &mut self.colonists[c];
         col.activity = Activity::Working;
-        let mut speed = if self.jobs[k].kind.role() == col.role { 3 } else { 2 };
-        if col.mood < STAT_MAX * 3 / 10 {
-            speed = 1;
-        }
-        if coughing {
-            speed = (speed - 1).max(1);
-        }
+        col.train(kind.skill());
         self.jobs[k].progress += speed;
-        if self.jobs[k].progress >= self.work_needed(&self.jobs[k]) {
+        if self.jobs[k].progress >= self.work_needed(&self.jobs[k]) * WORK_UNIT {
             let job = self.jobs.remove(k);
             self.finish_job(&job);
             self.colonists[c].drop_job();

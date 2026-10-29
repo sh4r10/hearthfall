@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
+import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -796,7 +796,7 @@ export class WorldView {
     const p = new THREE.Vector3();
     for (let k = 0; k < frame.jobs.length; k += JOB_STRIDE) {
       const [x, y, kind, building, progress] = frame.jobs.subarray(k, k + JOB_STRIDE);
-      if (kind === JOB_REFUEL || kind === JOB_HAUL) continue; // refuelling and hauling happen on their own
+      if (kind !== JOB_DIG && kind !== JOB_BUILD && kind !== JOB_DECONSTRUCT) continue; // refuelling, hauling and cooking happen on their own
       const key = `${x},${y},${kind},${building}`;
       let marker = this.markers.get(key);
       if (!marker) {
@@ -1057,13 +1057,14 @@ export class WorldView {
   /** One view per sim colonist; refugees join mid-game, so this runs every frame. */
   private addSurvivors(frame: Frame) {
     for (let i = this.survivors.length; i < frame.colonists.length / COLONIST_STRIDE; i++) {
-      const model = makeModel('survivor', i);
+      const o = i * COLONIST_STRIDE;
+      const who = frame.colonists[o + C_WHO]; // which of the cast, so the art follows the person
+      const model = makeModel('survivor', who);
       model.scale.setScalar(model.userData.flat ? 1 : 1.25);
       const part = (name: string) => model.getObjectByName(name)!;
       const parts = { legL: part('legL'), legR: part('legR'), armF: part('armF'), armB: part('armB'), head: part('head'), tool: part('tool') };
       this.scene.add(model);
-      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, cheer: 0, breath: Math.random() * 2, index: i };
-      const o = i * COLONIST_STRIDE;
+      const s: Survivor = { model, parts, target: new THREE.Vector3(), pos: new THREE.Vector3(), facing: 1, activity: 0, cell: 0, job: -1, warmth: STAT_MAX, climbing: false, still: 10, stride: 0, dead: 0, falling: false, cheer: 0, breath: Math.random() * 2, index: who };
       this.cellToWorld(frame.colonists[o], frame.colonists[o + 1], s.pos);
       s.pos.y -= 0.5;
       this.survivors.push(s);

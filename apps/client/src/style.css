@@ -247,33 +247,35 @@ body.night .clock-text span { color: var(--warn); }
 #legend .verdict.warn b { color: var(--warn); }
 @media (max-width: 760px) { #legend { width: 220px; } #legend ul { display: none; } }
 
-/* --- Survivor roster ------------------------------------------------------- */
+/* --- Survivor roster: one slim row each, ONI-style ----------------------- */
 #roster {
   position: fixed; z-index: 5; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(72px + env(safe-area-inset-top, 0px));
-  width: 244px; display: flex; flex-direction: column; gap: 8px;
+  width: 212px; display: flex; flex-direction: column; gap: 4px;
   max-height: calc(100% - 180px); overflow-y: auto; scrollbar-width: none;
 }
 #roster::-webkit-scrollbar { display: none; }
-.survivor { flex: none; padding: 12px 14px 13px; transition: opacity 0.4s, border-color 0.3s; }
-.survivor header { display: flex; align-items: center; gap: 11px; }
+.survivor {
+  position: relative; flex: none; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 9px;
+  padding: 6px 10px 8px 7px; text-align: left; border-radius: var(--radius-sm);
+  background: var(--panel); border: 1px solid var(--edge); box-shadow: inset 0 1px 0 var(--panel-hi);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: opacity 0.4s, border-color 0.3s, background 0.15s;
+}
+.survivor:hover { background: rgba(30, 42, 56, 0.86); }
 .portrait {
-  width: 38px; height: 38px; flex: none; border-radius: 50%;
+  display: inline-block; width: 38px; height: 38px; flex: none; border-radius: 50%;
   background-color: #1d2a39; background-size: 115%; background-position: 50% 20%; background-repeat: no-repeat;
   box-shadow: 0 0 0 1px var(--edge-hi);
 }
-.who { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.survivor h3 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.survivor select {
-  appearance: none; -webkit-appearance: none; flex: none;
-  font: 600 11px var(--font); color: var(--muted); cursor: pointer;
-  background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238fa0b3' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
-  border: 1px solid var(--edge); border-radius: 999px; padding: 3px 21px 3px 9px;
-  transition: border-color 0.15s, color 0.15s;
-}
-.survivor select:hover { color: var(--ink); border-color: var(--edge-hi); }
-.survivor select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.survivor select option { background: var(--panel-solid); color: var(--ink); }
-.survivor .doing { margin: 9px 0 10px; font-size: 12px; font-weight: 500; color: var(--muted); min-height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.survivor .who { min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.survivor .who b { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+.survivor .doing { font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.survivor .alert-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
+.survivor.struggling .alert-dot { background: var(--warn); animation: pulse 1.8s ease-in-out infinite; }
+.survivor .mood-bar { position: absolute; left: 46px; right: 10px; bottom: 4px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.survivor .mood-bar > i { display: block; height: 100%; background: var(--accent); transition: width 0.4s; }
+.survivor .mood-bar > i.low { background: var(--warn); }
+.survivor .mood-bar > i.bad { background: var(--danger); }
 .survivor.dead { opacity: 0.5; filter: grayscale(1); }
 .survivor.dead .doing { color: var(--danger); }
 .survivor.struggling { border-color: rgba(255, 180, 84, 0.45); }
@@ -286,15 +288,94 @@ body.night .clock-text span { color: var(--warn); }
 .need.low b { background: var(--warn); }
 .need.bad { color: var(--danger); }
 .need.bad b { background: var(--danger); }
+
+/* Traits, skills and morale, shared by the inspect panel, the stranger card and the Colony screen. */
+.traits { display: flex; flex-wrap: wrap; gap: 4px; }
+.trait { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--accent-edge); color: var(--accent); background: var(--accent-tint); white-space: nowrap; }
+.trait.bad { border-color: rgba(255, 180, 84, 0.55); color: var(--warn); background: rgba(255, 180, 84, 0.08); }
+.skills { display: flex; flex-direction: column; gap: 4px; }
+.skills > div { display: grid; grid-template-columns: 14px 1fr 64px; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.skill { display: inline-grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px; min-width: 56px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.skill b { font-weight: 700; font-size: 12px; }
+.skill .star { font-style: normal; font-size: 10px; color: var(--accent); }
+.skill .bar { display: block; height: 3px; min-width: 28px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.skill .bar i { display: block; height: 100%; background: var(--accent); }
+.skill:not(.knack) .star { display: none; }
+.row.morale.low b { color: var(--warn); }
+.row b.pos { color: var(--accent); }
+.row b.neg { color: var(--warn); }
+#inspect { max-height: calc(100% - 200px); overflow-y: auto; scrollbar-width: none; }
+#inspect .traits { margin: 2px 0 0; }
+
+/* A stranger at the edge of the light. */
+#stranger {
+  position: fixed; z-index: 8; right: calc(max(16px, env(safe-area-inset-right, 0px)) + 224px); top: calc(72px + env(safe-area-inset-top, 0px));
+  width: 300px; padding: 14px 16px 15px; box-sizing: border-box; font-size: 12px; color: var(--muted);
+  border-color: var(--accent-edge); animation: slide-up 0.25s ease-out;
+}
+#stranger header { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+#stranger header small { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+#stranger h3 { margin: 1px 0 2px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+#stranger .temper { margin: 8px 0 10px; }
+#stranger .note { margin: 10px 0 12px; line-height: 1.45; }
+#stranger .note b { color: var(--ink); font-variant-numeric: tabular-nums; }
+#stranger .actions { display: flex; gap: 8px; }
+#stranger .actions button { flex: 1; justify-content: center; padding: 9px 12px; font-size: 13px; }
+.muted { color: var(--muted); }
+
+/* The Colony screen: tables, one row per survivor. */
+#colony-open { height: 46px; box-sizing: border-box; padding: 0 12px; gap: 8px; pointer-events: auto; font-size: 13px; font-weight: 700; color: var(--ink); }
+#colony-open .icon { color: var(--accent); }
+#colony-open kbd { font-size: 9px; }
+#colony-open.active { border-color: var(--accent-edge); background: var(--accent-tint); }
+#colony {
+  position: fixed; z-index: 9; left: 50%; top: calc(72px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  width: min(860px, calc(100% - 32px)); max-height: calc(100% - 190px); box-sizing: border-box;
+  display: flex; flex-direction: column; padding: 12px 16px 12px; font-size: 12px; color: var(--muted);
+  background: rgba(18, 26, 36, 0.92); animation: slide-up 0.2s ease-out;
+}
+#colony header { display: flex; align-items: center; gap: 10px; color: var(--accent); margin-bottom: 10px; }
+#colony header > b { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+#colony header nav { flex: 1; display: flex; gap: 2px; margin-left: 8px; }
+#colony header nav button { padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border: 1px solid transparent; }
+#colony header nav button.active { color: var(--accent); border-color: var(--accent-edge); background: var(--accent-tint); }
+#colony .close { padding: 4px; color: var(--muted); }
+#colony .table-wrap { overflow: auto; scrollbar-width: thin; }
+#colony table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#colony th { position: sticky; top: 0; background: var(--panel-solid); text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; }
+#colony th .icon { vertical-align: -3px; margin-right: 5px; color: var(--accent); }
+#colony th button { padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; }
+#colony th button:hover { color: var(--ink); }
+#colony td { padding: 5px 8px; border-top: 1px solid var(--edge); color: var(--ink); vertical-align: middle; }
+#colony td.muted { color: var(--muted); }
+#colony td.warn { color: var(--warn); }
+#colony td.wide { min-width: 170px; }
+#colony td.wide small { display: block; margin-top: 4px; }
+#colony td .need { min-width: 64px; }
+#colony td.name button { display: flex; align-items: center; gap: 8px; padding: 0; font-weight: 600; color: var(--ink); white-space: nowrap; }
+#colony tr.dead td { opacity: 0.5; }
+#colony tr.dead td.muted { color: var(--danger); }
+#colony select {
+  appearance: none; -webkit-appearance: none; font: 600 11px var(--font); color: var(--ink); cursor: pointer;
+  background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238fa0b3' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
+  border: 1px solid var(--edge); border-radius: 999px; padding: 3px 21px 3px 9px;
+}
+#colony select option { background: var(--panel-solid); color: var(--ink); }
+#colony .pref { width: 64px; justify-content: center; padding: 4px 0; font-size: 11px; font-weight: 700; border: 1px solid var(--edge); }
+#colony .pref.p0 { color: var(--muted); opacity: 0.6; border-style: dashed; }
+#colony .pref.p1 { color: var(--muted); }
+#colony .pref.p2 { color: var(--ink); }
+#colony .pref.p3 { color: var(--accent); border-color: var(--accent-edge); background: var(--accent-tint); }
+#colony .note { margin: 10px 0 0; line-height: 1.45; }
+#colony .note b { color: var(--ink); }
+
 @media (max-width: 760px) {
   .brand { display: none; }
   .stat span { display: none; }
-  #roster { width: 176px; top: calc(118px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 220px); }
-  .survivor { padding: 10px 11px 11px; }
-  .portrait { width: 32px; height: 32px; }
-  .who { flex-direction: column; align-items: flex-start; gap: 3px; }
-  .survivor .doing { margin: 7px 0 8px; }
-  .needs { gap: 6px 10px; }
+  #roster { width: 168px; top: calc(118px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 220px); }
+  #colony-open span { display: none; }
+  #stranger { right: 16px; top: calc(118px + env(safe-area-inset-top, 0px)); width: min(300px, calc(100% - 32px)); }
+  #colony { top: calc(118px + env(safe-area-inset-top, 0px)); }
   .tool { min-width: 52px; padding: 8px 6px 6px; }
 }
 
@@ -410,3 +491,4 @@ body.paused::after { content: ''; position: fixed; inset: 0; z-index: 3; pointer
 .tech.studying header b { color: var(--accent); }
 @media (max-width: 900px) { #research div span { display: none; } }
 #inspect button.grate { width: 100%; margin-top: 10px; padding: 8px 10px; justify-content: center; font-size: 12px; }
+#colony th .icon { display: inline-block; }

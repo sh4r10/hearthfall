@@ -10,6 +10,7 @@ mod haul;
 mod jobs;
 mod nav;
 mod orders;
+mod people;
 mod physics;
 mod research;
 mod rng;
@@ -17,11 +18,12 @@ mod rooms;
 mod shades;
 mod world;
 
-pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
+pub use colonist::{Activity, Colonist, Role, MISERABLE, WORK_UNIT, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
 pub use jobs::{build_cost, rare_cost, CRYSTAL_PER_CELL, ORE_PER_CELL, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW, TILE_STONE};
 pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_CRYSTAL, BLOCK_NO_IRON, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use haul::{Item, CARRY_MAX};
 pub use research::{Tech, COAL_RESERVE, COKE_COAL, COKE_FUEL, COKE_KEEP, COKE_MADE, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, RESEARCH_PRIORITY, RESEARCH_STINT, SMELT_ORE, TECHS};
+pub use people::*;
 pub use rng::Rng;
 pub use rooms::{ROOM_BEDROOM, ROOM_CELLAR, ROOM_GLOW, ROOM_HEARTH, ROOM_MAX_CELLS, ROOM_NONE, ROOM_PLAIN, ROOM_TICKS};
 pub use shades::{
@@ -61,7 +63,8 @@ pub const EVENT_SHADE_ATTACK: u8 = 2;
 /// [`Event::kind`] for a building falling because its floor went. Its
 /// `colonist` field holds the [`Building`] number instead.
 pub const EVENT_COLLAPSE: u8 = 3;
-/// [`Event::kind`] for a refugee joining the colony.
+/// [`Event::kind`] for a stranger taken into the colony. See also
+/// [`EVENT_STRANGER`] and [`EVENT_TURNED_AWAY`].
 pub const EVENT_ARRIVAL: u8 = 4;
 /// [`Event::kind`] for smoke first gathering thick enough to matter. Sent once.
 pub const EVENT_SMOKE: u8 = 5;
@@ -81,12 +84,6 @@ pub const SMOKE_SOAK_DIV: i32 = 8_000;
 pub const VENT_CLEAR: i32 = SMOKE_MAX;
 /// From this much smoke a cell is smoky: light is dimmed and survivors cough.
 pub const SMOKY: i32 = 400;
-/// Refugees can arrive at dawn from this day on, every other day.
-pub const REFUGEE_FIRST_DAY: u64 = 3;
-/// A refugee only joins a colony with this much food to spare.
-pub const REFUGEE_FOOD: i32 = 5;
-/// The colony never grows past this on its own.
-pub const MAX_COLONISTS: usize = 8;
 
 /// Something the renderer should hear about once, such as a death.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -108,6 +105,10 @@ pub enum Command {
     /// Have the building in a cell taken down.
     Deconstruct { x: u32, y: u32 },
     SetRole { colonist: u32, role: Role },
+    /// Take in (`true`) or turn away the stranger waiting at the edge of the light.
+    AnswerStranger { accept: bool },
+    /// How keen a survivor should be on one group of errands, by skill: a `PREF_` value.
+    SetPref { colonist: u32, skill: u8, pref: u8 },
     /// Change the priority (1 to 9) of the order on a cell.
     SetPriority { x: u32, y: u32, priority: u8 },
     /// Pick what the research bench studies, or nothing.
@@ -151,8 +152,12 @@ pub struct Sim {
     pub coal: i32,
     /// Stone from digging rock. Everything you stack is built from it.
     pub stone: i32,
-    /// Rations in the colony stockpile.
+    /// Raw rations in the colony stockpile.
     pub food: i32,
+    /// Roast meals, cooked from raw rations at a hearth. Eaten first.
+    pub meals: i32,
+    /// Someone waiting at the edge of the light to be taken in or turned away.
+    pub stranger: Option<Colonist>,
     /// Iron ore, iron, crystal and coke in stock.
     pub ore: i32,
     pub iron: i32,
@@ -181,11 +186,6 @@ impl Sim {
         let elements = world::generate(seed, width, height);
         let n = elements.len();
         let (cx, cy) = (width / 2, height / 2);
-        // Esk and Mara. Everyone else follows the firelight down later.
-        let roles = [Role::Digger, Role::Firekeeper];
-        // Around the hearth, not in it, and not on top of each other.
-        let spots = [cx - 3, cx + 3];
-        let colonists = roles.iter().zip(spots).map(|(&r, x)| Colonist::new(x, cy, r)).collect();
         let mut buildings = vec![Building::None; n];
         let mut hearth_fuel = vec![0; n];
         let start = (cy * width + cx) as usize;
@@ -222,7 +222,9 @@ impl Sim {
             known: 0,
             researching: None,
             research_points: vec![0; TECHS.len()],
-            colonists,
+            meals: 0,
+            stranger: None,
+            colonists: Vec::new(),
             jobs: Vec::new(),
             shades: Vec::new(),
             events: Vec::new(),
@@ -230,6 +232,8 @@ impl Sim {
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
         };
+        // Esk and Mara, either side of the hearth. Everyone else follows the firelight down later.
+        sim.first_two(cx, cy);
         sim.rooms_tick();
         sim.update_light();
         sim
@@ -242,34 +246,6 @@ impl Sim {
 
     fn in_bounds(&self, x: u32, y: u32) -> bool {
         x < self.width && y < self.height
-    }
-
-    /// At dawn every other day from [`REFUGEE_FIRST_DAY`], a refugee drawn by
-    /// the firelight joins, if there is a free bed, food to spare and a fire
-    /// to stand by. They appear in the firelight on a free patch of floor.
-    fn refugees_tick(&mut self) {
-        let day = self.tick / DAY_TICKS + 1;
-        if self.tick % DAY_TICKS != 0 || day < REFUGEE_FIRST_DAY || (day - REFUGEE_FIRST_DAY) % 2 != 0 {
-            return;
-        }
-        if self.colonists.len() >= MAX_COLONISTS || self.food < REFUGEE_FOOD {
-            return;
-        }
-        let bed_free = (0..self.buildings.len()).any(|i| self.buildings[i] == Building::Bed && !self.colonists.iter().any(|c| c.alive() && c.bed == Some(i as u32)));
-        if !bed_free {
-            return;
-        }
-        let w = self.width as i32;
-        let spot = (0..self.buildings.len()).find(|&i| {
-            let (x, y) = (i as i32 % w, i as i32 / w);
-            self.is_warm(i) && self.open(x, y) && self.supported(x, y) && self.buildings[i] == Building::None && !self.by_hearth(x, y)
-                && !self.colonists.iter().any(|c| c.alive() && (c.x as i32, c.y as i32) == (x, y))
-        });
-        let Some(spot) = spot else { return };
-        let roles = [Role::Digger, Role::Firekeeper, Role::Builder, Role::Hauler, Role::Researcher];
-        let role = roles[self.colonists.len() % roles.len()];
-        self.colonists.push(Colonist::new(spot as u32 % self.width, spot as u32 / self.width, role));
-        self.push_event(EVENT_ARRIVAL, self.colonists.len() as u32 - 1);
     }
 
     pub fn is_night(&self) -> bool {
@@ -296,7 +272,7 @@ impl Sim {
         self.update_light();
         self.water_tick();
         self.maintain_jobs();
-        self.refugees_tick();
+        self.strangers_tick();
         self.shades_tick();
         self.colonists_tick();
         self.conduct_heat();
@@ -336,6 +312,14 @@ impl Sim {
             Command::SetRole { colonist, role } => {
                 if let Some(c) = self.colonists.get_mut(colonist as usize) {
                     c.role = role;
+                }
+            }
+            Command::AnswerStranger { accept } => self.answer_stranger(accept),
+            Command::SetPref { colonist, skill, pref } => {
+                if let Some(c) = self.colonists.get_mut(colonist as usize) {
+                    if (skill as usize) < SKILLS {
+                        c.prefs[skill as usize] = pref.min(PREF_HIGH);
+                    }
                 }
             }
             _ => {}
@@ -392,6 +376,11 @@ impl Sim {
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.food.to_le_bytes());
+        eat(&self.meals.to_le_bytes());
+        match &self.stranger {
+            Some(c) => c.hash_into(&mut eat),
+            None => eat(&[0xff]),
+        }
         for v in [self.ore, self.iron, self.crystal, self.coke, self.known as i32, self.researching.map_or(-1, |t| t as i32)] {
             eat(&v.to_le_bytes());
         }

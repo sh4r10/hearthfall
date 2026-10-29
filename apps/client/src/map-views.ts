@@ -41,7 +41,7 @@ export class MapViews {
   private legendFor?: string;
 
   constructor(
-    private names: readonly string[],
+    private nameAt: (f: Frame, i: number) => string,
     /** Puts one line in the event log. */
     private notice: (html: string, glyph: string, tone: 'info' | 'warn') => void,
   ) {}
@@ -146,8 +146,8 @@ export class MapViews {
     for (let k = 0, i = 0; i < f.colonists.length; i += COLONIST_STRIDE, k++) {
       if (f.colonists[i + 3] === 5) continue;
       const c = f.colonists[i + 1] * f.width + f.colonists[i];
-      if (f.firelight[c] < DARK_BELOW) cold.push(this.names[k % this.names.length]);
-      else if (!f.night && f.nightFirelight[c] < DARK_BELOW) losing.push(this.names[k % this.names.length]);
+      if (f.firelight[c] < DARK_BELOW) cold.push(this.nameAt(f, k));
+      else if (!f.night && f.nightFirelight[c] < DARK_BELOW) losing.push(this.nameAt(f, k));
     }
     if (f.night) {
       return cold.length ? [`<b>${list(cold)}</b> ${cold.length === 1 ? 'is' : 'are'} out of the firelight.`, 'warn'] : ['Everyone is in the firelight.', ''];
