@@ -28,7 +28,7 @@ Ids are the asset ids in `art-codex/assets.json`; `*` matches any part of an id.
 | `building-lens-bench-idle`, `building-lens-bench-working`, `icon-lens` | Planned | The crystal lamp takes raw crystal; there is no lens-grinding step yet. | A lens bench refining step |
 | `building-crystal-lamp-off` | Unused | A crystal lamp never goes out. | Nothing yet |
 | `building-heater-off`, `building-heater-on`, `icon-tech-heater` | Planned | The first research branch is coke, the grate and the crystal lamp. A heater is the next fire upgrade. | A heater tech |
-| `building-crate-*`, `building-kitchen-*`, `building-medbay-empty`, `building-water-pump-*` | Planned | Buildings for mechanics the game doesn't have yet (storage crates, cooking, a medic, pumping water). The door is in. | Those mechanics |
+| `building-crate-*`, `building-kitchen-*`, `building-medbay-empty` | Planned | Buildings for mechanics the game doesn't have yet (storage crates, cooking, a medic). The door and the hand pump are in. | Those mechanics |
 | `creature-heat-leech-*`, `creature-burrower-*`, `refugee` | Planned | Heat-leeches and Burrowers aren't in the game yet; refugees appear in the firelight rather than walking in. The Shade's idle and dissolve strips are in. | Creatures beyond the Shade, refugee arrivals |
 | `prop-crowbar` | Planned | Nothing pries things open yet. | Salvage |
 | `tex-ice`, `tex-gravel`, `tex-deep-rock`, `tex-backwall-1`, `tex-backwall-2`, `tex-backwall-3` | Planned | The map has one rock and one back wall. These are for the deeper layers. | Layers 2 to 5 |

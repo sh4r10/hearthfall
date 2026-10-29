@@ -53,6 +53,8 @@ COPY = {
     "crystal-lamp": "buildings/crystal-lamp-on.png",
     "door": "buildings/door-closed.png",
     "door-open": "buildings/door-open.png",
+    "water-pump-off": "buildings/water-pump-off.png",
+    "water-pump-on": "buildings/water-pump-on.png",
     "ladder-top": "buildings/ladder-top.png",
     "ladder-middle": "buildings/ladder-middle.png",
     "ladder-bottom": "buildings/ladder-bottom.png",
