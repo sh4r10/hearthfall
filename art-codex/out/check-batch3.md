@@ -1,7 +1,7 @@
 # Art check
 
 Filters: batch=3 id=* character=*  
-**90 pass, 0 warn, 0 fail, 35 missing**
+**125 pass, 0 warn, 0 fail, 0 missing**
 
 | id | status | problems |
 |---|---|---|
@@ -95,41 +95,38 @@ Filters: batch=3 id=* character=*
 | `creature-shade-idle` | PASS |  |
 | `creature-shade-dissolve` | PASS |  |
 | `refugee` | PASS |  |
-
-## Missing (35)
-
-- `icon-pause` -> `art-codex/out/ui/icons/pause.png`
-- `icon-speed` -> `art-codex/out/ui/icons/speed.png`
-- `icon-priority` -> `art-codex/out/ui/icons/priority.png`
-- `icon-alert` -> `art-codex/out/ui/icons/alert.png`
-- `icon-inspect` -> `art-codex/out/ui/icons/inspect.png`
-- `icon-research` -> `art-codex/out/ui/icons/research.png`
-- `icon-haul` -> `art-codex/out/ui/icons/haul.png`
-- `icon-iron` -> `art-codex/out/ui/icons/iron.png`
-- `icon-crystal` -> `art-codex/out/ui/icons/crystal.png`
-- `icon-coke` -> `art-codex/out/ui/icons/coke.png`
-- `icon-iron-bar` -> `art-codex/out/ui/icons/iron-bar.png`
-- `icon-lens` -> `art-codex/out/ui/icons/lens.png`
-- `icon-tech-burner` -> `art-codex/out/ui/icons/tech-burner.png`
-- `icon-tech-crystal-lamp` -> `art-codex/out/ui/icons/tech-crystal-lamp.png`
-- `icon-tech-heater` -> `art-codex/out/ui/icons/tech-heater.png`
-- `icon-stone` -> `art-codex/out/ui/icons/stone.png`
-- `icon-deconstruct` -> `art-codex/out/ui/icons/deconstruct.png`
-- `icon-area` -> `art-codex/out/ui/icons/area.png`
-- `icon-cancel-area` -> `art-codex/out/ui/icons/cancel-area.png`
-- `badge-hauler` -> `art-codex/out/ui/roles/hauler.png`
-- `badge-digger` -> `art-codex/out/ui/roles/digger.png`
-- `badge-builder` -> `art-codex/out/ui/roles/builder.png`
-- `badge-firekeeper` -> `art-codex/out/ui/roles/firekeeper.png`
-- `badge-farmer` -> `art-codex/out/ui/roles/farmer.png`
-- `badge-medic` -> `art-codex/out/ui/roles/medic.png`
-- `badge-guard` -> `art-codex/out/ui/roles/guard.png`
-- `trait-hardy` -> `art-codex/out/ui/traits/hardy.png`
-- `trait-night-owl` -> `art-codex/out/ui/traits/night-owl.png`
-- `trait-glutton` -> `art-codex/out/ui/traits/glutton.png`
-- `trait-brave` -> `art-codex/out/ui/traits/brave.png`
-- `trait-nervous` -> `art-codex/out/ui/traits/nervous.png`
-- `trait-afraid-of-dark` -> `art-codex/out/ui/traits/afraid-of-dark.png`
-- `trait-quick` -> `art-codex/out/ui/traits/quick.png`
-- `trait-lazy` -> `art-codex/out/ui/traits/lazy.png`
-- `trait-kind` -> `art-codex/out/ui/traits/kind.png`
+| `icon-pause` | PASS |  |
+| `icon-speed` | PASS |  |
+| `icon-priority` | PASS |  |
+| `icon-alert` | PASS |  |
+| `icon-inspect` | PASS |  |
+| `icon-research` | PASS |  |
+| `icon-haul` | PASS |  |
+| `icon-iron` | PASS |  |
+| `icon-crystal` | PASS |  |
+| `icon-coke` | PASS |  |
+| `icon-iron-bar` | PASS |  |
+| `icon-lens` | PASS |  |
+| `icon-tech-burner` | PASS |  |
+| `icon-tech-crystal-lamp` | PASS |  |
+| `icon-tech-heater` | PASS |  |
+| `icon-stone` | PASS |  |
+| `icon-deconstruct` | PASS |  |
+| `icon-area` | PASS |  |
+| `icon-cancel-area` | PASS |  |
+| `badge-hauler` | PASS |  |
+| `badge-digger` | PASS |  |
+| `badge-builder` | PASS |  |
+| `badge-firekeeper` | PASS |  |
+| `badge-farmer` | PASS |  |
+| `badge-medic` | PASS |  |
+| `badge-guard` | PASS |  |
+| `trait-hardy` | PASS |  |
+| `trait-night-owl` | PASS |  |
+| `trait-glutton` | PASS |  |
+| `trait-brave` | PASS |  |
+| `trait-nervous` | PASS |  |
+| `trait-afraid-of-dark` | PASS |  |
+| `trait-quick` | PASS |  |
+| `trait-lazy` | PASS |  |
+| `trait-kind` | PASS |  |

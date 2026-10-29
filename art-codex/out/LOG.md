@@ -1537,3 +1537,363 @@ Final prompt:
 
 Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
 Edit target: Esk's exact last collapse frame. Keep the same character, same proportions, same colours and EVERY body, hood, face and boot pixel in the same place and at the same size. Add ONLY a THIN pale blue-white frost crust #e4f1fb #9cc4e4 along the TOP edges of hood, shoulders and boots, tiny frost on closed eyelashes. No blood, no skull or X eyes. Preserve exact320x320 transparent canvas framing, body resting on y304. No floor or frozen backdrop. Only add frost; do not redraw or move the body.
+
+## Batch 3: icons
+
+### badge-builder
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9da1e3fd-4a8c-4889-9607-400d2d024724.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the builder: a hammer.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### badge-digger
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9e1b5c01-a3c7-425b-ae15-e2aeb504d24b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the digger: a pickaxe.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### badge-farmer
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-de70052a-c11b-4638-b537-97c56c47ed4f.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the farmer: a mushroom.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### badge-firekeeper
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-de1a6f2a-9679-4ecc-ac9b-4f0fd3ada4cf.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat modern interface glyph. Subject: A small filled flame above a PAIR OF FURNACE TONGS: two sturdy V-shaped arms joined at a solid hinge, with two clearly open J-shaped gripping tips. No crossed logs, no X, no campfire base. Thick simple tongs under flame.
+PURE WHITE #ffffff only on genuine transparent background, including all cutouts. No ink outline, colour, shading, texture, paper grain or blur. Exactly ONE glyph, no labels or variants. Rounded geometric forms, sturdy10px minimum stroke-like parts in128px logical canvas, central96px glyph with16px clear margin. Must read at20px.
+
+### badge-guard
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-44ffac84-6fb4-4413-b54d-0ed7ee113185.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the guard: a crossbow.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+Second generation request reached the tool usage limit. Delivered the original generated crossbow with thicker alpha strokes for 20 px readability.
+
+### badge-hauler
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9effa929-0f0f-4d5a-8b35-9e9b85bbc50b.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the hauler: a sack.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### badge-medic
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f242363d-aba2-473f-9cb9-2107085a8cb1.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Role glyph for the medic: a cross.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-alert
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-4f45a213-adde-4490-b52e-292e5cbf6892.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: an exclamation mark in a rounded triangle. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-area
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5a41eea5-ffd4-4091-90a1-34116bdc6d92.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a dashed rounded rectangle with a small arrow cursor at its corner (drag to select an area). Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-cancel-area
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-61284ca1-aeb1-4416-920a-d2d8120e6eac.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a dashed rounded rectangle with an X inside. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-coke
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-11f1704c-0caf-4280-bf2d-e475caefdc83.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a rounded rectangular briquette. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-crystal
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-a4577cf2-254c-4bdb-ae5c-3d6f7768f447.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a faceted shard. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-deconstruct
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7ec9e5ac-8772-4d32-aefa-f81dfa082627.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a crowbar prying up a plank. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-haul
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-7da64847-b126-4450-9aef-c2bd52c5e93f.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a sack over a shoulder. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-inspect
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-a31028f4-fb5a-4c62-be56-bc748c346ad4.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a magnifying glass. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-iron-bar
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e7772991-5d3e-4656-b2d4-49c744c4f3cc.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: an ingot. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-iron
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-61e2ce25-a84a-4eac-bf93-37b6688537e2.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a lump of ore. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-lens
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-cac90e9f-46d0-4698-ba98-855761211360.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat modern interface glyph. Subject: A SOLID CIRCULAR GLASS DISC, one broad curved transparent highlight cutout near its upper-left interior. Only the round disc. No handle, no stem, no magnifying glass, no outside ring outline.
+PURE WHITE #ffffff only on genuine transparent background, including all cutouts. No ink outline, colour, shading, texture, paper grain or blur. Exactly ONE glyph, no labels or variants. Rounded geometric forms, sturdy10px minimum stroke-like parts in128px logical canvas, central96px glyph with16px clear margin. Must read at20px.
+
+Generated glass opacity flattened into a solid white disc; its painted upper-left highlight is one transparent cutout. No handle or shading.
+
+### icon-pause
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-f2f0fcba-2180-4844-9607-e72d9c832d24.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: two rounded vertical bars. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-priority
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-dad2b613-77e9-44c6-9a28-97521d8944a8.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: three rising bars. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-research
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8e453e2d-a577-422b-b20d-9119266a8083.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a flask over an open book. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-speed
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-0861bc7e-673b-4f56-a2ef-93a13335cfb9.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat modern interface glyph. Subject: A single SOLID FILLED right-pointing TRIANGLE. Its three corners are upper-left, lower-left and right-centre. Fill the entire triangle white, no hollow centre, no chevron, no V, no outline, no stem.
+PURE WHITE #ffffff only on genuine transparent background, including all cutouts. No ink outline, colour, shading, texture, paper grain or blur. Exactly ONE glyph, no labels or variants. Rounded geometric forms, sturdy10px minimum stroke-like parts in128px logical canvas, central96px glyph with16px clear margin. Must read at20px.
+
+### icon-stone
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-b07d8000-f56f-4857-9989-b033bfde7a2c.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a rough rock with two flat faces. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-tech-burner
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-c27611d2-ca6e-44c5-b044-ac043dcab6c1.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat modern interface glyph. Subject: Three PARALLEL HORIZONTAL thick grate bars across the upper part of a small solid flame silhouette. Bars parallel, no diagonal lines, no X, no crossed bars, no cancellation mark. A burner grate over flame.
+PURE WHITE #ffffff only on genuine transparent background, including all cutouts. No ink outline, colour, shading, texture, paper grain or blur. Exactly ONE glyph, no labels or variants. Rounded geometric forms, sturdy10px minimum stroke-like parts in128px logical canvas, central96px glyph with16px clear margin. Must read at20px.
+
+### icon-tech-crystal-lamp
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-fd65083c-f96a-4b18-b2e5-121ccac7c9fa.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a lantern with a diamond shape inside. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### icon-tech-heater
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-83c7d4da-8784-4dee-8225-b3dc3626cd7d.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Subject: a stove with a chimney and three heat waves. Same family as the batch 2 icons.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-afraid-of-dark
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3d5518b9-bb94-4be7-a0c7-8d0ebea69c32.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'afraid of dark': a crossed-out moon.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-brave
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-9aad2793-d14c-436a-8dec-5020a408bf30.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'brave': a raised fist.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-glutton
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-4fcae9a6-6941-443e-bf66-50685ac36c90.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'glutton': a bowl overflowing.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-hardy
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e4f401d7-0ee7-490c-97b2-8e91c4cc2703.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'hardy': a shield with a snowflake.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-kind
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-3bc791b5-b36e-487f-ba3d-7afbc1d8d17e.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'kind': a heart in an open hand.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-lazy
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-90edc08b-4e2d-4465-8891-12282adba56e.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat modern interface glyph. Subject: A simple U-shaped HAMMOCK cloth suspended on TWO thick ropes, ropes10px wide at128px logical size, rounded attachment ends. No thin strings, no attachment rings, no trees or person, no decorative inner lines.
+PURE WHITE #ffffff only on genuine transparent background, including all cutouts. No ink outline, colour, shading, texture, paper grain or blur. Exactly ONE glyph, no labels or variants. Rounded geometric forms, sturdy10px minimum stroke-like parts in128px logical canvas, central96px glyph with16px clear margin. Must read at20px.
+
+### trait-nervous
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-5b2c6a74-1b4a-4cf7-85ae-9d653d7be449.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'nervous': a wobbly droplet of sweat.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+### trait-night-owl
+
+Tries: 2. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e2ad8394-620b-41f5-b271-586b0e52b40f.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'night owl': an owl head.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+Second generation request reached the tool usage limit. Delivered the original generated owl after removing detached pupil and iris islands.
+
+### trait-quick
+
+Tries: 1. Built-in imagegen. Source: `/var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-8ff8b1cd-6f11-4133-9409-234733acaafc.png`.
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Flat interface glyph in a clean modern style: one solid pure-white shape (#ffffff) on transparent, no outline, no shading, no texture, no painted detail, rounded geometric forms, stroke-like parts 10 px thick, the glyph filling the central 96 px with 16 px clear margin. Readable at 20 px. The game tints it, so colour is ignored. Trait glyph for 'quick': a boot with speed lines.
+UI GLYPH OVERRIDE: this asset is a clean modern interface symbol. NO ink outline, NO colour, NO shading, NO texture or paper grain. Only solid PURE WHITE #ffffff on genuine transparency, including any necessary cutout. Exactly ONE glyph, never a sheet or variations. Rounded geometric forms and sturdy10px stroke-like parts at128px logical size. Fill central96px with16px clear margins. Simplify for immediate recognition at20px. No fine internal decoration. Use the reference only for the white silhouette glyph family; draw the subject specified above, not an X unless requested.
+
+Final interface review: all 35 new glyphs reviewed at native 20 px beside the four repaired resource glyphs. White interiors made opaque; stray pixels and tiny alpha holes cleaned without removing meaningful cutouts. Final strict Batch 3 check: 125 pass, zero warnings, failures or missing files.
