@@ -11,14 +11,16 @@ mod jobs;
 mod nav;
 mod orders;
 mod physics;
+mod research;
 mod rng;
 mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
-pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
+pub use jobs::{build_cost, rare_cost, CRYSTAL_PER_CELL, ORE_PER_CELL, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_CRYSTAL, BLOCK_NO_IRON, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use haul::{Item, CARRY_MAX};
+pub use research::{Tech, COAL_RESERVE, COKE_COAL, COKE_FUEL, COKE_KEEP, COKE_MADE, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, RESEARCH_PRIORITY, RESEARCH_STINT, SMELT_ORE, TECHS};
 pub use rng::Rng;
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
@@ -43,6 +45,9 @@ pub const LIGHT_RADIUS_NIGHT: i32 = 8;
 /// How far lamp light reaches, by day and by night.
 pub const LAMP_RADIUS_DAY: i32 = 4;
 pub const LAMP_RADIUS_NIGHT: i32 = 3;
+/// How far a crystal lamp's light reaches, by day and by night.
+pub const CRYSTAL_RADIUS_DAY: i32 = 8;
+pub const CRYSTAL_RADIUS_NIGHT: i32 = 6;
 /// Below this light level a cell counts as dark and colonists get cold.
 pub const DARK_BELOW: u8 = 40;
 /// How many recent events [`Sim::events`] keeps.
@@ -58,6 +63,8 @@ pub const EVENT_COLLAPSE: u8 = 3;
 pub const EVENT_ARRIVAL: u8 = 4;
 /// [`Event::kind`] for smoke first gathering thick enough to matter. Sent once.
 pub const EVENT_SMOKE: u8 = 5;
+/// [`Event::kind`] for a finished study. Its `colonist` field holds the [`Tech`] number instead.
+pub const EVENT_RESEARCH: u8 = 6;
 /// Smoke per cell, 0 to this. Fires add a little each tick; it rises, pools
 /// under ceilings, soaks slowly into the walls, and escapes through vents.
 pub const SMOKE_MAX: i32 = 1_000;
@@ -101,6 +108,10 @@ pub enum Command {
     SetRole { colonist: u32, role: Role },
     /// Change the priority (1 to 9) of the order on a cell.
     SetPriority { x: u32, y: u32, priority: u8 },
+    /// Pick what the research bench studies, or nothing.
+    Research { tech: Option<Tech> },
+    /// Have an iron grate fitted to the hearth on a cell.
+    Upgrade { x: u32, y: u32 },
 }
 
 #[derive(Clone, Debug)]
@@ -112,6 +123,10 @@ pub struct Sim {
     pub buildings: Vec<Building>,
     /// Fuel inside each hearth, indexed by cell.
     pub hearth_fuel: Vec<i32>,
+    /// How much of each hearth's fuel is coke, which smokes half as much.
+    pub hearth_clean: Vec<i32>,
+    /// Whether each hearth has an iron grate.
+    pub hearth_grate: Vec<bool>,
     /// Priority each hearth's refuel errands get, indexed by cell.
     pub refuel_priority: Vec<u8>,
     /// What lies loose on each cell (an [`Item`] number, 0 for nothing) and how much.
@@ -132,6 +147,17 @@ pub struct Sim {
     pub stone: i32,
     /// Rations in the colony stockpile.
     pub food: i32,
+    /// Iron ore, iron, crystal and coke in stock.
+    pub ore: i32,
+    pub iron: i32,
+    pub crystal: i32,
+    pub coke: i32,
+    /// One bit per [`Tech`] the colony knows.
+    pub known: u32,
+    /// What the research bench is studying.
+    pub researching: Option<Tech>,
+    /// Study banked towards each [`Tech`], by its number.
+    pub research_points: Vec<i32>,
     pub colonists: Vec<Colonist>,
     pub jobs: Vec<Job>,
     /// Shades abroad. Only ever non-empty at night.
@@ -168,6 +194,8 @@ impl Sim {
             elements,
             buildings,
             hearth_fuel,
+            hearth_clean: vec![0; n],
+            hearth_grate: vec![false; n],
             refuel_priority: vec![DEFAULT_PRIORITY; n],
             pile_item: vec![0; n],
             pile_amount: vec![0; n],
@@ -179,6 +207,13 @@ impl Sim {
             coal: START_COAL,
             stone: START_STONE,
             food: START_FOOD,
+            ore: 0,
+            iron: 0,
+            crystal: 0,
+            coke: 0,
+            known: 0,
+            researching: None,
+            research_points: vec![0; TECHS.len()],
             colonists,
             jobs: Vec::new(),
             shades: Vec::new(),
@@ -222,7 +257,7 @@ impl Sim {
                 && !self.colonists.iter().any(|c| c.alive() && (c.x as i32, c.y as i32) == (x, y))
         });
         let Some(spot) = spot else { return };
-        let roles = [Role::Builder, Role::Hauler, Role::Digger, Role::Firekeeper];
+        let roles = [Role::Digger, Role::Firekeeper, Role::Builder, Role::Hauler, Role::Researcher];
         let role = roles[self.colonists.len() % roles.len()];
         self.colonists.push(Colonist::new(spot as u32 % self.width, spot as u32 / self.width, role));
         self.push_event(EVENT_ARRIVAL, self.colonists.len() as u32 - 1);
@@ -279,13 +314,15 @@ impl Sim {
                 }
             }
             Command::Deconstruct { x, y } if self.in_bounds(x, y) => self.order_deconstruct(x, y),
-            Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) => {
+            Command::Build { x, y, building } if self.in_bounds(x, y) && !matches!(building, Building::None | Building::Cairn) && self.unlocked(building) => {
                 if self.room_for(x, y, building) {
                     self.add_job(x, y, JobKind::Build(building));
                 }
             }
             Command::Cancel { x, y } if self.in_bounds(x, y) => self.cancel_job(x, y),
             Command::SetPriority { x, y, priority } if self.in_bounds(x, y) => self.set_priority(x, y, priority),
+            Command::Research { tech } => self.set_research(tech),
+            Command::Upgrade { x, y } if self.in_bounds(x, y) => self.order_upgrade(x, y),
             Command::SetRole { colonist, role } => {
                 if let Some(c) = self.colonists.get_mut(colonist as usize) {
                     c.role = role;
@@ -296,16 +333,23 @@ impl Sim {
     }
 
     fn buildings_tick(&mut self) {
-        let burn = self.tick % HEARTH_BURN_TICKS == 0;
         let grow = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS - 1;
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
                 Building::Hearth if self.hearth_lit(i) => {
-                    // Fire gives off heat and smoke.
+                    // Fire gives off heat and smoke. A grate and coke each
+                    // halve the smoke: worked out per two ticks to stay whole.
                     self.temperature[i] += 150;
-                    self.smoke[i] = (self.smoke[i] + SMOKE_PER_TICK).min(SMOKE_MAX);
-                    if burn {
+                    let clean = self.hearth_clean[i] > 0;
+                    let per_two = SMOKE_PER_TICK * 2 >> (self.hearth_grate[i] as u32 + clean as u32);
+                    let puff = per_two / 2 + if self.tick % 2 == 0 { per_two % 2 } else { 0 };
+                    self.smoke[i] = (self.smoke[i] + puff).min(SMOKE_MAX);
+                    let every = if self.hearth_grate[i] { GRATE_BURN_TICKS } else { HEARTH_BURN_TICKS };
+                    if self.tick % every == 0 {
                         self.hearth_fuel[i] -= 1;
+                        if clean {
+                            self.hearth_clean[i] -= 1;
+                        }
                     }
                 }
                 // Mushrooms shun the fire's light and heat; lamp light doesn't bother them.
@@ -336,9 +380,17 @@ impl Sim {
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.food.to_le_bytes());
+        for v in [self.ore, self.iron, self.crystal, self.coke, self.known as i32, self.researching.map_or(-1, |t| t as i32)] {
+            eat(&v.to_le_bytes());
+        }
+        for v in &self.research_points {
+            eat(&v.to_le_bytes());
+        }
         for i in 0..self.elements.len() {
             eat(&[self.elements[i] as u8, self.buildings[i] as u8]);
             eat(&self.hearth_fuel[i].to_le_bytes());
+            eat(&self.hearth_clean[i].to_le_bytes());
+            eat(&[self.hearth_grate[i] as u8]);
             eat(&[self.refuel_priority[i], self.pile_item[i]]);
             eat(&self.pile_amount[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());

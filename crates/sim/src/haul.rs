@@ -12,6 +12,9 @@ use crate::{Activity, Building, Sim};
 pub enum Item {
     Coal = 1,
     Stone = 2,
+    /// Iron ore, for the smelter.
+    Ore = 3,
+    Crystal = 4,
 }
 
 impl Item {
@@ -19,6 +22,8 @@ impl Item {
         match v {
             1 => Some(Item::Coal),
             2 => Some(Item::Stone),
+            3 => Some(Item::Ore),
+            4 => Some(Item::Crystal),
             _ => None,
         }
     }
@@ -69,6 +74,8 @@ impl Sim {
         match item {
             Item::Coal => self.coal += amount,
             Item::Stone => self.stone += amount,
+            Item::Ore => self.ore += amount,
+            Item::Crystal => self.crystal += amount,
         }
     }
 

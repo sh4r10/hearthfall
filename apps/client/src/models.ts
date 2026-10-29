@@ -333,6 +333,64 @@ function pile(colours: string[]) {
 }
 registerModel('pile-coal', pile(['#2e2c31', '#242327', '#38353a']));
 registerModel('pile-stone', pile(['#6b665f', '#57524c', '#7a746b']));
+registerModel('pile-ore', pile(['#8a4a2c', '#6e3a22', '#5a5b5f']));
+registerModel('pile-crystal', pile(['#7fe0d8', '#5cc4c8', '#a8f0ea']));
+
+/** A hearth with an iron grate across the fire. */
+registerModel('hearth-grate', () => {
+  const g = makeModel('hearth');
+  const iron = mat('#3a3d42', { metalness: 0.6, roughness: 0.5 });
+  for (const x of [-0.2, 0, 0.2]) g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.6), iron, x, 0.2, 0));
+  return g;
+});
+
+/** A research bench: a plank table with a lamp, books and a sheet of plans. Its child named on shows while someone works at it. */
+registerModel('workbench', () => {
+  const g = new THREE.Group();
+  const wood = mat('#8a6440');
+  g.add(mesh(new THREE.BoxGeometry(1.8, 0.08, 0.6), wood, 0, 0.72, 0));
+  for (const x of [-0.8, 0.8]) g.add(mesh(new THREE.BoxGeometry(0.08, 0.72, 0.5), mat('#6b4a2f'), x, 0.36, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.6, 0.01, 0.4), mat('#e8dcc0'), 0.1, 0.77, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.22, 0.14, 0.3), mat('#3c5a7a'), -0.6, 0.83, 0));
+  const on = mesh(new THREE.SphereGeometry(0.07, 6, 4), mat('#ffe2a0', { emissive: '#ffb347', emissiveIntensity: 2 }), 0.65, 0.9, 0);
+  on.name = 'on';
+  g.add(on);
+  return g;
+});
+
+/** A coke oven: a squat clay dome with an iron door. Its child named on glows while it bakes. */
+registerModel('coke-oven', () => {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.SphereGeometry(0.45, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat('#b08d6a'), 0, 0.1, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.47, 0.5, 0.12, 8), mat('#6b665f'), 0, 0.06, 0));
+  const on = mesh(new THREE.BoxGeometry(0.22, 0.2, 0.02), mat('#ff8a2a', { emissive: '#ff6a00', emissiveIntensity: 2 }), 0, 0.26, 0.46);
+  on.name = 'on';
+  g.add(on, mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 6), mat('#4a5258'), 0, 0.65, 0));
+  return g;
+});
+
+/** A smelter: a stone kiln with a copper chimney and a bellows. Its child named on glows while it smelts. */
+registerModel('smelter', () => {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.5, 0.7, 1.0, 8), mat('#6b665f'), 0.2, 0.5, 0));
+  g.add(mesh(new THREE.ConeGeometry(0.4, 0.8, 8), mat('#b06a3a'), 0.2, 1.4, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.5, 0.3, 0.3), mat('#6b4a2f'), -0.7, 0.35, 0));
+  const on = mesh(new THREE.BoxGeometry(0.24, 0.24, 0.02), mat('#ffb347', { emissive: '#ff6a00', emissiveIntensity: 2.4 }), 0.2, 0.22, 0.62);
+  on.name = 'on';
+  g.add(on);
+  return g;
+});
+
+/** A crystal lamp: a post with a hanging lantern holding a blue-white crystal; the renderer adds the light. */
+registerModel('crystal-lamp', () => {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.8, 6), mat('#6b4a2f'), 0, 0.4, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.3, 0.04, 0.04), mat('#4a5258'), 0.12, 0.8, 0));
+  const glass = mesh(new THREE.OctahedronGeometry(0.1), mat('#c8f4ff', { emissive: '#7fe0ff', emissiveIntensity: 2.6, roughness: 0.2 }), 0.24, 0.64, 0);
+  glass.castShadow = false;
+  g.add(glass);
+  return g;
+});
 
 /** A lamp: a post with a brass lantern whose glass glows; the renderer adds the light. */
 /** A vent: a stone-collared bore into the rock with a leather bellows at its foot. */

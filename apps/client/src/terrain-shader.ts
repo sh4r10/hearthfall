@@ -5,8 +5,8 @@ import { artTexture, artUrl } from './art';
 // filtering and cut at a noisy threshold, turns the square grid into smooth,
 // organic shapes (the same idea as marching squares). The mask's gradient
 // gives a bevel normal, so rock reads as rounded lumps rather than flat tiles.
-// Painted textures from apps/client/art/ fill the rock, dirt, coal and back
-// wall when present. Water is drawn separately, as its own mesh.
+// Painted textures from apps/client/art/ fill the rock, dirt, coal, ore,
+// crystal and back wall when present. Water is drawn separately, as its own mesh.
 
 export const terrainVertex = /* glsl */ `
   varying vec2 vUv;
@@ -18,12 +18,15 @@ export const terrainVertex = /* glsl */ `
 
 export const terrainFragment = /* glsl */ `
   uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = water
+  uniform sampler2D uOre;    // r = iron ore, g = crystal
   uniform sampler2D uLight;  // r = brightness from the sim's light field
   uniform sampler2D uWater;  // r = how full the cell is from its bottom, g = depth below the surface, b = surface cell (nearest filtered)
   uniform vec2 uSize;        // grid size in cells
   // Optional painted textures; the matching flag is 1.0 when one is loaded.
   uniform sampler2D uRockTex, uDirtTex, uCoalTex, uWallTex;
   uniform vec4 uHasArt;      // rock, dirt, coal, back wall
+  uniform sampler2D uIronTex, uCrystalTex;
+  uniform vec2 uHasOreArt;   // iron ore, crystal
   uniform sampler2D uWaterTex;
   uniform float uHasWaterArt;
   uniform float uTime;
@@ -42,12 +45,14 @@ export const terrainFragment = /* glsl */ `
   }
 
   vec4 mask(vec2 cell) { return texture2D(uMask, cell / uSize); }
-  float solidAt(vec2 cell) { vec4 m = mask(cell); return m.r + m.g + m.b; }
+  vec2 ores(vec2 cell) { return texture2D(uOre, cell / uSize).rg; }
+  float solidAt(vec2 cell) { vec4 m = mask(cell); vec2 o = ores(cell); return m.r + m.g + m.b + o.r + o.g; }
 
   void main() {
     vec2 cell = vUv * uSize;
     vec4 m = mask(cell);
-    float solid = m.r + m.g + m.b;
+    vec2 o = ores(cell);
+    float solid = m.r + m.g + m.b + o.r + o.g;
 
     // Wobble the edge so outlines look hand-drawn rather than geometric.
     float wobble = (fbm(cell * 1.7) - 0.5) * 0.28;
@@ -74,8 +79,13 @@ export const terrainFragment = /* glsl */ `
     rock = mix(rock, texture2D(uRockTex, cell / 4.0).rgb, uHasArt.x);
     dirt = mix(dirt, texture2D(uDirtTex, cell / 4.0).rgb, uHasArt.y);
     coal = mix(coal, texture2D(uCoalTex, cell / 4.0).rgb, uHasArt.z);
+    // Iron ore is rock veined with rust; crystal is rock studded with pale blue.
+    vec3 iron = mix(rock * 0.8, vec3(0.55, 0.27, 0.15), step(0.6, noise(cell * 3.0)) * 0.8);
+    vec3 crystal = mix(rock * 0.75, vec3(0.5, 0.88, 0.86), step(0.82, noise(cell * 5.0)));
+    iron = mix(iron, texture2D(uIronTex, cell / 4.0).rgb, uHasOreArt.x);
+    crystal = mix(crystal, texture2D(uCrystalTex, cell / 4.0).rgb, uHasOreArt.y);
     float wsum = max(solid, 0.001);
-    vec3 solidColor = (rock * m.r + dirt * m.g + coal * m.b) / wsum;
+    vec3 solidColor = (rock * m.r + dirt * m.g + coal * m.b + iron * o.r + crystal * o.g) / wsum;
     solidColor *= 0.55 + lambert * 0.75;
 
     // Dark ink outline just inside the edge, like the line art on the sprites.
@@ -128,10 +138,11 @@ export const terrainFragment = /* glsl */ `
   }
 `;
 
-export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTexture, water: THREE.DataTexture, width: number, height: number) {
+export function terrainMaterial(mask: THREE.DataTexture, ores: THREE.DataTexture, light: THREE.DataTexture, water: THREE.DataTexture, width: number, height: number) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMask: { value: mask },
+      uOre: { value: ores },
       uLight: { value: light },
       uWater: { value: water },
       uSize: { value: new THREE.Vector2(width, height) },
@@ -146,7 +157,7 @@ export function terrainMaterial(mask: THREE.DataTexture, light: THREE.DataTextur
 function paintedTextures() {
   const blank = new THREE.Texture();
   const art = (name: string) => (artUrl(name) ? artTexture(name, () => blank, { repeat: true }) : null);
-  const [rock, dirt, coal, wall, water] = ['rock', 'dirt', 'coal', 'backwall', 'water'].map(art);
+  const [rock, dirt, coal, wall, water, iron, crystal] = ['rock', 'dirt', 'coal', 'backwall', 'water', 'iron-ore', 'crystal'].map(art);
   return {
     uRockTex: { value: rock ?? blank },
     uDirtTex: { value: dirt ?? blank },
@@ -155,5 +166,8 @@ function paintedTextures() {
     uHasArt: { value: new THREE.Vector4(rock ? 1 : 0, dirt ? 1 : 0, coal ? 1 : 0, wall ? 1 : 0) },
     uWaterTex: { value: water ?? blank },
     uHasWaterArt: { value: water ? 1 : 0 },
+    uIronTex: { value: iron ?? blank },
+    uCrystalTex: { value: crystal ?? blank },
+    uHasOreArt: { value: new THREE.Vector2(iron ? 1 : 0, crystal ? 1 : 0) },
   };
 }

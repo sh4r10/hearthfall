@@ -1,6 +1,6 @@
 //! Thin wasm-bindgen wrapper around the `sim` crate for the web client.
 
-use sim::{Building, Command, Role};
+use sim::{Building, Command, Role, Tech};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -44,6 +44,10 @@ impl WebSim {
             6 => Building::Lamp,
             7 => Building::Bed,
             8 => Building::Stockpile,
+            9 => Building::ResearchBench,
+            10 => Building::CokeOven,
+            11 => Building::Smelter,
+            12 => Building::CrystalLamp,
             _ => return,
         };
         self.queued.push(Command::Build { x, y, building });
@@ -66,6 +70,17 @@ impl WebSim {
     /// Set the priority (1 to 9) of the order on a cell.
     pub fn set_priority(&mut self, x: u32, y: u32, priority: u8) {
         self.queued.push(Command::SetPriority { x, y, priority });
+    }
+
+    /// Study `tech` (a `sim::Tech` number) at the research bench, or nothing if it is negative.
+    pub fn research(&mut self, tech: i32) {
+        let tech = u8::try_from(tech).ok().and_then(Tech::from_u8);
+        self.queued.push(Command::Research { tech });
+    }
+
+    /// Have an iron grate fitted to the hearth on a cell.
+    pub fn upgrade(&mut self, x: u32, y: u32) {
+        self.queued.push(Command::Upgrade { x, y });
     }
 
     /// Applies the queued commands without running a tick, so orders given
@@ -106,6 +121,26 @@ impl WebSim {
         self.sim.food
     }
 
+    /// Iron ore, iron, crystal and coke in stock, in that order.
+    pub fn rare_stock(&self) -> Vec<i32> {
+        vec![self.sim.ore, self.sim.iron, self.sim.crystal, self.sim.coke]
+    }
+
+    /// One bit per `sim::Tech` the colony knows.
+    pub fn known(&self) -> u32 {
+        self.sim.known
+    }
+
+    /// The `sim::Tech` being studied, or -1.
+    pub fn researching(&self) -> i32 {
+        self.sim.researching.map_or(-1, |t| t as i32)
+    }
+
+    /// Study banked towards each `sim::Tech`, by number.
+    pub fn research_points(&self) -> Vec<i32> {
+        self.sim.research_points.clone()
+    }
+
     pub fn is_night(&self) -> bool {
         self.sim.is_night()
     }
@@ -124,6 +159,16 @@ impl WebSim {
 
     pub fn hearth_fuel(&self) -> Vec<i32> {
         self.sim.hearth_fuel.clone()
+    }
+
+    /// How much of each hearth's fuel is coke, by cell.
+    pub fn hearth_clean(&self) -> Vec<i32> {
+        self.sim.hearth_clean.clone()
+    }
+
+    /// 1 where a hearth has an iron grate.
+    pub fn hearth_grate(&self) -> Vec<u8> {
+        self.sim.hearth_grate.iter().map(|&g| g as u8).collect()
     }
 
     /// Priority of each hearth's refuel errands, by cell.
@@ -187,7 +232,7 @@ impl WebSim {
     }
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
-    /// 3 deconstruct, 4 haul), building (to build, or to take down), progress percent,
+    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade), building (to build, or to take down), progress percent,
     /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
     /// `sim::BLOCK_` value, 0 if it isn't).
     pub fn jobs(&mut self) -> Vec<i32> {
@@ -204,7 +249,7 @@ impl WebSim {
             .flat_map(|(k, j)| {
                 let building = match j.kind {
                     sim::JobKind::Build(b) => b as i32,
-                    sim::JobKind::Deconstruct => s.buildings[s.idx(j.x, j.y)] as i32,
+                    sim::JobKind::Deconstruct | sim::JobKind::Refine | sim::JobKind::Upgrade | sim::JobKind::Research => s.buildings[s.idx(j.x, j.y)] as i32,
                     _ => 0,
                 };
                 [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / s.work_needed(j).max(1), j.claimed_by.is_some() as i32, j.priority as i32, blockers[k] as i32]
@@ -213,8 +258,9 @@ impl WebSim {
     }
 
     /// Flat, `EVENT_STRIDE` values each, oldest first: tick, kind (1 death,
-    /// 2 a Shade starts an attack, 3 a building fell), colonist index (for 3,
-    /// the building number). Only the last 32 events are kept.
+    /// 2 a Shade starts an attack, 3 a building fell, 4 an arrival, 5 smoke,
+    /// 6 a finished study), colonist index (for 3 the building number, for 6
+    /// the `sim::Tech` number). Only the last 32 events are kept.
     pub fn events(&self) -> Vec<i32> {
         self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()
     }

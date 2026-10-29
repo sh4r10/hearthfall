@@ -3,7 +3,8 @@
 //! Nothing here changes state: it is a read-only report the client asks for
 //! now and then, so it stays out of `state_hash`.
 
-use crate::jobs::{build_cost, JobKind};
+use crate::jobs::{build_cost, rare_cost, JobKind};
+use crate::research::GRATE_IRON;
 use crate::nav::UNREACHED;
 use crate::Sim;
 
@@ -21,6 +22,10 @@ pub const BLOCK_UNDER_BUILDING: u8 = 4;
 pub const BLOCK_NO_HANDS: u8 = 5;
 /// A pile with no stockpile to carry it to.
 pub const BLOCK_NO_STOCKPILE: u8 = 6;
+/// A build or upgrade waiting for iron.
+pub const BLOCK_NO_IRON: u8 = 7;
+/// A build waiting for crystal.
+pub const BLOCK_NO_CRYSTAL: u8 = 8;
 /// How long a doable order may sit unclaimed before it counts as stuck.
 pub const NO_HANDS_TICKS: u64 = 300;
 
@@ -56,8 +61,16 @@ impl Sim {
                         if self.stone < stone {
                             return BLOCK_NO_STONE;
                         }
+                        let (iron, crystal) = rare_cost(b);
+                        if self.iron < iron {
+                            return BLOCK_NO_IRON;
+                        }
+                        if self.crystal < crystal {
+                            return BLOCK_NO_CRYSTAL;
+                        }
                     }
-                    JobKind::Refuel if self.coal <= 0 => return BLOCK_NO_COAL,
+                    JobKind::Refuel if self.coal <= 0 && self.coke <= 0 => return BLOCK_NO_COAL,
+                    JobKind::Upgrade if self.iron < GRATE_IRON => return BLOCK_NO_IRON,
                     JobKind::Haul if !self.has_stockpile() => return BLOCK_NO_STOCKPILE,
                     // Out in the dark at night it waits for dawn, as it should.
                     JobKind::Haul if !self.haul_doable(self.idx(job.x, job.y)) => return BLOCK_NONE,

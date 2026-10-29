@@ -50,10 +50,11 @@ const has = (...names: string[]) => names.every((n) => artUrl(n));
 // art brief on the art/codex branch), divided by any scale the renderer adds.
 const PX = 1 / 192;
 
-if (has('hearth')) {
-  registerModel('hearth', () => {
+/** A hearth on `base` (the plain ring or the grated one) with its flame. */
+function hearthSprite(baseName: string) {
+  return () => {
     const g = new THREE.Group();
-    const base = card('hearth', (160 * PX) / 1.3); // the renderer draws hearths 1.3 times larger
+    const base = card(baseName, (160 * PX) / 1.3); // the renderer draws hearths 1.3 times larger
     base.position.y = -0.03;
     base.renderOrder = 4;
     g.add(base);
@@ -68,8 +69,10 @@ if (has('hearth')) {
     }
     g.add(flame);
     return g;
-  });
+  };
 }
+if (has('hearth')) registerModel('hearth', hearthSprite('hearth'));
+if (has('hearth-grate')) registerModel('hearth-grate', hearthSprite('hearth-grate'));
 
 if (has('ladder')) registerModel('ladder', () => {
   const g = new THREE.Group();
@@ -126,11 +129,43 @@ if (has('stockpile', 'stockpile-half', 'stockpile-full')) registerModel('stockpi
   return g;
 });
 
-if (has('pile-coal')) registerModel('pile-coal', () => {
+for (const name of ['pile-coal', 'pile-ore', 'pile-crystal']) {
+  if (has(name)) registerModel(name, () => {
+    const g = new THREE.Group();
+    const m = card(name, 0.42);
+    m.position.y = -0.04;
+    m.renderOrder = 4;
+    g.add(m);
+    return g;
+  });
+}
+
+/**
+ * A building with an idle and a working picture, `height` px of art tall. The
+ * working one is the child named on, which the renderer shows while someone
+ * works there.
+ */
+function workSprite(idle: string, working: string, height: number) {
+  return () => {
+    const g = new THREE.Group();
+    for (const [name, child] of [[idle, 'off'], [working, 'on']]) {
+      const m = card(name, height * PX);
+      m.name = child;
+      m.position.y = -0.02;
+      m.renderOrder = 3;
+      g.add(m);
+    }
+    return g;
+  };
+}
+if (has('workbench', 'workbench-working')) registerModel('workbench', workSprite('workbench', 'workbench-working', 384));
+if (has('coke-oven', 'coke-oven-on')) registerModel('coke-oven', workSprite('coke-oven', 'coke-oven-on', 320));
+if (has('smelter', 'smelter-on')) registerModel('smelter', workSprite('smelter', 'smelter-on', 384));
+if (has('crystal-lamp')) registerModel('crystal-lamp', () => {
   const g = new THREE.Group();
-  const m = card('pile-coal', 0.42);
-  m.position.y = -0.04;
-  m.renderOrder = 4;
+  const m = card('crystal-lamp', 1.2 / 1.3); // drawn 1.3 times larger, like the lamp
+  m.position.y = -0.02;
+  m.renderOrder = 3;
   g.add(m);
   return g;
 });

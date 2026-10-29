@@ -1,6 +1,7 @@
 //! Environment: light, smoke, water and heat.
 
-use crate::{Building, Element, Sim, DARK_BELOW, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::research::GRATE_RADIUS;
+use crate::{Building, Element, Sim, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
 
 impl Sim {
@@ -10,13 +11,17 @@ impl Sim {
     /// kept on its own in `firelight`, since only firelight warms.
     pub(crate) fn update_light(&mut self) {
         let night = self.is_night();
-        let (radius, lamp_radius) = if night { (LIGHT_RADIUS_NIGHT, LAMP_RADIUS_NIGHT) } else { (LIGHT_RADIUS_DAY, LAMP_RADIUS_DAY) };
-        self.firelight.iter_mut().for_each(|l| *l = 0);
-        let hearths: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.hearth_lit(i)).collect();
-        flood_light(self.width, self.height, &self.elements, &hearths, radius, &mut self.firelight);
+        let (radius, lamp_radius, crystal_radius) =
+            if night { (LIGHT_RADIUS_NIGHT, LAMP_RADIUS_NIGHT, CRYSTAL_RADIUS_NIGHT) } else { (LIGHT_RADIUS_DAY, LAMP_RADIUS_DAY, CRYSTAL_RADIUS_DAY) };
+        let mut fire = std::mem::take(&mut self.firelight);
+        fire.iter_mut().for_each(|l| *l = 0);
+        self.flood_hearths(radius, &mut fire);
+        self.firelight = fire;
         self.light.copy_from_slice(&self.firelight);
         let lamps: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.buildings[i] == Building::Lamp).collect();
         flood_light(self.width, self.height, &self.elements, &lamps, lamp_radius, &mut self.light);
+        let crystals: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.buildings[i] == Building::CrystalLamp).collect();
+        flood_light(self.width, self.height, &self.elements, &crystals, crystal_radius, &mut self.light);
         // Smoke dims the light: a smoky cave shrinks the lit and warm area,
         // which lets the cold and the Shades in closer. Thick smoke cuts up
         // to 70%, so the fire itself always stays warm.
@@ -84,9 +89,15 @@ impl Sim {
     /// fed: a read-only forecast for the client's warmth view. Changes no state.
     pub fn night_firelight(&self) -> Vec<u8> {
         let mut out = vec![0; self.light.len()];
-        let hearths: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.hearth_lit(i)).collect();
-        flood_light(self.width, self.height, &self.elements, &hearths, LIGHT_RADIUS_NIGHT, &mut out);
+        self.flood_hearths(LIGHT_RADIUS_NIGHT, &mut out);
         out
+    }
+
+    /// Light from every lit hearth into `out`; a grated hearth reaches further.
+    fn flood_hearths(&self, radius: i32, out: &mut [u8]) {
+        let lit = |grate: bool| (0..self.buildings.len()).filter(|&i| self.hearth_lit(i) && self.hearth_grate[i] == grate).collect::<Vec<_>>();
+        flood_light(self.width, self.height, &self.elements, &lit(false), radius, out);
+        flood_light(self.width, self.height, &self.elements, &lit(true), radius + GRATE_RADIUS, out);
     }
 
     pub fn is_dark(&self, i: usize) -> bool {
