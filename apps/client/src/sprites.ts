@@ -74,12 +74,31 @@ function hearthSprite(baseName: string) {
 if (has('hearth')) registerModel('hearth', hearthSprite('hearth'));
 if (has('hearth-grate')) registerModel('hearth-grate', hearthSprite('hearth-grate'));
 
+// A ladder is tiled from pieces: the renderer calls `userData.piece(kind)`
+// with 'top', 'middle' or 'bottom' once it knows the neighbours. Alone, a
+// one-cell ladder uses the whole single picture.
 if (has('ladder')) registerModel('ladder', () => {
   const g = new THREE.Group();
   const m = card('ladder', 1.07); // the rails stop a few pixels short of the image edges
   m.position.y = -0.035;
   m.renderOrder = 3;
   g.add(m);
+  const pieces: Record<string, THREE.Texture> = { single: texture('ladder') };
+  for (const kind of ['top', 'middle', 'bottom']) if (has(`ladder-${kind}`)) pieces[kind] = texture(`ladder-${kind}`);
+  g.userData.piece = (kind: string) => { (m.material as THREE.MeshBasicMaterial).map = pieces[kind] ?? pieces.single; };
+  return g;
+});
+
+// A door is two cells tall; the renderer shows 'closed' or 'open' as survivors pass.
+if (has('door', 'door-open')) registerModel('door', () => {
+  const g = new THREE.Group();
+  for (const [state, name] of [['closed', 'door'], ['open', 'door-open']]) {
+    const m = card(name, 384 * PX);
+    m.name = state;
+    m.position.y = -0.02;
+    m.renderOrder = 3;
+    g.add(m);
+  }
   return g;
 });
 
@@ -336,7 +355,7 @@ for (const [name, frames] of Object.entries(EFFECTS) as [keyof typeof EFFECTS, n
  * Shades: painted smoke figures. `userData.play(anim, frame)` picks drift,
  * lunge or recoil; the renderer fades the whole card in and out.
  */
-export const SHADE_ANIMS = { drift: 4, lunge: 3, recoil: 3 } as const;
+export const SHADE_ANIMS = { drift: 4, lunge: 3, recoil: 3, idle: 4, dissolve: 5 } as const;
 export type ShadeAnim = keyof typeof SHADE_ANIMS;
 if (has('shade-drift')) registerModel('shade', () => {
   const g = new THREE.Group();
@@ -347,7 +366,9 @@ if (has('shade-drift')) registerModel('shade', () => {
   book.name = 'body';
   g.add(book);
   g.userData.play = (anim: ShadeAnim, frame: number) => {
-    book.userData.strip(`shade-${anim}`, SHADE_ANIMS[anim]);
+    // Batch 3 added idle and dissolve; fall back to drift and recoil without them.
+    const name = has(`shade-${anim}`) ? anim : anim === 'idle' ? 'drift' : anim === 'dissolve' ? 'recoil' : anim;
+    book.userData.strip(`shade-${name}`, SHADE_ANIMS[name]);
     book.userData.frame(frame);
   };
   return g;

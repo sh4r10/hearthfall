@@ -702,6 +702,12 @@ export class WorldView {
       model.position.set(p.x, p.y - 0.5, 0);
       model.userData.cell = i;
       this.buildings.add(model);
+      if (b === Building.Ladder && model.userData.piece) {
+        // Tile the ladder: which piece this cell is depends on the ladder cells above and below.
+        const above = i >= this.width && buildings[i - this.width] === Building.Ladder;
+        const below = i + this.width < buildings.length && buildings[i + this.width] === Building.Ladder;
+        model.userData.piece(above && below ? 'middle' : below ? 'top' : above ? 'bottom' : 'single');
+      }
       if (b === Building.Hearth) {
         model.scale.setScalar(1.3);
         const light = new THREE.PointLight('#ffa255', 15, 18, 1);
@@ -1246,8 +1252,9 @@ export class WorldView {
         model.position.set(v.pos.x, v.pos.y + Math.sin(t * 1.7 + i) * 0.08, 0.15);
         model.rotation.set(0, v.facing > 0 ? 0 : Math.PI, 0);
         model.scale.setScalar(0.85 + v.fade * 0.15);
-        if (v.gone) play('recoil', Math.min((1 - v.fade) * 3, 2));
+        if (v.gone) play('dissolve', Math.min((1 - v.fade) * 5, 4));
         else if (v.attacking) play('lunge', t * 6 + i);
+        else if (dist < 0.02) play('idle', t * 3 + i);
         else play('drift', t * 4 + i);
         ((model.getObjectByName('body') as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = v.fade;
         return true;

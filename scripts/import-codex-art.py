@@ -51,20 +51,21 @@ COPY = {
     "smelter": "buildings/smelter-off.png",
     "smelter-on": "buildings/smelter-on.png",
     "crystal-lamp": "buildings/crystal-lamp-on.png",
+    "door": "buildings/door-closed.png",
+    "door-open": "buildings/door-open.png",
+    "ladder-top": "buildings/ladder-top.png",
+    "ladder-middle": "buildings/ladder-middle.png",
+    "ladder-bottom": "buildings/ladder-bottom.png",
 }
 # Props cut to their painted area, for markers and icons in the world.
 CROP = {"pickaxe": "props/pickaxe.png"}
 # Strips of FRAME x FRAME cells, scaled to SHOWN.
 ANIMS = ["idle", "walk", "dig", "build", "carry", "climb", "celebrate", "cold", "sleep"]
 POSES = ["eat", "collapse", "dead", "sleep-back"]
-# Batch 1 painted some whole-body poses bigger than the rigged animations.
-# Shrink them about the feet so heads match the walk cycle. Drop an entry once
-# Codex repaints that pose at the right scale.
-POSE_SCALE = {
-    ("esk", "eat"): 0.7, ("esk", "collapse"): 0.8, ("esk", "dead"): 0.8,
-    ("mara", "eat"): 0.8, ("mara", "collapse"): 0.8, ("mara", "dead"): 0.8,
-    ("tobin", "eat"): 0.75, ("ostra", "eat"): 0.75, ("pim", "eat"): 0.75, ("ruta", "eat"): 0.75,
-}
+# Batch 1 painted some whole-body poses bigger than the rigged animations and
+# the importer shrank them. Batch 3 repainted every one at the turnaround's
+# scale, so nothing is rescaled now; the hook stays for any future slip.
+POSE_SCALE: dict[tuple[str, str], float] = {}
 FEET = 304  # feet row in a survivor frame
 
 
@@ -82,14 +83,17 @@ def rescale(img, k):
 FX = {name: f"fx/{name}.png" for name in
       ["debris-rock", "debris-dirt", "debris-coal", "smoke-puff", "breath-mist", "falling-water", "splash"]}
 # Shade strips, 320 px frames scaled like the survivors.
-SHADE = ["drift", "lunge", "recoil"]
-# Interface glyphs used now: game name: Codex icon. The coal, food, survivors
-# and hearth glyphs blur at 20 px and are repainted in batch 3, so the drawn
-# icons stay for those until then (see docs/art-usage.md).
+SHADE = ["drift", "lunge", "recoil", "idle", "dissolve"]
+# Interface glyphs used now: game name: Codex icon. Batch 3 repainted the coal,
+# food, survivors and hearth glyphs so they read at 20 px, and added the
+# control icons.
 ICONS = {"dig": "dig", "ladder": "ladder", "mushroom": "mushroom-bed", "cancel": "cancel", "sun": "day", "moon": "night",
          "warmth": "warmth", "energy": "energy", "mood": "mood", "sleep": "sleep", "lamp": "lamp", "bed": "bed",
          "skull": "death", "research": "research", "coke": "coke", "crystal": "crystal", "ore": "iron", "iron": "iron-bar",
-         "grate": "tech-burner", "crystal-lamp": "tech-crystal-lamp"}
+         "grate": "tech-burner", "crystal-lamp": "tech-crystal-lamp",
+         "coal": "coal", "food": "food", "people": "survivors", "hearth": "hearth", "pause": "pause", "speed": "speed",
+         "priority": "priority", "alert": "alert", "view": "inspect", "haul": "haul", "stone": "stone", "deconstruct": "deconstruct",
+         "area": "area", "cancel-area": "cancel-area"}
 
 
 def save(img, path):
