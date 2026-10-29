@@ -3,7 +3,7 @@
 
 import {
   ACTIVITIES, BLOCK_REASONS, Building, C_TRAITS, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
-  CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
+  CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, JOB_WATER, BED_SELF_WATERING, WATER_LOW, WATER_MAX, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
 import { moraleBlock, nameAt, skillCell, temperament, traitChips } from './people';
@@ -17,6 +17,7 @@ export function doing(c: ArrayLike<number>, frame?: Frame) {
   const smoky = !!frame && frame.smoke[c[1] * frame.width + c[0]] >= SMOKY;
   const job = c[11] >= 0 ? JOB_NAMES[c[11]] ?? 'working' : '';
   return activity === 'Dead' ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
+    : c[13] === Item.Water && activity === 'Walking' ? 'Carrying water to a mushroom bed'
     : c[13] && activity === 'Walking' ? `Carrying ${ITEM_NAMES[c[13]]} to the stockpile`
     : activity === 'Walking' && job ? `Heading off ${job}`
     : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
@@ -199,9 +200,11 @@ export class Inspector {
       body = row('Light', f.light[i] >= DARK_BELOW ? 'Lit: best sleep' : 'Dark: poor sleep') + '<p class="note">A spare bed is what lets a refugee join.</p>';
     } else if (b === Building.MushroomBed) {
       const growing = f.firelight[i] < DARK_BELOW;
+      const water = f.bedWater[i] & ~BED_SELF_WATERING, selfWatering = (f.bedWater[i] & BED_SELF_WATERING) !== 0;
       title = 'Mushroom bed'; glyph = 'mushroom';
-      status = growing ? 'Growing' : 'Too close to the fire to grow';
-      body = row('Grows', `1 ration every ${seconds(MUSHROOM_TICKS, this.tps)}`) + row('Light', f.light[i] >= DARK_BELOW ? 'Lamp lit: safe from Shades' : 'Dark: Shades can reach it') +
+      status = growing ? (water > 0 ? 'Growing, watered' : 'Growing') : 'Too close to the fire to grow';
+      body = row('Grows', `${water > 0 ? 2 : 1} ration${water > 0 ? 's' : ''} every ${seconds(MUSHROOM_TICKS, this.tps)}`) +
+        row('Water', selfWatering ? 'Self-watering: a pool is close' : `${Math.round((water / WATER_MAX) * 100)}%${water < WATER_LOW ? ' (a survivor will fetch some)' : ''}`) + row('Light', f.light[i] >= DARK_BELOW ? 'Lamp lit: safe from Shades' : 'Dark: Shades can reach it') +
         (growing ? '' : '<p class="note"><em>Mushrooms shun firelight. Move it further from the hearth.</em></p>');
     } else if (b === Building.Stockpile) {
       const loose: Record<number, number> = {};
@@ -260,7 +263,7 @@ export class Inspector {
       body += `<h4>${ROOM_NAMES[room]}</h4><p class="note">${ROOM_EFFECTS[room]}</p>`;
     }
 
-    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
+    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_WATER && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
       const [kind, , progress, claimed, priority, blocked] = [f.jobs[k + 2], f.jobs[k + 3], f.jobs[k + 4], f.jobs[k + 5], f.jobs[k + 6], f.jobs[k + 7]];
       const name = JOB_NAMES[kind];
       body += `<h4>Order: ${name}</h4>` +

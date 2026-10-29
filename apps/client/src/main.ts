@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY,
+  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY, EVENT_WATERED,
   COKE_FUEL, Element, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
@@ -213,6 +213,9 @@ function announce(frame: Frame) {
       glyph = 'shade';
     } else if (kind === EVENT_SMOKE) {
       logLine('Smoke is gathering under the ceiling. Dig a flue up from the fire, or build a <b>vent</b> where it pools.', 'vent', 'warn');
+      continue;
+    } else if (kind === EVENT_WATERED) {
+      logLine('Watered beds grow twice as fast. Beds by water water themselves.', 'mushroom', 'info');
       continue;
     } else if (kind === EVENT_ARRIVAL) {
       logLine(`<b>${name}</b> joins the colony.`, 'people', 'info');

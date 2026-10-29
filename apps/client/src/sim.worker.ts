@@ -52,13 +52,14 @@ function sendFrame(s: WebSim) {
     pileAmount: s.pile_amount(),
     temperature: s.temperature(),
     smoke: s.smoke(),
+    bedWater: s.bed_water(),
     rooms: s.rooms(),
     colonists: s.colonists(),
     jobs: s.jobs(),
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.water, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.hearthClean, frame.hearthGrate, frame.researchPoints, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades, frame.stranger].map(
+  const buffers = [frame.elements, frame.water, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.hearthClean, frame.hearthGrate, frame.researchPoints, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.bedWater, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades, frame.stranger].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });

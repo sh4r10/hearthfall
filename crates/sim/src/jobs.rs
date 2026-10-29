@@ -23,6 +23,8 @@ pub enum JobKind {
     Upgrade,
     /// Roast raw rations at a lit hearth into better meals; see `people::COOK_RAW`.
     Cook,
+    /// Fill a bucket at a pool and carry it to a dry mushroom bed; see `farm.rs`.
+    Water,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -133,6 +135,7 @@ impl JobKind {
             JobKind::Refine => Role::Firekeeper,
             JobKind::Upgrade => Role::Builder,
             JobKind::Cook => Role::Firekeeper,
+            JobKind::Water => Role::Hauler,
         }
     }
 
@@ -148,6 +151,7 @@ impl JobKind {
             JobKind::Upgrade => 7,
             // 5 to 7 are kept for research and refining.
             JobKind::Cook => 8,
+            JobKind::Water => 9,
         }
     }
 }
@@ -170,14 +174,14 @@ impl Sim {
             JobKind::Refuel => self.refuel_priority[self.idx(x, y)],
             JobKind::Research => RESEARCH_PRIORITY,
             // Refining and cooking are never urgent: the fires come first.
-            JobKind::Refine | JobKind::Cook => DEFAULT_PRIORITY - 1,
+            JobKind::Refine | JobKind::Cook | JobKind::Water => DEFAULT_PRIORITY - 1,
             _ => DEFAULT_PRIORITY,
         };
         self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook)) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook | JobKind::Water)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -325,6 +329,7 @@ impl Sim {
         self.hearth_grate[i] = false;
         self.refuel_priority[i] = DEFAULT_PRIORITY;
         self.buildings[i] = Building::None;
+        self.bed_water[i] = 0;
     }
 
     pub(crate) fn job_doable(&self, job: &Job) -> bool {
@@ -345,6 +350,7 @@ impl Sim {
             JobKind::Refine => self.refine_doable(i),
             JobKind::Upgrade => self.buildings[i] == Building::Hearth && !self.hearth_grate[i] && self.iron >= GRATE_IRON,
             JobKind::Cook => self.buildings[i] == Building::Hearth && self.hearth_lit(i) && self.food >= crate::people::COOK_RAW && self.coal > 0,
+            JobKind::Water => self.elements[i] == Element::Water && self.any_thirsty_bed() && !(self.is_curfew() && self.is_dark(i)),
         }
     }
 
@@ -372,6 +378,7 @@ impl Sim {
             JobKind::Refine => 120,
             JobKind::Upgrade => 100,
             JobKind::Cook => 60,
+            JobKind::Water => crate::farm::FILL_WORK,
         }
     }
 
@@ -434,6 +441,8 @@ impl Sim {
                 self.iron -= GRATE_IRON;
                 self.hearth_grate[i] = true;
             }
+            // The colonist picks up the bucket; see `Sim::fill_bucket`.
+            JobKind::Water => {}
             JobKind::Cook => {
                 self.food -= crate::people::COOK_RAW;
                 self.coal -= 1;
@@ -456,6 +465,7 @@ impl Sim {
             }
         }
         self.raise_cook_job();
+        self.raise_water_jobs();
         let mut k = 0;
         while k < self.jobs.len() {
             let job = &self.jobs[k];
@@ -470,6 +480,7 @@ impl Sim {
                 // Left alone once started, so a batch isn't lost to a stock tick.
                 JobKind::Refine => job.claimed_by.is_none() && !self.refine_doable(self.idx(job.x, job.y)),
                 JobKind::Upgrade => self.buildings[self.idx(job.x, job.y)] != Building::Hearth || self.hearth_grate[self.idx(job.x, job.y)],
+                JobKind::Water => self.elements[self.idx(job.x, job.y)] != Element::Water || !self.any_thirsty_bed(),
             };
             if stale {
                 let job = self.jobs.remove(k);
