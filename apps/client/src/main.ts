@@ -1,14 +1,14 @@
 import { WorldView, type Overlay } from './world-view';
 import {
   heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY,
-  GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
+  COKE_FUEL, Element, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
 import { MAP_VIEWS, MapViews } from './map-views';
 import { PriorityBrush, SpeedControl, StuckOrders } from './management';
 import { Inspector } from './inspect';
-import { ColonyScreen, Roster, StrangerCard, nameAt, nameOf } from './people';
+import { ColonyScreen, Roster, StrangerCard, nameAt, nameOf, portrait } from './people';
 import { ResearchPanel } from './research';
 import { Goals } from './goals';
 import { BUILDING_NAMES, judge, lightFrom, line, nightRadius, refusal, type Spot } from './placement';
@@ -40,25 +40,26 @@ const TOOLS: ToolInfo[] = [
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
+/** One short sentence each; the hint panel shows at most two lines. */
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1, rust-red ore gives iron ore and blue crystal crystal. A building\'s floor can\'t be dug: remove the building first.',
-  bench: '<b>Research bench:</b> place inside the light, then pick a study with the Research button. Research waits behind more urgent orders.',
-  coke: '<b>Coke oven:</b> place anywhere on a floor. It only works while the colony has more than 16 coal, so the fires never go short.',
-  smelter: '<b>Smelter:</b> place anywhere on a floor. Dig ore under the start cave and haul it home to feed it.',
-  grate: `<b>Grate:</b> click a hearth to have a builder fit an iron grate. Costs ${GRATE_IRON} iron.`,
-  'crystal-lamp': '<b>Crystal lamp:</b> light a long tunnel or a farm with one lamp instead of three.',
-  tile: '<b>Tile:</b> click an open cell beside any floor, wall or tile, or shift-drag a line. Costs 1 stone, and digging it out gives it back. Survivors can\'t be walled in: a tile waits until its cell is empty.',
-  door: '<b>Door:</b> place on a floor with an open cell above it. Wall a space of up to 48 cells off with a door and it becomes a room: a hearth room holds its heat, a bedroom gives the best sleep, two mushroom beds make a cellar.',
-  stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark between dusk and dawn.',
-  ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
+  dig: '<b>Dig:</b> click rock or shift-drag a box. Black seams are coal.',
+  bench: '<b>Research bench:</b> place it in the light, then pick a study (R).',
+  coke: '<b>Coke oven:</b> bakes coal into coke while you hold over 16 coal.',
+  smelter: '<b>Smelter:</b> haul ore to it; it turns ore and coal into iron.',
+  grate: `<b>Grate:</b> click a hearth to fit one. Costs ${GRATE_IRON} iron.`,
+  'crystal-lamp': '<b>Crystal lamp:</b> lights a long tunnel or a farm by itself.',
+  tile: '<b>Tile:</b> click beside a floor or wall. Costs 1 stone; dig it to get it back.',
+  door: '<b>Door:</b> wall a space off with tiles and a door to make a room.',
+  stockpile: '<b>Stockpile:</b> place near your digging; haulers bring goods here.',
+  ladder: '<b>Ladder:</b> click open cells, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
-  mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
+  mushroom: '<b>Mushrooms:</b> place a bed out of the firelight; lamps keep Shades off.',
   lamp: '<b>Lamp:</b> light a tunnel so Shades keep out of it.',
-  vent: '<b>Vent:</b> place where the Warmth view shows smoke pooling. Fires smoke slowly, and thick smoke dims the light.',
+  vent: '<b>Vent:</b> place where smoke pools under the ceiling.',
   bed: '<b>Bed:</b> place inside the light. Rested survivors work faster.',
-  deconstruct: '<b>Remove:</b> click a building, or shift-drag a box over several. A survivor takes each down and salvages half its cost.',
-  priority: '<b>Priority:</b> pick a level with 1 to 9, then click orders or shift-drag a box over them. 9 is dropped-everything urgent, 1 is whenever. New orders start at 5.',
-  cancel: '<b>Cancel:</b> click an order, or shift-drag a box over many. Right-click or right-drag cancels with any tool.',
+  deconstruct: '<b>Remove:</b> click or shift-drag a building; half its cost comes back.',
+  priority: '<b>Priority:</b> pick 1 to 9, then click orders. 9 is urgent, 1 is whenever.',
+  cancel: '<b>Cancel:</b> click an order or shift-drag a box. Right-click works with any tool.',
 };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -150,8 +151,35 @@ if (new URLSearchParams(location.search).has('play')) start();
 
 // --- HUD -----------------------------------------------------------------------
 
-function stat(name: string, label: string, value: string | number, warn = false) {
-  return `<div class="stat${warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}</b></div></div>`;
+function stat(name: string, label: string, value: string | number, warn = false, sub = '', danger = false) {
+  return `<div class="stat${danger ? ' danger' : warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}${sub ? `<small> ${sub}</small>` : ''}</b></div></div>`;
+}
+
+/**
+ * How long the colony's fuel lasts at the current burn: coal and coke in stock
+ * plus the fuel in lit hearths, over what the lit hearths burn per tick
+ * (grated ones burn slower). Null while no fire is lit.
+ */
+function coalRunway(f: Frame): { ticks: number; held: number } | null {
+  let held = 0, rate = 0;
+  for (let c = 0; c < f.buildings.length; c++) {
+    if (f.buildings[c] !== Building.Hearth || f.hearthFuel[c] <= 0) continue;
+    held += f.hearthFuel[c];
+    rate += 1 / (f.hearthGrate[c] ? GRATE_BURN_TICKS : HEARTH_BURN_TICKS);
+  }
+  if (!rate) return null;
+  return { ticks: (held + f.coal + f.coke * COKE_FUEL) / rate, held };
+}
+const untilDawn = (tick: number) => DAY_TICKS - (tick % DAY_TICKS);
+const nightsText = (ticks: number) => ticks >= DAY_TICKS * 10 ? '10+ nights' : `${(ticks / DAY_TICKS).toFixed(1)} night${Math.abs(ticks / DAY_TICKS - 1) < 0.05 ? '' : 's'}`;
+/** The coal stat: stock, with how long the fuel lasts under it. */
+function coalStat(f: Frame) {
+  const run = coalRunway(f);
+  if (!run) return stat('coal', 'Coal', f.coal, f.coal < HEARTH_COST);
+  const danger = run.ticks < DAY_TICKS / 2, warn = run.ticks < untilDawn(f.tick);
+  const tip = `<b>Coal</b>${f.coal} in the stockpile and ${run.held} burning in hearths: about <b>${nightsText(run.ticks)}</b> at the current burn.` +
+    (warn ? `<em>Won't last until dawn. Dig a seam.</em>` : '');
+  return `<div data-tip="${tip.replace(/"/g, '&quot;')}">${stat('coal', 'Coal', f.coal, warn, `≈${nightsText(run.ticks)}`, danger)}</div>`;
 }
 
 // --- Event log -----------------------------------------------------------------
@@ -160,6 +188,8 @@ const log = $('log');
 let lastEventTick = -1;
 /** The first dusk gets one log line. */
 let duskNoted = false;
+/** The day whose dusk already warned about coal, so it warns once. */
+let coalWarnedDay = -1;
 /** The last stranger's name, for the line when they leave. */
 let strangerName = 'The stranger';
 /** Announces new sim events (deaths so far) in the log; each line fades after a while. */
@@ -173,6 +203,7 @@ function announce(frame: Frame) {
     if (kind === EVENT_DEATH) {
       text = `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 12]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}.`;
       glyph = 'skull';
+      deathBanner(frame, who, `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 12]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}`);
     } else if (kind === EVENT_SHADE_ATTACK) {
       text = `A Shade has <b>${name}</b>! Get them into the light.`;
       glyph = 'shade';
@@ -199,6 +230,19 @@ function announce(frame: Frame) {
     } else continue;
     logLine(text, glyph);
   }
+}
+
+/** A death is never missed: a banner under the top bar stays until clicked or 20 s, and several stack. */
+const deaths = $('deaths');
+function deathBanner(frame: Frame, who: number, html: string) {
+  const c = frame.colonists.subarray(who * COLONIST_STRIDE, (who + 1) * COLONIST_STRIDE);
+  const el = document.createElement('button');
+  el.className = 'panel death';
+  el.innerHTML = `${artUrl(`survivor-${c[C_WHO]}-portrait`) ? portrait(c, 28) : icon('skull', 22)}<span>${html}</span>`;
+  const gone = () => el.remove();
+  el.onclick = gone;
+  setTimeout(gone, 20_000);
+  deaths.append(el);
 }
 
 function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' = 'danger') {
@@ -233,7 +277,33 @@ function hasBuildJob(f: Frame, b: number) {
 const tutorial = $('tutorial');
 const TUTORIAL_KEY = 'hearthfall.tutorial';
 let step = (() => { try { return localStorage.getItem(TUTORIAL_KEY) === 'done' ? TUTORIAL.length : 0; } catch { return 0; } })();
+/** Tutorial step 1: pulse the nearest coal a survivor could reach, and bring it on screen once. */
+let coalPanned = false;
+function guideToCoal(f: Frame) {
+  const w = f.width;
+  const first = f.buildings.indexOf(Building.Hearth);
+  const hx = first >= 0 ? first % w : w / 2, hy = first >= 0 ? Math.floor(first / w) : Math.floor(f.height / 2);
+  const marked = new Set<number>();
+  for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) marked.add(f.jobs[i + 1] * w + f.jobs[i]);
+  let best = -1, bestD = Infinity;
+  for (let c = 0; c < f.elements.length; c++) {
+    if (f.elements[c] !== Element.Coal || marked.has(c)) continue;
+    const x = c % w, y = Math.floor(c / w);
+    const open = (x > 0 && f.elements[c - 1] === Element.Floor) || (x < w - 1 && f.elements[c + 1] === Element.Floor) ||
+      (y > 0 && f.elements[c - w] === Element.Floor) || (y < f.height - 1 && f.elements[c + w] === Element.Floor);
+    const d = (x - hx) ** 2 + (y - hy) ** 2;
+    if (open && d < bestD) { best = c; bestD = d; }
+  }
+  if (best < 0) return world.highlight();
+  const cell: [number, number] = [best % w, Math.floor(best / w)];
+  world.highlight(cell);
+  if (!coalPanned) {
+    coalPanned = true;
+    if (!world.onScreen(cell[0], cell[1])) world.panTo(cell[0], cell[1]);
+  }
+}
 function endTutorial() {
+  world.highlight();
   step = TUTORIAL.length;
   tutorial.hidden = true;
   document.querySelectorAll('.tool.pulse').forEach((b) => b.classList.remove('pulse'));
@@ -250,7 +320,9 @@ function showStep() {
 function tutorialStep(frame: Frame) {
   if (step >= TUTORIAL.length) return;
   if (tutorial.hidden) showStep();
+  if (step === 0) guideToCoal(frame);
   if (!TUTORIAL[step].done(frame)) return;
+  world.highlight();
   step++;
   if (step >= TUTORIAL.length) {
     tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Keep a spare bed and food ready: from day 3, strangers follow the firelight down and ask to join. Press <b>C</b> to see your colony. The Deep Hearth is five layers below.</p>';
@@ -278,6 +350,8 @@ function renderDepth(frame: Frame) {
     `<div class="layers">${LAYERS.map((_, k) => `<i class="${k < layer ? 'done' : k === layer ? 'now' : ''}"></i>`).join('')}</div>`;
 }
 
+/** Set once the last survivor is gone: the goals card and tutorial stay away. */
+let over = false;
 let last: Frame | undefined;
 function onFrame(event: MessageEvent<FromWorker>) {
   const frame = event.data;
@@ -297,12 +371,17 @@ function onFrame(event: MessageEvent<FromWorker>) {
     duskNoted = true;
     logLine('Dusk: everyone heads back to the light.', 'moon', 'info');
   }
+  if (phase === 'dusk' && coalWarnedDay !== day) {
+    coalWarnedDay = day;
+    const run = coalRunway(frame);
+    if (run && run.ticks < untilDawn(frame.tick)) logLine('Not enough coal for tonight: <b>dig a seam</b>.', 'coal', 'warn');
+  }
 
   (clock.querySelector('.dial i') as HTMLElement).style.transform = `rotate(${(into / DAY_TICKS) * 360 + 180}deg)`;
   clock.querySelector('.clock-text')!.innerHTML =
     `<b>Day ${day}</b><span>${icon(phase === 'dusk' || phase === 'night' ? 'moon' : 'sun', 12)}${phase === 'day' ? '' : `${phase[0].toUpperCase()}${phase.slice(1)} · `}${next[0]} in ${untilChange}s</span>`;
   stats.innerHTML =
-    stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
+    coalStat(frame) +
     stat('stone', 'Stone', frame.stone, frame.stone < 2) +
     `<div data-tip="<b>Food</b>${frame.food} raw mushrooms and ${frame.meals} roast meals. Firekeepers roast mushrooms at a hearth when there is coal to spare, and roast meals lift morale.">${stat('food', 'Food', frame.meals ? `${frame.food}+${frame.meals}` : frame.food, frame.food + frame.meals < 5)}</div>` +
     (frame.coke ? stat('coke', 'Coke', frame.coke) : '') +
@@ -313,8 +392,10 @@ function onFrame(event: MessageEvent<FromWorker>) {
   strangerCard.update(frame);
   colony.update(frame);
   renderDepth(frame);
-  tutorialStep(frame);
-  goals.update(frame, step >= TUTORIAL.length && tutorial.hidden);
+  if (!over) {
+    tutorialStep(frame);
+    goals.update(frame, step >= TUTORIAL.length && tutorial.hidden);
+  }
   stuck.update(frame);
   inspector.update(frame);
   research.update(frame);
@@ -322,10 +403,14 @@ function onFrame(event: MessageEvent<FromWorker>) {
   world.timeScale = speed.speed;
   views.update(frame, world.overlay);
   document.body.classList.toggle('night', frame.night);
-  const over = $('gameover');
-  if (alive === 0 && over.hidden) {
-    over.hidden = false;
-    over.querySelector('.summary')!.textContent = `Your colony lasted ${day} day${day === 1 ? '' : 's'} on seed ${seed}.`;
+  const overPanel = $('gameover');
+  if (alive === 0 && overPanel.hidden) {
+    over = true;
+    tutorial.hidden = true;
+    $('goals').hidden = true;
+    world.highlight();
+    overPanel.hidden = false;
+    overPanel.querySelector('.summary')!.textContent = `Your colony lasted ${day} day${day === 1 ? '' : 's'} on seed ${seed}.`;
   }
 }
 
@@ -357,9 +442,52 @@ function showUnlocked(f: Frame) {
   }
 }
 
-$('tools').innerHTML = TOOLS.map((t) =>
-  `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
-    <kbd>${t.key}</kbd>${costBadge(t.building, t.tool)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
+/** Build tools sit in categories, each a toolbar button that opens a row of its tools above the bar (after Oxygen Not Included). Order here is the fixed slot order. */
+const CATEGORIES: { id: string; label: string; icon: string; tools: Tool[] }[] = [
+  { id: 'build', label: 'Build', icon: 'build', tools: ['ladder', 'tile', 'door', 'stockpile'] },
+  { id: 'fire', label: 'Fire and light', icon: 'hearth', tools: ['hearth', 'lamp', 'crystal-lamp', 'vent', 'grate'] },
+  { id: 'living', label: 'Living', icon: 'living', tools: ['bed', 'mushroom'] },
+  { id: 'industry', label: 'Industry', icon: 'industry', tools: ['bench', 'coke', 'smelter'] },
+];
+const categoryOf = (t: Tool) => CATEGORIES.find((c) => c.tools.includes(t));
+const toolInfo = (t: Tool) => TOOLS.find((x) => x.tool === t)!;
+function toolButton(t: ToolInfo) {
+  return `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
+    <kbd>${t.key}</kbd>${costBadge(t.building, t.tool)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`;
+}
+$('tools').innerHTML = [toolButton(toolInfo('dig')),
+  ...CATEGORIES.map((c) => `<button class="tool cat" data-cat="${c.id}" aria-expanded="false" data-tip="<b>${c.label}</b>${c.tools.map((t) => toolInfo(t).label).join(', ')}">${icon(c.icon, 22)}<span class="label">${c.label}</span><i class="caret"></i></button>`),
+  ...(['priority', 'deconstruct', 'cancel'] as Tool[]).map((t) => toolButton(toolInfo(t)))].join('');
+$('flyout').innerHTML = CATEGORIES.map((c) => `<div class="row" data-row="${c.id}" hidden>${c.tools.map((t) => toolButton(toolInfo(t))).join('')}</div>`).join('');
+
+let openCat: string | undefined;
+const catButton = (id: string) => document.querySelector<HTMLElement>(`[data-cat="${id}"]`)!;
+/** Show one category's tools above the toolbar, or none. */
+function openFlyout(id?: string) {
+  openCat = id;
+  const fly = $('flyout');
+  fly.querySelectorAll<HTMLElement>('[data-row]').forEach((r) => (r.hidden = r.dataset.row !== id));
+  document.querySelectorAll<HTMLElement>('[data-cat]').forEach((b) => {
+    b.classList.toggle('open', b.dataset.cat === id);
+    b.setAttribute('aria-expanded', String(b.dataset.cat === id));
+  });
+  fly.hidden = !id;
+  if (!id) return;
+  const r = catButton(id).getBoundingClientRect();
+  const w = fly.getBoundingClientRect().width;
+  fly.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8)}px`;
+}
+/** A category shows only while one of its tools does, and pulses when one of them is being pointed at. */
+function syncCategories() {
+  for (const c of CATEGORIES) {
+    const tools = c.tools.map((t) => document.querySelector<HTMLElement>(`[data-tool="${t}"]`)!);
+    const b = catButton(c.id);
+    b.hidden = tools.every((x) => x.hidden);
+    b.classList.toggle('sub-pulse', tools.some((x) => !x.hidden && ['pulse', 'reveal', 'goal-pulse'].some((k) => x.classList.contains(k))));
+    if (b.hidden && openCat === c.id) openFlyout();
+  }
+}
+new MutationObserver(syncCategories).observe($('flyout'), { attributes: true, subtree: true, attributeFilter: ['class', 'hidden'] });
 $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
@@ -390,10 +518,12 @@ function selectButton(attr: string, value: string) {
 function setTool(t: Tool) {
   tool = t;
   selectButton('data-tool', t);
+  const cat = categoryOf(t);
+  document.querySelectorAll<HTMLElement>('[data-cat]').forEach((b) => b.classList.toggle('active', b.dataset.cat === cat?.id));
+  openFlyout(cat?.id);
   brush.shown(t === 'priority');
   world.setShowPriorities(t === 'priority');
-  const row = buildingOf(t) !== undefined && t !== 'ladder' ? ' Shift-drag to place a row.' : '';
-  hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}${row}<br>Drag to look around, scroll to zoom.</div>`;
+  hint.innerHTML = `${icon(TOOLS.find((x) => x.tool === t)!.icon, 18)}<div>${HINTS[t]}</div>`;
   showPreview();
 }
 function setOverlay(o: Overlay) {
@@ -409,6 +539,8 @@ setOverlay('none');
 const goals = new Goals($('goals'), logLine);
 
 document.querySelectorAll<HTMLButtonElement>('[data-tool]').forEach((b) => (b.onclick = () => setTool(b.dataset.tool as Tool)));
+document.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) => (b.onclick = () => openFlyout(openCat === b.dataset.cat ? undefined : b.dataset.cat)));
+syncCategories();
 document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
   (b.onclick = () => setOverlay(world.overlay === b.dataset.overlay ? 'none' : b.dataset.overlay as Overlay)));
 
@@ -420,6 +552,7 @@ window.addEventListener('keydown', (e) => {
   if (tool === 'priority' && /^[1-9]$/.test(key)) return brush.set(Number(key));
   if (key === 'escape' && colony.open) return colony.toggle(false);
   if (key === 'escape' && inspector.cell) return inspector.close();
+  if (key === 'escape' && openCat) return openFlyout();
   if (key === 'c') return colony.toggle();
   if (key === 'r') return research.toggle();
   const tools: Record<string, Tool> = {
@@ -502,6 +635,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const right = e.button === 2;
   const box = right ? 'cancel' : e.shiftKey && BOX_TOOLS.includes(tool) ? tool : undefined;
   const start = !right && e.shiftKey && buildingOf(tool) !== undefined ? world.pickCell(e.clientX, e.clientY) : undefined;
+  world.stopPan();
   drag = { x: e.clientX, y: e.clientY, vx: world.view.x, vy: world.view.y, moved: false, box, line: start };
   showPreview();
 });

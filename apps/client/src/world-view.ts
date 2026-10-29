@@ -988,6 +988,35 @@ export class WorldView {
     this.flash.age = 0;
   }
 
+  /** A pulsing glow on one cell (to point the player at something), or none. */
+  private beacon?: THREE.Sprite;
+  private panGoal?: { x: number; y: number };
+  highlight(cell?: [number, number]) {
+    if (!cell) { if (this.beacon) this.beacon.visible = false; return; }
+    if (!this.beacon) {
+      this.beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#7cc4ff', transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false }));
+      this.beacon.renderOrder = 11;
+      this.scene.add(this.beacon);
+    }
+    this.cellToWorld(cell[0], cell[1], this.beacon.position);
+    this.beacon.position.z = 0.95;
+    this.beacon.visible = true;
+  }
+
+  /** Whether a cell is comfortably inside the picture. */
+  onScreen(x: number, y: number) {
+    const p = this.cellToWorld(x, y);
+    const halfH = this.view.span / 2, halfW = halfH * this.camera.aspect;
+    return Math.abs(p.x - this.view.x) < halfW * 0.75 && Math.abs(p.y - this.view.y) < halfH * 0.65;
+  }
+
+  /** Glide the camera to a cell; any drag by the player cancels it. */
+  panTo(x: number, y: number) {
+    const p = this.cellToWorld(x, y);
+    this.panGoal = { x: p.x, y: p.y };
+  }
+  stopPan() { this.panGoal = undefined; }
+
   /** Outline the inspected cell, or hide the outline. */
   select(cell?: [number, number]) {
     this.selection.visible = !!cell;
@@ -1628,6 +1657,18 @@ export class WorldView {
       const u = this.overlayShader.uniforms;
       u.uTime.value = t;
       u.uFade.value += ((this.overlay === 'none' ? 0 : 1) - u.uFade.value) * Math.min(dt * 10, 1);
+    }
+
+    if (this.beacon?.visible) {
+      const k = 0.5 + Math.sin(t * 4) * 0.5;
+      this.beacon.scale.setScalar(1.1 + k * 0.5);
+      this.beacon.material.opacity = 0.5 + k * 0.5;
+    }
+    if (this.panGoal) {
+      const k = Math.min(dt * 4, 1);
+      this.view.x += (this.panGoal.x - this.view.x) * k;
+      this.view.y += (this.panGoal.y - this.view.y) * k;
+      if (Math.hypot(this.panGoal.x - this.view.x, this.panGoal.y - this.view.y) < 0.05) this.panGoal = undefined;
     }
 
     const dist = this.view.span / 2 / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
