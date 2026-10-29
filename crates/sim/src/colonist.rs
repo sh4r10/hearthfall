@@ -169,7 +169,10 @@ impl Sim {
             // Warm, lit spots give a good night's sleep. A bed in the light
             // sleeps as well as anywhere even when a little cold, and rests faster.
             let in_bed = col.bed == Some(i as u32) && self.buildings[i] == Building::Bed;
+            // A bed in a bedroom (a closed room with no fire) sleeps best of all.
+            let bedroom = in_bed && self.room_kind[i] == crate::ROOM_BEDROOM;
             let quality = match (in_bed, dark) {
+                _ if bedroom => STAT_MAX,
                 (true, false) => STAT_MAX,
                 (true, true) => 7_000,
                 (false, true) => 3_500,
@@ -177,7 +180,7 @@ impl Sim {
                 (false, false) => 7_000,
             };
             col.sleep_quality += (quality - col.sleep_quality) / 50;
-            let rest = if in_bed { 45 } else { 30 };
+            let rest = if bedroom { 60 } else if in_bed { 45 } else { 30 };
             col.energy = (col.energy + rest * col.sleep_quality / STAT_MAX).min(STAT_MAX);
         } else {
             col.energy = (col.energy - if col.activity == Activity::Working { 10 } else { 6 }).max(0);
@@ -389,7 +392,7 @@ impl Sim {
             if role != col.role && role_taken(role) && self.tick < job.created + crate::jobs::ROLE_PRIORITY_TICKS {
                 continue;
             }
-            let Some(stand) = self.stand_cell(&field.dist, job.x as i32, job.y as i32) else { continue };
+            let Some(stand) = self.stand_cell(&field.dist, job.x as i32, job.y as i32, job.kind == crate::JobKind::Build(Building::Tile)) else { continue };
             let mut score = field.dist[stand];
             if job.kind.role() != col.role {
                 score += 25;
@@ -411,13 +414,14 @@ impl Sim {
         true
     }
 
-    /// Nearest reachable, supported cell next to (or at) a job.
-    fn stand_cell(&self, dist: &[i32], jx: i32, jy: i32) -> Option<usize> {
+    /// Nearest reachable, supported cell next to (or at) a job. `beside_only`
+    /// rules out the job's own cell, for a tile that would wall the worker in.
+    fn stand_cell(&self, dist: &[i32], jx: i32, jy: i32, beside_only: bool) -> Option<usize> {
         let mut best: Option<usize> = None;
         for dy in -1..=1 {
             for dx in -1..=1 {
                 let (x, y) = (jx + dx, jy + dy);
-                if !self.open(x, y) || !self.supported(x, y) {
+                if (beside_only && dx == 0 && dy == 0) || !self.open(x, y) || !self.supported(x, y) {
                     continue;
                 }
                 let i = self.idx(x as u32, y as u32);
@@ -452,7 +456,7 @@ impl Sim {
         let col = &self.colonists[c];
         if col.x.abs_diff(jx) > 1 || col.y.abs_diff(jy) > 1 {
             let field = self.field_from(col.x, col.y);
-            match self.stand_cell(&field.dist, jx as i32, jy as i32) {
+            match self.stand_cell(&field.dist, jx as i32, jy as i32, self.jobs[k].kind == crate::JobKind::Build(Building::Tile)) {
                 Some(stand) if stand != self.idx(col.x, col.y) => {
                     let path = self.path_to(&field, stand);
                     let col = &mut self.colonists[c];

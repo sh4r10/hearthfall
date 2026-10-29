@@ -6,7 +6,9 @@ import { artTexture, artUrl } from './art';
 // organic shapes (the same idea as marching squares). The mask's gradient
 // gives a bevel normal, so rock reads as rounded lumps rather than flat tiles.
 // Painted textures from apps/client/art/ fill the rock, dirt, coal, ore,
-// crystal and back wall when present. Water is drawn separately, as its own mesh.
+// crystal and back wall when present. Built tiles (mask alpha) are cut stone:
+// squared blocks with mortar lines and a straight edge, so they read as made,
+// not natural. Water is drawn separately, as its own mesh.
 
 export const terrainVertex = /* glsl */ `
   varying vec2 vUv;
@@ -17,7 +19,7 @@ export const terrainVertex = /* glsl */ `
 `;
 
 export const terrainFragment = /* glsl */ `
-  uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = water
+  uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = built tile
   uniform sampler2D uOre;    // r = iron ore, g = crystal
   uniform sampler2D uLight;  // r = brightness from the sim's light field
   uniform sampler2D uWater;  // r = how full the cell is from its bottom, g = depth below the surface, b = surface cell (nearest filtered)
@@ -46,16 +48,18 @@ export const terrainFragment = /* glsl */ `
 
   vec4 mask(vec2 cell) { return texture2D(uMask, cell / uSize); }
   vec2 ores(vec2 cell) { return texture2D(uOre, cell / uSize).rg; }
-  float solidAt(vec2 cell) { vec4 m = mask(cell); vec2 o = ores(cell); return m.r + m.g + m.b + o.r + o.g; }
+  float solidAt(vec2 cell) { vec4 m = mask(cell); vec2 o = ores(cell); return m.r + m.g + m.b + m.a + o.r + o.g; }
 
   void main() {
     vec2 cell = vUv * uSize;
     vec4 m = mask(cell);
     vec2 o = ores(cell);
-    float solid = m.r + m.g + m.b + o.r + o.g;
+    float solid = m.r + m.g + m.b + m.a + o.r + o.g;
+    // How much of this point is built tile rather than natural ground.
+    float built = m.a / max(solid, 0.001);
 
-    // Wobble the edge so outlines look hand-drawn rather than geometric.
-    float wobble = (fbm(cell * 1.7) - 0.5) * 0.28;
+    // Wobble the edge so outlines look hand-drawn rather than geometric; built edges stay nearly straight.
+    float wobble = (fbm(cell * 1.7) - 0.5) * 0.28 * (1.0 - built * 0.8);
     float edge = 0.5 + wobble;
     float aa = fwidth(solid) * 1.2 + 0.001;
     float inside = smoothstep(edge - aa, edge + aa, solid);
@@ -64,7 +68,8 @@ export const terrainFragment = /* glsl */ `
     float e = 0.6;
     vec2 grad = vec2(solidAt(cell + vec2(e, 0.0)) - solidAt(cell - vec2(e, 0.0)),
                      solidAt(cell + vec2(0.0, e)) - solidAt(cell - vec2(0.0, e)));
-    vec3 n = normalize(vec3(-grad * 1.6, 0.6 + fbm(cell * 3.0) * 0.4));
+    // Natural ground is lumpy all over; cut stone is flat inside, bevelled only at its edge.
+    vec3 n = normalize(vec3(-grad * 1.6, 0.6 + mix(fbm(cell * 3.0) * 0.4, 0.2, built)));
     vec3 lightDir = normalize(vec3(-0.5, 0.7, 0.6));
     float lambert = clamp(dot(n, lightDir), 0.0, 1.0);
 
@@ -79,13 +84,22 @@ export const terrainFragment = /* glsl */ `
     rock = mix(rock, texture2D(uRockTex, cell / 4.0).rgb, uHasArt.x);
     dirt = mix(dirt, texture2D(uDirtTex, cell / 4.0).rgb, uHasArt.y);
     coal = mix(coal, texture2D(uCoalTex, cell / 4.0).rgb, uHasArt.z);
+    // Cut stone: two courses of blocks per cell, joints staggered by half a block, dark mortar between.
+    vec2 bp = cell * vec2(1.0, 2.0);
+    bp.x += mod(floor(bp.y), 2.0) * 0.5;
+    vec2 bf = fract(bp);
+    float joint = min(min(bf.x, 1.0 - bf.x), min(bf.y, 1.0 - bf.y) * 0.5); // distance to the nearest joint, in cells
+    float jaa = fwidth(joint) + 0.001;
+    float mortar = 1.0 - smoothstep(0.03 - jaa, 0.03 + jaa, joint);
+    vec3 tile = mix(vec3(0.45, 0.47, 0.51), vec3(0.53, 0.55, 0.59), hash(floor(bp))) * (0.96 + fine * 0.06);
+    tile = mix(tile, vec3(0.13, 0.12, 0.13), mortar * 0.85);
     // Iron ore is rock veined with rust; crystal is rock studded with pale blue.
     vec3 iron = mix(rock * 0.8, vec3(0.55, 0.27, 0.15), step(0.6, noise(cell * 3.0)) * 0.8);
     vec3 crystal = mix(rock * 0.75, vec3(0.5, 0.88, 0.86), step(0.82, noise(cell * 5.0)));
     iron = mix(iron, texture2D(uIronTex, cell / 4.0).rgb, uHasOreArt.x);
     crystal = mix(crystal, texture2D(uCrystalTex, cell / 4.0).rgb, uHasOreArt.y);
     float wsum = max(solid, 0.001);
-    vec3 solidColor = (rock * m.r + dirt * m.g + coal * m.b + iron * o.r + crystal * o.g) / wsum;
+    vec3 solidColor = (rock * m.r + dirt * m.g + coal * m.b + tile * m.a + iron * o.r + crystal * o.g) / wsum;
     solidColor *= 0.55 + lambert * 0.75;
 
     // Dark ink outline just inside the edge, like the line art on the sprites.

@@ -29,7 +29,9 @@ const TOOLS: ToolInfo[] = [
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'stockpile', key: '8', label: 'Stockpile', icon: 'stockpile', tip: 'Where dug coal and stone go. Nothing counts until a survivor carries it here, so build one near where you dig.', building: Building.Stockpile },
-  { tool: 'bench', key: '9', label: 'Research', icon: 'research', tip: 'A research bench. A survivor studies here between other work; pick what to study with the Research button up top.', building: Building.ResearchBench },
+  { tool: 'tile', key: '9', label: 'Tile', icon: 'tile', tip: 'A block of cut stone. Lay floors over gaps, bridges, ceilings and walls; dig it to take it back.', building: Building.Tile },
+  { tool: 'door', key: '0', label: 'Door', icon: 'door', tip: 'Two cells tall. Survivors walk through; smoke and Shades don\'t. Close a small space off with walls and a door to make a room.', building: Building.Door },
+  { tool: 'bench', key: 'B', label: 'Research', icon: 'research', tip: 'A research bench. A survivor studies here between other work; pick what to study with the Research button up top.', building: Building.ResearchBench },
   { tool: 'coke', key: 'K', label: 'Coke oven', icon: 'coke', tip: 'Bakes 3 coal into 2 coke while you have coal to spare. Coke burns twice as long with half the smoke.', building: Building.CokeOven, tech: 0 },
   { tool: 'smelter', key: 'M', label: 'Smelter', icon: 'iron', tip: 'Smelts 2 iron ore and 1 coal into iron while you have coal to spare.', building: Building.Smelter, tech: 1 },
   { tool: 'grate', key: 'G', label: 'Grate', icon: 'grate', tip: 'Fit a hearth with an iron grate: a third less coal, warmth 2 cells further, half the smoke.', tech: 2 },
@@ -45,6 +47,8 @@ const HINTS: Record<Tool, string> = {
   smelter: '<b>Smelter:</b> place anywhere on a floor. Dig ore under the start cave and haul it home to feed it.',
   grate: `<b>Grate:</b> click a hearth to have a builder fit an iron grate. Costs ${GRATE_IRON} iron.`,
   'crystal-lamp': '<b>Crystal lamp:</b> light a long tunnel or a farm with one lamp instead of three.',
+  tile: '<b>Tile:</b> click an open cell beside any floor, wall or tile, or shift-drag a line. Costs 1 stone, and digging it out gives it back. Survivors can\'t be walled in: a tile waits until its cell is empty.',
+  door: '<b>Door:</b> place on a floor with an open cell above it. Wall a space of up to 48 cells off with a door and it becomes a room: a hearth room holds its heat, a bedroom gives the best sleep, two mushroom beds make a cellar.',
   stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
@@ -411,8 +415,8 @@ window.addEventListener('keydown', (e) => {
   if (key === 'escape' && inspector.cell) return inspector.close();
   if (key === 'r') return research.toggle();
   const tools: Record<string, Tool> = {
-    '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'bench',
-    k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
+    '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'tile', '0': 'door',
+    b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
   };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };

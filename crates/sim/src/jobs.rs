@@ -61,6 +61,9 @@ pub const STONE_PER_DIRT: i32 = 1;
 /// Iron ore gained from digging one ore cell, and crystal from one crystal cell.
 pub const ORE_PER_CELL: i32 = 2;
 pub const CRYSTAL_PER_CELL: i32 = 1;
+/// Stone a tile costs, and what digging one out gives back: nothing is lost
+/// by rebuilding a wall somewhere else.
+pub const TILE_STONE: i32 = 1;
 
 /// What a building costs, as (coal, stone). Coal is for anything that burns
 /// or glows, stone for everything you stack. Paid when the build finishes.
@@ -77,6 +80,8 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::CokeOven => (0, 6),
         Building::Smelter => (0, 8),
         Building::CrystalLamp => (0, 1),
+        Building::Tile => (0, TILE_STONE),
+        Building::Door => (0, 3),
         Building::None | Building::Cairn => (0, 0),
     }
 }
@@ -101,7 +106,7 @@ pub fn refund(b: Building) -> (i32, i32) {
 /// Whether the player may order `b` taken down. Cairns are memorials the sim
 /// places, so they stay.
 pub fn removable(b: Building) -> bool {
-    !matches!(b, Building::None | Building::Cairn)
+    !matches!(b, Building::None | Building::Cairn | Building::Tile)
 }
 
 /// How many cells either side of its own a building's picture reaches. Two
@@ -198,9 +203,19 @@ impl Sim {
     }
 
     /// Whether `b` can go at (x, y): open, empty, and clear of every building
-    /// and planned building on the row by their combined [`reach`].
+    /// and planned building on the row by their combined [`reach`]. A door's
+    /// frame fills the cell above it too, so that stays empty, and nothing
+    /// goes into the top of a door.
     pub fn room_for(&self, x: u32, y: u32, b: Building) -> bool {
-        if self.buildings[self.idx(x, y)] != Building::None || !self.fits(x, y, b) {
+        let i = self.idx(x, y);
+        if self.buildings[i] != Building::None || !self.fits(x, y, b) {
+            return false;
+        }
+        let planned = |ox: u32, oy: u32| self.jobs.iter().any(|j| j.x == ox && j.y == oy && matches!(j.kind, JobKind::Build(_)));
+        if y + 1 < self.height && (self.buildings[i + self.width as usize] == Building::Door || (b != Building::Door && self.jobs.iter().any(|j| j.x == x && j.y == y + 1 && j.kind == JobKind::Build(Building::Door)))) {
+            return false;
+        }
+        if b == Building::Door && (self.buildings[i - self.width as usize] != Building::None || planned(x, y - 1)) {
             return false;
         }
         let clear = |ox: u32, other: Building| other == Building::None || x.abs_diff(ox) > reach(b) + reach(other);
@@ -214,8 +229,12 @@ impl Sim {
     }
 
     /// Whether `b`'s whole picture at (x, y) is in open cells and, for all but
-    /// a ladder or a vent, stands on solid ground (not water) all the way across.
+    /// a ladder, a vent or a tile, stands on solid ground (not water) all the
+    /// way across. A door is two cells tall, so the cell above it is open too.
     pub fn fits(&self, x: u32, y: u32, b: Building) -> bool {
+        if b == Building::Door && !(y > 0 && self.open(x as i32, y as i32 - 1)) {
+            return false;
+        }
         let r = reach(b) as i32;
         (-r..=r).all(|dx| {
             let (cx, cy) = (x as i32 + dx, y as i32);
@@ -223,10 +242,17 @@ impl Sim {
         })
     }
 
-    /// Whether `b` needs solid floor under it. Ladders hang on their own, and
-    /// a vent is bored into the rock wherever the smoke pools, ceilings included.
+    /// Whether `b` needs solid floor under it. Ladders hang on their own, a
+    /// vent is bored into the rock wherever the smoke pools, ceilings included,
+    /// and a tile is laid against any neighbouring cell, so bridges and
+    /// ceilings can be built.
     pub fn needs_floor(b: Building) -> bool {
-        !matches!(b, Building::None | Building::Ladder | Building::Vent)
+        !matches!(b, Building::None | Building::Ladder | Building::Vent | Building::Tile)
+    }
+
+    /// Whether a living survivor stands in cell `i`.
+    pub(crate) fn occupied(&self, i: usize) -> bool {
+        self.colonists.iter().any(|c| c.alive() && self.idx(c.x, c.y) == i)
     }
 
     /// Whether the cell is the floor under a building, so digging it out would
@@ -297,7 +323,9 @@ impl Sim {
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);
                 let (iron, crystal) = rare_cost(b);
+                // Nobody gets walled in: a tile waits for its cell to be empty.
                 self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && self.coal >= coal && self.stone >= stone && self.iron >= iron && self.crystal >= crystal
+                    && !(b == Building::Tile && self.occupied(i))
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && (self.coal > 0 || self.coke > 0),
             JobKind::Deconstruct => removable(self.buildings[i]),
@@ -315,9 +343,11 @@ impl Sim {
                 Element::Coal => 90,
                 Element::Iron => 160,
                 Element::Crystal => 180,
+                Element::Tile => 40,
                 _ => 140,
             },
             JobKind::Build(Building::Hearth) => 150,
+            JobKind::Build(Building::Tile) => 50,
             JobKind::Build(_) => 80,
             JobKind::Refuel => 30,
             JobKind::Deconstruct => match self.buildings[self.idx(job.x, job.y)] {
@@ -343,6 +373,7 @@ impl Sim {
                     Element::Dirt => Some((Item::Stone, STONE_PER_DIRT)),
                     Element::Iron => Some((Item::Ore, ORE_PER_CELL)),
                     Element::Crystal => Some((Item::Crystal, CRYSTAL_PER_CELL)),
+                    Element::Tile => Some((Item::Stone, TILE_STONE)),
                     _ => None,
                 };
                 self.elements[i] = Element::Floor;
@@ -360,7 +391,12 @@ impl Sim {
                 if b == Building::Hearth {
                     self.hearth_fuel[i] = 10;
                 }
-                self.buildings[i] = b;
+                if b == Building::Tile {
+                    self.elements[i] = Element::Tile;
+                    self.smoke[i] = 0;
+                } else {
+                    self.buildings[i] = b;
+                }
             }
             JobKind::Refuel => {
                 // Coke first: it goes twice as far and smokes half as much.

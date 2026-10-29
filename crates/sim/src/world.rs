@@ -11,9 +11,12 @@ pub enum Element {
     /// Fuel for hearths. Digging it adds to the colony's fuel stock.
     Coal = 4,
     /// Iron ore, below the start cave. A smelter turns it into iron.
-    Iron = 5,
+    Iron = 6,
     /// Crystal, deeper still. Focuses light.
-    Crystal = 6,
+    Crystal = 7,
+    /// Cut stone laid by survivors: a platform, a bridge or a wall. Solid
+    /// like rock, and dug out again like it (giving its stone back).
+    Tile = 5,
 }
 
 impl Element {
@@ -22,7 +25,12 @@ impl Element {
     }
 
     pub fn is_diggable(self) -> bool {
-        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Iron | Element::Crystal)
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile | Element::Iron | Element::Crystal)
+    }
+
+    /// Solid ground or wall: anything that blocks light and smoke.
+    pub fn is_wall(self) -> bool {
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile | Element::Iron | Element::Crystal)
     }
 
     /// Thermal conductivity on a 0..=1024 scale.
@@ -35,6 +43,7 @@ impl Element {
             Element::Coal => 400,
             Element::Iron => 700,
             Element::Crystal => 500,
+            Element::Tile => 600,
         }
     }
 }
@@ -60,13 +69,19 @@ pub enum Building {
     /// Where hauled goods go. Coal and stone only count once they are here.
     Stockpile = 8,
     /// Where a survivor studies whatever the player picked to research.
-    ResearchBench = 9,
+    ResearchBench = 11,
     /// Bakes coal into coke, which burns twice as long with half the smoke.
-    CokeOven = 10,
+    CokeOven = 12,
     /// Smelts iron ore into iron with a little coal.
-    Smelter = 11,
+    Smelter = 13,
     /// A lamp with a crystal lens: much further light, still no fuel.
-    CrystalLamp = 12,
+    CrystalLamp = 14,
+    /// A build order only: finishing it turns the cell into [`Element::Tile`].
+    /// Never found in `Sim::buildings`.
+    Tile = 9,
+    /// A plank door in a timber frame, two cells tall. Survivors pass; smoke and Shades don't.
+    /// The cells it closes off can make a room (see `rooms.rs`).
+    Door = 10,
 }
 
 /// Temperatures are in centi-kelvin.

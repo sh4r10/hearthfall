@@ -47,7 +47,7 @@ export class ResearchPanel {
         <p>${tech.unlocks}</p>${meter}</article>`;
     }).join('');
     const note = bench ? 'A survivor studies at the bench between other work. A Researcher studies fastest.'
-      : 'Build a <b>research bench</b> (key 9) inside the light first.';
+      : 'Build a <b>research bench</b> (key B) inside the light first.';
     this.panel.innerHTML = `<header><b>Research</b><span>Fire and forge</span><button class="close quiet" aria-label="Close">${icon('cancel', 14)}</button></header>
       <p class="note">${note}</p>${cards}`;
     this.panel.querySelector<HTMLButtonElement>('.close')!.onclick = () => this.toggle(false);

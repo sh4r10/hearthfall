@@ -3,7 +3,7 @@
 
 import {
   ACTIVITIES, BLOCK_REASONS, Building, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_REFUEL, JOB_STRIDE,
-  CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
+  CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
 
@@ -198,6 +198,18 @@ export class Inspector {
       body = row('Amount', `${f.pileAmount[i]} ${what}`) + row('Trips', String(Math.ceil(f.pileAmount[i] / CARRY_MAX)));
     } else if (b === Building.Ladder) {
       title = 'Ladder'; glyph = 'ladder'; status = 'Survivors climb it';
+    } else if (b === Building.Door || (y + 1 < f.height && f.buildings[i + f.width] === Building.Door)) {
+      const base = b === Building.Door ? i : i + f.width;
+      let inDoor = false;
+      for (let s = 0; s < f.colonists.length; s += COLONIST_STRIDE) {
+        const at = f.colonists[s + 1] * f.width + f.colonists[s];
+        if ((at === base || at === base - f.width) && f.colonists[s + 3] !== 5) inDoor = true;
+      }
+      title = 'Door'; glyph = 'door'; status = inDoor ? 'Open: someone is in the doorway' : 'Closed';
+      const sides = [base - 1, base + 1].filter((c) => c >= 0 && c < f.rooms.length).map((c) => f.rooms[c]).filter((r) => r !== ROOM_NONE);
+      body = row('Lets through', 'Survivors only. Smoke and Shades stay out.') +
+        row('Closes off', sides.length ? sides.map((r) => ROOM_NAMES[r]).join(' and ') : 'nothing yet') +
+        (sides.length ? '' : `<p class="note">Wall off a space of up to ${ROOM_MAX_CELLS} cells on one side of it to make a room.</p>`);
     } else if (b === Building.Cairn) {
       let dead = -1;
       for (let s = 0; s < f.colonists.length / COLONIST_STRIDE; s++) {
@@ -215,11 +227,17 @@ export class Inspector {
         [Element.Iron]: ['Iron ore', 'ore', 'Digging it gives 2 iron ore, for a smelter.'],
         [Element.Crystal]: ['Crystal', 'crystal', 'Digging it gives 1 crystal, for a crystal lamp.'],
         [Element.Water]: ['Water', 'depth', 'Flows down and pools. Survivors can\'t walk through it.'],
+        [Element.Tile]: ['Stone tile', 'tile', 'Laid by survivors. Dig it to take it down and get the stone back.'],
       };
       const w = what[e];
       if (w) [title, glyph, status] = w;
       else if (k >= 0) [title, glyph] = ['Order', 'dig'];
       else return this.close();
+    }
+
+    const room = f.rooms[i];
+    if (room !== ROOM_NONE && b !== Building.Door) {
+      body += `<h4>${ROOM_NAMES[room]}</h4><p class="note">${ROOM_EFFECTS[room]}</p>`;
     }
 
     if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && !(b === Building.CokeOven || b === Building.Smelter)) {

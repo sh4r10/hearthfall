@@ -8,7 +8,8 @@ import { terrainVertex } from './terrain-shader';
 // buildings stay sharp on top of it.
 //
 // Warmth: r = hearth light, g = all light, b = hearth light tonight, a = open cell.
-// uMarks: r = coal, so the warmth view shows where the next fuel is; g = smoke.
+// uMarks: r = coal, so the warmth view shows where the next fuel is; g = smoke;
+// b = room kind (sim ROOM_* times 51), so closed-off rooms read as rooms.
 
 const fragment = /* glsl */ `
   uniform sampler2D uField;
@@ -74,6 +75,15 @@ const fragment = /* glsl */ `
     col = mix(col, ASH * 1.3, wisps);
     float smokeEdge = contour(smoke, 0.4, 1.4) * open;
     col = mix(col, vec3(0.8, 0.8, 0.82), smokeEdge); a = max(a, smokeEdge * 0.9);
+
+    // Rooms: a faint wash and an ink line around each closed-off pocket, tinted
+    // by kind: warm amber for a hearth room, violet for a bedroom, teal for a cellar.
+    float roomKind = texture2D(uMarks, vUv).b * 5.0;
+    float room = step(0.5, roomKind) * open;
+    vec3 ROOM_COL = roomKind < 1.5 ? vec3(0.85, 0.85, 0.8) : roomKind < 2.5 ? vec3(1.0, 0.7, 0.35) : roomKind < 3.5 ? vec3(0.72, 0.6, 1.0) : vec3(0.45, 0.9, 0.8);
+    col = mix(col, ROOM_COL, room * 0.18);
+    float roomEdge = contour(texture2D(uMarks, vUv).b, 0.1, 1.5) * open;
+    col = mix(col, ROOM_COL, roomEdge); a = max(a, roomEdge * 0.9);
 
     // Push the rock back so the open caves read. Coal stays visible as
     // glinting seams: it is what keeps the fire going.
