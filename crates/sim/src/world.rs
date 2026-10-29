@@ -87,6 +87,10 @@ pub enum Building {
     WaterBarrel = 15,
     /// A stone tank that holds drinking water carried over from a pool in buckets.
     Cistern = 16,
+    /// Collects a slow trickle from wet rock above it, with no labour.
+    DripCatcher = 17,
+    /// A hand pump on a pool's edge: a survivor works it to fill the tanks beside it. Needs the Pumps research.
+    HandPump = 18,
 }
 
 /// Temperatures are in centi-kelvin.
@@ -110,6 +114,16 @@ const START_SEAMS: [Seam; 3] = [Seam(-10, -3, -9, -1), Seam(9, -3, 10, -1), Seam
 /// a long dig further down, so the first of each is never a blind hunt.
 const START_IRON: Seam = Seam(-6, 4, -4, 5);
 const START_CRYSTAL: Seam = Seam(6, 16, 7, 17);
+/// A sealed pocket of water (the first drinking water within reach), as a
+/// shape and place relative to the hearth: it starts [`WATER_POCKET_RIGHT`]
+/// cells right of it and [`WATER_POCKET_DEPTH`] rows below the floor, is
+/// 4 to 6 cells wide and 2 or 3 tall by seed, and sits under a plug of dirt
+/// that a dig down from the floor at [`WATER_POCKET_SHAFT`] goes through.
+/// It lies well below the start floor and is sealed, so opening it never
+/// lets water up into the start room.
+const WATER_POCKET_RIGHT: i32 = 6;
+const WATER_POCKET_DEPTH: i32 = 5;
+const WATER_POCKET_SHAFT: i32 = 7;
 struct Seam(i32, i32, i32, i32);
 impl Seam {
     fn contains(&self, &(x, y): &(i32, i32)) -> bool {
@@ -171,8 +185,43 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
             }
         }
     }
+    water_pocket(&mut cells, seed, w, h, cx, cy);
     settle_water(&mut cells, w, h, cx, cy);
     cells
+}
+
+/// Size of the guaranteed water pocket for a seed: (width, height) in cells.
+pub fn water_pocket_size(seed: u64) -> (i32, i32) {
+    let k = hash2(seed ^ 0x57A7_E4, 3, 5);
+    (4 + (k % 3) as i32, 2 + ((k >> 8) % 2) as i32)
+}
+
+/// Seal a full pocket of water in the dirt below and to the right of the
+/// start room, a short dig from its floor, so the first drink is never a
+/// blind hunt. Everything around it is made solid, so it is sealed and cannot
+/// leak into caves: only natural ore keeps its place.
+fn water_pocket(cells: &mut [Element], seed: u64, w: i32, h: i32, cx: i32, cy: i32) {
+    let (pw, ph) = water_pocket_size(seed);
+    let at = |x: i32, y: i32| (y * w + x) as usize;
+    let (x0, y0) = (cx + WATER_POCKET_RIGHT, cy + WATER_POCKET_DEPTH);
+    let (x1, y1) = (x0 + pw - 1, y0 + ph - 1);
+    if x1 + 1 >= w || y1 + 1 >= h {
+        return;
+    }
+    // A solid shell around the pocket and a plug of solid ground over it, up to the start shell.
+    for y in cy + 1..=y1 + 1 {
+        for x in x0 - 1..=x1 + 1 {
+            if matches!(cells[at(x, y)], Element::Floor | Element::Water) {
+                cells[at(x, y)] = Element::Dirt;
+            }
+        }
+    }
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            cells[at(x, y)] = Element::Water;
+        }
+    }
+    debug_assert!(x0 <= cx + WATER_POCKET_SHAFT && cx + WATER_POCKET_SHAFT <= x1);
 }
 
 /// Water pressure: a surface cell that cannot fall looks along the row

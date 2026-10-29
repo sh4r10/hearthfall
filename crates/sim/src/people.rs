@@ -53,7 +53,7 @@ impl JobKind {
             JobKind::Dig => SKILL_DIG,
             JobKind::Build(_) | JobKind::Deconstruct | JobKind::Upgrade => SKILL_BUILD,
             JobKind::Refuel | JobKind::Cook | JobKind::Refine => SKILL_FIRE,
-            JobKind::Haul | JobKind::Water | JobKind::Fetch => SKILL_HAUL,
+            JobKind::Haul | JobKind::Water | JobKind::Fetch | JobKind::Pump => SKILL_HAUL,
             JobKind::Research => SKILL_RESEARCH,
         }
     }

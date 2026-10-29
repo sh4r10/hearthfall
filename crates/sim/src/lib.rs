@@ -6,6 +6,7 @@
 //! replay verification rely on.
 
 mod colonist;
+mod drip;
 mod farm;
 mod haul;
 mod jobs;
@@ -13,6 +14,7 @@ mod nav;
 mod orders;
 mod people;
 mod physics;
+mod pump;
 mod research;
 mod rng;
 mod rooms;
@@ -20,6 +22,8 @@ mod shades;
 mod water;
 mod world;
 
+pub use drip::{DRIP_DRY, DRIP_HOLD, DRIP_REACH, DRIP_TICKS, DRIP_WET};
+pub use pump::{PUMP_INTAKE_DEPTH, PUMP_NO_TANK, PUMP_NO_WATER, PUMP_READY, PUMP_REACH, PUMP_ROOM, PUMP_STINT, PUMP_TANKS_FULL, PUMP_WORK};
 pub use farm::{WATER_MAX, WATER_LOW, IRRIGATION_REACH};
 pub use water::{container_capacity, BARREL_CAPACITY, BED_STOCK_MIN, BUCKET, CISTERN_CAPACITY, COLLAPSE_FROM_DAY, DRINK, DRINK_UNITS, FETCH_ROOM, START_WATER, THIRST_DRAIN, WATER_ERRANDS_FROM_DAY};
 pub use colonist::{Activity, Colonist, Role, MISERABLE, WORK_UNIT, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_DRINK, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX, CAUSE_THIRST};
@@ -33,7 +37,7 @@ pub use rooms::{ROOM_BEDROOM, ROOM_CELLAR, ROOM_GLOW, ROOM_HEARTH, ROOM_MAX_CELL
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_LAST_RISE, SHADE_RETREATING, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
 };
-pub use world::{Building, Element, START_TEMP_CK};
+pub use world::{water_pocket_size, Building, Element, START_TEMP_CK};
 
 /// Ticks per full day. The last 40% of each day is night.
 pub const DAY_TICKS: u64 = 1200;
@@ -88,6 +92,10 @@ pub const EVENT_SMOKE: u8 = 5;
 pub const EVENT_RESEARCH: u8 = 6;
 /// [`Event::kind`] for the first mushroom bed to be watered. Sent once.
 pub const EVENT_WATERED: u8 = 9;
+/// [`Event::kind`] for the first drip caught. Sent once.
+pub const EVENT_DRIPPED: u8 = 10;
+/// [`Event::kind`] for the first stint at a hand pump. Sent once.
+pub const EVENT_PUMPED: u8 = 11;
 /// Smoke per cell, 0 to this. Fires add a little each tick; it rises, pools
 /// under ceilings, soaks slowly into the walls, and escapes through vents.
 pub const SMOKE_MAX: i32 = 1_000;
@@ -187,6 +195,11 @@ pub struct Sim {
     pub water_noted: bool,
     /// Drinking water held in each barrel or cistern, by cell; see `water.rs`.
     pub water_store: Vec<i32>,
+    /// Water a drip catcher holds itself while every tank is full, by cell; see `drip.rs`.
+    pub drip_held: Vec<i32>,
+    /// Whether [`EVENT_DRIPPED`] and [`EVENT_PUMPED`] have been sent.
+    pub drip_noted: bool,
+    pub pump_noted: bool,
     /// Drinking water in stock: the sum of `water_store`.
     pub water_stock: i32,
     /// Water carried out of pools or tanks that was then lost (a dropped bucket, a tank taken down).
@@ -267,6 +280,9 @@ impl Sim {
             bed_water: vec![0; n],
             water_noted: false,
             water_store: vec![0; n],
+            drip_held: vec![0; n],
+            drip_noted: false,
+            pump_noted: false,
             water_stock: 0,
             water_spilled: 0,
             coal: START_COAL,
@@ -440,6 +456,7 @@ impl Sim {
         // A watered bed grows an extra ration three quarters of the way round.
         let grow_water = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS * 3 / 4 - 1;
         self.beds_water_tick();
+        self.drip_tick();
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
                 Building::Hearth if self.hearth_lit(i) => {
@@ -482,7 +499,7 @@ impl Sim {
             }
         };
         eat(&self.tick.to_le_bytes());
-        eat(&[self.smoke_warned as u8, self.water_noted as u8]);
+        eat(&[self.smoke_warned as u8, self.water_noted as u8, self.drip_noted as u8, self.pump_noted as u8]);
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.water_lost.to_le_bytes());
@@ -514,6 +531,7 @@ impl Sim {
             eat(&[self.room_kind[i]]);
             eat(&self.bed_water[i].to_le_bytes());
             eat(&self.water_store[i].to_le_bytes());
+            eat(&self.drip_held[i].to_le_bytes());
         }
         for c in &self.colonists {
             c.hash_into(&mut eat);

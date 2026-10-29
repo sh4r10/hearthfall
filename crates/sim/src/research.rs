@@ -21,9 +21,11 @@ pub enum Tech {
     HearthGrate = 2,
     /// Unlocks the crystal lamp.
     CrystalLens = 3,
+    /// Unlocks the hand pump.
+    Pumps = 4,
 }
 
-pub const TECHS: [Tech; 4] = [Tech::Coking, Tech::Smelting, Tech::HearthGrate, Tech::CrystalLens];
+pub const TECHS: [Tech; 5] = [Tech::Coking, Tech::Smelting, Tech::HearthGrate, Tech::CrystalLens, Tech::Pumps];
 
 impl Tech {
     pub fn from_u8(v: u8) -> Option<Tech> {
@@ -37,6 +39,7 @@ impl Tech {
             Tech::Smelting => 1200,
             Tech::HearthGrate => 1500,
             Tech::CrystalLens => 1400,
+            Tech::Pumps => 1200,
         }
     }
 
@@ -44,7 +47,7 @@ impl Tech {
     pub fn needs(self) -> Option<Tech> {
         match self {
             Tech::Coking | Tech::Smelting => None,
-            Tech::HearthGrate => Some(Tech::Smelting),
+            Tech::HearthGrate | Tech::Pumps => Some(Tech::Smelting),
             Tech::CrystalLens => Some(Tech::Coking),
         }
     }
@@ -90,6 +93,7 @@ impl Sim {
             Building::CokeOven => self.knows(Tech::Coking),
             Building::Smelter => self.knows(Tech::Smelting),
             Building::CrystalLamp => self.knows(Tech::CrystalLens),
+            Building::HandPump => self.knows(Tech::Pumps),
             _ => true,
         }
     }

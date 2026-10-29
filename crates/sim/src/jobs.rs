@@ -27,6 +27,8 @@ pub enum JobKind {
     Water,
     /// Fill a bucket at a pool and carry it to a cistern or barrel; see `water.rs`.
     Fetch,
+    /// A stint at a hand pump, moving water from the pool beside it into the tanks; see `pump.rs`.
+    Pump,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,6 +62,10 @@ pub const ROLE_PRIORITY_TICKS: u64 = 100;
 /// Firekeepers top up a hearth once its fuel falls below this.
 pub const REFUEL_BELOW: i32 = 20;
 
+/// Stone a drip catcher costs, and what a hand pump costs in stone and iron.
+pub const DRIP_CATCHER_STONE: i32 = 2;
+pub const PUMP_STONE: i32 = 4;
+pub const PUMP_IRON: i32 = 2;
 /// Stone a cistern costs.
 pub const CISTERN_STONE: i32 = 4;
 /// Stone gained from digging one rock cell.
@@ -91,6 +97,8 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::Tile => (0, TILE_STONE),
         Building::Door => (0, 3),
         Building::Cistern => (0, CISTERN_STONE),
+        Building::DripCatcher => (0, DRIP_CATCHER_STONE),
+        Building::HandPump => (0, PUMP_STONE),
         Building::None | Building::Cairn | Building::WaterBarrel => (0, 0),
     }
 }
@@ -100,6 +108,7 @@ pub fn build_cost(b: Building) -> (i32, i32) {
 pub fn rare_cost(b: Building) -> (i32, i32) {
     match b {
         Building::CrystalLamp => (0, 2),
+        Building::HandPump => (PUMP_IRON, 0),
         _ => (0, 0),
     }
 }
@@ -140,7 +149,7 @@ impl JobKind {
             JobKind::Refine => Role::Firekeeper,
             JobKind::Upgrade => Role::Builder,
             JobKind::Cook => Role::Firekeeper,
-            JobKind::Water | JobKind::Fetch => Role::Hauler,
+            JobKind::Water | JobKind::Fetch | JobKind::Pump => Role::Hauler,
         }
     }
 
@@ -158,6 +167,7 @@ impl JobKind {
             JobKind::Cook => 8,
             JobKind::Water => 9,
             JobKind::Fetch => 10,
+            JobKind::Pump => 11,
         }
     }
 }
@@ -171,6 +181,7 @@ impl Sim {
             JobKind::Cook => 2,
             JobKind::Water => 3,
             JobKind::Fetch => 4,
+            JobKind::Pump => 5,
             _ => 0,
         };
         if self.jobs.iter().any(|j| j.x == x && j.y == y && lane(j.kind) == lane(kind)) {
@@ -182,14 +193,14 @@ impl Sim {
             JobKind::Refuel => self.refuel_priority[self.idx(x, y)],
             JobKind::Research => RESEARCH_PRIORITY,
             // Refining and cooking are never urgent: the fires come first.
-            JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch => DEFAULT_PRIORITY - 1,
+            JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch | JobKind::Pump => DEFAULT_PRIORITY - 1,
             _ => DEFAULT_PRIORITY,
         };
         self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch)) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine | JobKind::Cook | JobKind::Water | JobKind::Fetch | JobKind::Pump)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -231,7 +242,7 @@ impl Sim {
     /// goes into the top of a door.
     pub fn room_for(&self, x: u32, y: u32, b: Building) -> bool {
         let i = self.idx(x, y);
-        if self.buildings[i] != Building::None || !self.fits(x, y, b) {
+        if self.buildings[i] != Building::None || !self.fits(x, y, b) || (b == Building::HandPump && !self.pump_site_ok(x, y)) {
             return false;
         }
         let planned = |ox: u32, oy: u32| self.jobs.iter().any(|j| j.x == ox && j.y == oy && matches!(j.kind, JobKind::Build(_)));
@@ -338,6 +349,7 @@ impl Sim {
         self.refuel_priority[i] = DEFAULT_PRIORITY;
         self.buildings[i] = Building::None;
         self.bed_water[i] = 0;
+        self.drip_held[i] = 0;
         // Whatever a tank held is lost with it.
         self.empty_store(i);
     }
@@ -350,7 +362,7 @@ impl Sim {
                 let (coal, stone) = build_cost(b);
                 let (iron, crystal) = rare_cost(b);
                 // Nobody gets walled in: a tile waits for its cell to be empty.
-                self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && self.coal >= coal && self.stone >= stone && self.iron >= iron && self.crystal >= crystal
+                self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && (b != Building::HandPump || self.pump_site_ok(job.x, job.y)) && self.coal >= coal && self.stone >= stone && self.iron >= iron && self.crystal >= crystal
                     && !(b == Building::Tile && self.occupied(i))
             }
             JobKind::Refuel => self.buildings[i] == Building::Hearth && (self.coal > 0 || self.coke > 0),
@@ -362,6 +374,7 @@ impl Sim {
             JobKind::Cook => self.buildings[i] == Building::Hearth && self.hearth_lit(i) && self.food >= crate::people::COOK_RAW && self.coal > 0,
             JobKind::Water => self.water_errand_doable(i),
             JobKind::Fetch => self.fetch_doable(i),
+            JobKind::Pump => self.pump_doable(i),
         }
     }
 
@@ -390,6 +403,7 @@ impl Sim {
             JobKind::Upgrade => 100,
             JobKind::Cook => 60,
             JobKind::Water | JobKind::Fetch => crate::farm::FILL_WORK,
+            JobKind::Pump => crate::pump::PUMP_WORK,
         }
     }
 
@@ -454,6 +468,7 @@ impl Sim {
             }
             // The colonist picks up the bucket; see `Sim::fill_bucket`.
             JobKind::Water | JobKind::Fetch => {}
+            JobKind::Pump => self.finish_pump(i),
             JobKind::Cook => {
                 self.food -= crate::people::COOK_RAW;
                 self.coal -= 1;
@@ -478,13 +493,14 @@ impl Sim {
         self.raise_cook_job();
         self.raise_water_jobs();
         self.raise_fetch_jobs();
+        self.raise_pump_jobs();
         let mut k = 0;
         while k < self.jobs.len() {
             let job = &self.jobs[k];
             let stale = match job.kind {
                 JobKind::Dig => !self.elements[self.idx(job.x, job.y)].is_diggable(),
                 // Ground dug out from under a planned building drops the plan.
-                JobKind::Build(b) => self.buildings[self.idx(job.x, job.y)] != Building::None || !self.fits(job.x, job.y, b),
+                JobKind::Build(b) => self.buildings[self.idx(job.x, job.y)] != Building::None || !self.fits(job.x, job.y, b) || (b == Building::HandPump && !self.pump_site_ok(job.x, job.y)),
                 JobKind::Refuel | JobKind::Cook => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
                 JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
                 JobKind::Haul => self.pile_amount[self.idx(job.x, job.y)] <= 0,
@@ -494,6 +510,7 @@ impl Sim {
                 JobKind::Upgrade => self.buildings[self.idx(job.x, job.y)] != Building::Hearth || self.hearth_grate[self.idx(job.x, job.y)],
                 JobKind::Water => !self.water_errand_valid(self.idx(job.x, job.y)),
                 JobKind::Fetch => !self.fetch_valid(self.idx(job.x, job.y)),
+                JobKind::Pump => self.buildings[self.idx(job.x, job.y)] != Building::HandPump,
             };
             if stale {
                 let job = self.jobs.remove(k);
