@@ -30,6 +30,16 @@ pub const BLOCK_NO_CRYSTAL: u8 = 8;
 pub const NO_HANDS_TICKS: u64 = 300;
 
 impl Sim {
+    /// Whether some reachable cell beside (or at) a job is lit.
+    fn lit_stand_near(&self, x: i32, y: i32, reach: &[bool]) -> bool {
+        (-1..=1).any(|dy| {
+            (-1..=1).any(|dx| {
+                let (sx, sy) = (x + dx, y + dy);
+                self.open(sx, sy) && self.supported(sx, sy) && reach[self.idx(sx as u32, sy as u32)] && !self.is_dark(self.idx(sx as u32, sy as u32))
+            })
+        })
+    }
+
     /// One `BLOCK_` value per job, in the order of [`Sim::jobs`].
     pub fn job_blockers(&self) -> Vec<u8> {
         // Every cell some living survivor can walk to.
@@ -82,6 +92,10 @@ impl Sim {
                         self.open(sx, sy) && self.supported(sx, sy) && reach[self.idx(sx as u32, sy as u32)]
                     })
                 });
+                // The curfew: every cell they could work from is dark, so it waits for dawn.
+                if stand && self.is_curfew() && !self.lit_stand_near(x, y, &reach) {
+                    return BLOCK_NONE;
+                }
                 if !stand {
                     // Deep in a block of marked rock: the digs around it will open the way.
                     let queued = [(-1, 0), (1, 0), (0, -1), (0, 1)].iter().any(|&(dx, dy)| pending_dig(x + dx, y + dy));

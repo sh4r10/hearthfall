@@ -332,8 +332,9 @@ fn shades_come_out_from_the_second_night_and_never_enter_light() {
             c.warmth = sim::STAT_MAX;
             c.fullness = sim::STAT_MAX;
         }
-        // The tick being simulated, before step moves the clock on.
-        let (night, day) = (sim.is_night(), sim.day());
+        // The tick being simulated, before step moves the clock on. Shades
+        // linger through dawn, retreating.
+        let (night, day) = (sim.night_level() > 0, sim.day());
         sim.step(&[]);
         if !night || day < sim::SHADE_FIRST_DAY {
             assert!(sim.shades.is_empty(), "shade at tick {}", sim.tick);
@@ -364,11 +365,15 @@ fn shades_take_survivors_left_in_the_dark() {
     assert!(taken > 0, "causes: {:?}", sim.colonists.iter().map(|c| c.cause).collect::<Vec<_>>());
     assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_SHADE_ATTACK));
     assert!(sim.events.iter().any(|e| e.kind == sim::EVENT_DEATH));
-    // Dawn sends them away.
+    // Dawn sends them away: they retreat, cannot attack, and are gone by day.
     while sim.is_night() {
         sim.step(&[]);
     }
     sim.step(&[]);
+    assert!(sim.shades.iter().all(|s| s.state == sim::SHADE_RETREATING));
+    while sim.is_dawn() {
+        sim.step(&[]);
+    }
     assert!(sim.shades.is_empty());
 }
 
@@ -667,4 +672,24 @@ fn a_walled_pocket_with_a_door_becomes_a_room_that_holds_the_heat() {
     }
     assert_eq!(sim.room_kind[inside], sim::ROOM_HEARTH);
     assert!(sim.is_warm(sim.idx(44, 29)), "every cell of a hearth room is warm");
+}
+
+#[test]
+fn nobody_is_caught_by_a_hunting_shade_at_dawn() {
+    // Hands off apart from digs far from the fire, so work spills into the
+    // dark each evening. Whatever Shades are still out at dawn must be
+    // retreating, never hunting, and nobody may be lost to them.
+    let mut sim = Sim::new(7, 160, 110);
+    sim.coal = 200;
+    let (cx, cy) = (sim.width as i32 / 2, sim.height as i32 / 2);
+    let digs: Vec<_> = (-16..=16).step_by(4).map(|dx| Command::Dig { x: (cx + dx) as u32, y: (cy + 8) as u32 }).collect();
+    sim.step(&digs);
+    for _ in 0..4 * sim::DAY_TICKS {
+        let dawn = sim.is_dawn();
+        sim.step(&[]);
+        if dawn {
+            assert!(sim.shades.iter().all(|s| s.state == sim::SHADE_RETREATING), "a Shade hunting at tick {}", sim.tick);
+        }
+    }
+    assert!(sim.colonists.iter().all(|c| c.alive()), "someone died with digs in the dark");
 }

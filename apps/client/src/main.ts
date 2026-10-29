@@ -1,6 +1,6 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAY_TICKS, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY,
+  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY,
   GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
@@ -16,7 +16,6 @@ import SimWorker from './sim.worker.ts?worker&inline';
 const TICKS_PER_SECOND = 10;
 const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
-const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
 /** `tech` hides a tool until that Tech is known. */
 interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number; tech?: number }
@@ -49,7 +48,7 @@ const HINTS: Record<Tool, string> = {
   'crystal-lamp': '<b>Crystal lamp:</b> light a long tunnel or a farm with one lamp instead of three.',
   tile: '<b>Tile:</b> click an open cell beside any floor, wall or tile, or shift-drag a line. Costs 1 stone, and digging it out gives it back. Survivors can\'t be walled in: a tile waits until its cell is empty.',
   door: '<b>Door:</b> place on a floor with an open cell above it. Wall a space of up to 48 cells off with a door and it becomes a room: a hearth room holds its heat, a bedroom gives the best sleep, two mushroom beds make a cellar.',
-  stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
+  stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark between dusk and dawn.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
   mushroom: '<b>Mushrooms:</b> place a bed out of the firelight. Lamps don\'t bother it, and keep Shades off the farm.',
@@ -158,6 +157,8 @@ function stat(name: string, label: string, value: string | number, warn = false)
 
 const log = $('log');
 let lastEventTick = -1;
+/** The first dusk gets one log line. */
+let duskNoted = false;
 /** The last stranger's name, for the line when they leave. */
 let strangerName = 'The stranger';
 /** Announces new sim events (deaths so far) in the log; each line fades after a while. */
@@ -288,11 +289,17 @@ function onFrame(event: MessageEvent<FromWorker>) {
   for (let i = 0; i < total; i++) if (frame.colonists[i * COLONIST_STRIDE + 3] !== 5) alive++;
   const day = Math.floor(frame.tick / DAY_TICKS) + 1;
   const into = frame.tick % DAY_TICKS;
-  const untilChange = Math.ceil(((frame.night ? DAY_TICKS : NIGHT_AT) - into) / TICKS_PER_SECOND);
+  const phase = phaseOf(frame.tick);
+  const next = { day: ['Dusk', DUSK_AT], dusk: ['Night', NIGHT_AT], night: ['Dawn', DAY_TICKS], dawn: ['Day', DAWN_TICKS] }[phase] as [string, number];
+  const untilChange = Math.ceil((next[1] - into) / TICKS_PER_SECOND);
+  if (phase === 'dusk' && !duskNoted) {
+    duskNoted = true;
+    logLine('Dusk: everyone heads back to the light.', 'moon', 'info');
+  }
 
   (clock.querySelector('.dial i') as HTMLElement).style.transform = `rotate(${(into / DAY_TICKS) * 360 + 180}deg)`;
   clock.querySelector('.clock-text')!.innerHTML =
-    `<b>Day ${day}</b><span>${icon(frame.night ? 'moon' : 'sun', 12)}${frame.night ? 'Dawn' : 'Night'} in ${untilChange}s</span>`;
+    `<b>Day ${day}</b><span>${icon(phase === 'dusk' || phase === 'night' ? 'moon' : 'sun', 12)}${phase === 'day' ? '' : `${phase[0].toUpperCase()}${phase.slice(1)} · `}${next[0]} in ${untilChange}s</span>`;
   stats.innerHTML =
     stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
     stat('stone', 'Stone', frame.stone, frame.stone < 2) +

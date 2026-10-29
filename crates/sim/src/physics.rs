@@ -1,7 +1,7 @@
 //! Environment: light, smoke, water and heat.
 
 use crate::research::GRATE_RADIUS;
-use crate::{Building, Element, Sim, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::{Building, Element, Sim, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, NIGHT_FULL};
 use crate::world::water_outlet;
 
 impl Sim {
@@ -10,9 +10,14 @@ impl Sim {
     /// too, so cave walls show at the edge of the light. Hearth light is also
     /// kept on its own in `firelight`, since only firelight warms.
     pub(crate) fn update_light(&mut self) {
-        let night = self.is_night();
-        let (radius, lamp_radius, crystal_radius) =
-            if night { (LIGHT_RADIUS_NIGHT, LAMP_RADIUS_NIGHT, CRYSTAL_RADIUS_NIGHT) } else { (LIGHT_RADIUS_DAY, LAMP_RADIUS_DAY, CRYSTAL_RADIUS_DAY) };
+        // Light shrinks over dusk and grows back over dawn, not all at once.
+        let level = self.night_level();
+        let fade = |day: i32, night: i32| day - ((day - night) * level + NIGHT_FULL / 2) / NIGHT_FULL;
+        let (radius, lamp_radius, crystal_radius) = (
+            fade(LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT),
+            fade(LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT),
+            fade(CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT),
+        );
         let mut fire = std::mem::take(&mut self.firelight);
         fire.iter_mut().for_each(|l| *l = 0);
         self.flood_hearths(radius, &mut fire);

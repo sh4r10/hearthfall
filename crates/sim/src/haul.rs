@@ -153,11 +153,11 @@ impl Sim {
         self.buildings.contains(&Building::Stockpile)
     }
 
-    /// Whether a pile at cell `i` can be fetched now. At night nobody goes
-    /// into the dark for goods: the pile waits for dawn, so hauling never
-    /// sends anyone out to the Shades.
+    /// Whether a pile at cell `i` can be fetched now. From dusk to dawn
+    /// nobody goes into the dark for goods (the curfew): the pile waits for
+    /// daylight, so hauling never sends anyone out to the Shades.
     pub(crate) fn haul_doable(&self, i: usize) -> bool {
-        self.pile_amount[i] > 0 && self.has_stockpile() && !(self.is_night() && self.is_dark(i))
+        self.pile_amount[i] > 0 && self.has_stockpile() && !(self.is_curfew() && self.is_dark(i))
     }
 
     /// Raise a haul errand for every pile, and keep piles falling.

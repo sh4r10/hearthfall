@@ -4,7 +4,7 @@ use crate::nav::UNREACHED;
 use crate::haul::Item;
 use crate::jobs::JobKind;
 use crate::people::{self, Temper, PREF_NORMAL, PREF_OFF, SKILLS};
-use crate::{Building, Sim, EVENT_DEATH, SHADE_DRAIN};
+use crate::{Building, Sim, EVENT_DEATH, SHADE_DRAIN, DAY_TICKS};
 
 /// Every need runs from 0 (empty) to this.
 pub const STAT_MAX: i32 = 10_000;
@@ -293,7 +293,12 @@ impl Sim {
         let col = &self.colonists[c];
         match col.activity {
             Activity::Sleeping => {
-                let rested = col.energy >= STAT_MAX * 95 / 100 || (!self.is_night() && col.energy >= STAT_MAX * 7 / 10);
+                // Through the night they sleep on until dawn, whatever their
+                // energy; night owls wake rested as ever.
+                // They are up for the last tick of the night so beds are free at dawn.
+                let dark_hours = self.is_night() && self.tick % DAY_TICKS != DAY_TICKS - 1;
+                let sleeps_in = dark_hours && !col.has(people::TRAIT_NIGHT_OWL);
+                let rested = !sleeps_in && (col.energy >= STAT_MAX * 95 / 100 || (!dark_hours && col.energy >= STAT_MAX * 7 / 10));
                 // Nobody sleeps through a Shade, and the cold wakes anyone whose
                 // spot stopped being warm (the light shrinks at night).
                 if rested || self.under_attack(c) || col.warmth < COLD_BELOW {
@@ -393,6 +398,15 @@ impl Sim {
             }
             return;
         }
+        // The curfew: caught in the dark between dusk and dawn with an errand
+        // or a load, they set it down and head for the light.
+        if self.is_curfew() && self.is_dark(here) && (col.job.is_some() || col.carrying.is_some()) {
+            self.release_job(c);
+            if self.flee_to_light(c) {
+                return;
+            }
+        }
+        let col = &self.colonists[c];
         // Miserable survivors refuse to work, except to keep the fire alive.
         if col.mood < MISERABLE && col.job.is_some() && self.colonists[c].job.and_then(|id| self.jobs.iter().find(|j| j.id == id)).map_or(false, |j| j.kind != JobKind::Refuel) {
             self.release_job(c);
@@ -421,7 +435,8 @@ impl Sim {
                 if !thawing && col.timer % col.temper.eagerness == 0 && self.claim_job(c) {
                     return;
                 }
-                if self.colonists[c].timer % 10 == 5 && self.flee_to_light(c) {
+                // In the dark, under curfew, they run for the light at once.
+                if (self.is_curfew() || self.colonists[c].timer % 10 == 5) && self.flee_to_light(c) {
                     return;
                 }
                 if self.colonists[c].timer % self.colonists[c].temper.fidget == 0 {
@@ -442,6 +457,7 @@ impl Sim {
         // Fetching goods is only worth it with a stockpile to take them to.
         let can_store = (0..self.buildings.len()).any(|i| self.buildings[i] == Building::Stockpile && field.dist[i] != UNREACHED);
         let miserable = col.mood < MISERABLE;
+        let curfew = self.is_curfew();
         let mut best: Option<(u8, u8, i32, usize, usize)> = None; // (their preference, priority, score, job index, stand cell)
         for (k, job) in self.jobs.iter().enumerate() {
             if job.claimed_by.is_some() || !self.job_doable(job) || (job.kind == JobKind::Haul && !can_store) {
@@ -459,6 +475,10 @@ impl Sim {
                 continue;
             }
             let Some(stand) = self.stand_cell(&field.dist, job.x as i32, job.y as i32, job.kind == crate::JobKind::Build(Building::Tile)) else { continue };
+            // The curfew: no errand whose standing cell is dark, until dawn.
+            if curfew && self.is_dark(stand) {
+                continue;
+            }
             let mut score = field.dist[stand];
             if job.kind.role() != col.role {
                 score += 25;

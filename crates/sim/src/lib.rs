@@ -27,12 +27,20 @@ pub use people::*;
 pub use rng::Rng;
 pub use rooms::{ROOM_BEDROOM, ROOM_CELLAR, ROOM_GLOW, ROOM_HEARTH, ROOM_MAX_CELLS, ROOM_NONE, ROOM_PLAIN, ROOM_TICKS};
 pub use shades::{
-    Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
+    Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_LAST_RISE, SHADE_RETREATING, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
 };
 pub use world::{Building, Element, START_TEMP_CK};
 
 /// Ticks per full day. The last 40% of each day is night.
 pub const DAY_TICKS: u64 = 1200;
+/// Where the day cycle turns, in ticks into the day: day until [`DUSK_AT`],
+/// dusk until [`NIGHT_AT`], night until the day ends, then dawn for
+/// [`DAWN_TICKS`] (never before the first night). See [`Sim::night_level`].
+pub const DUSK_AT: u64 = DAY_TICKS * 8 / 15;
+pub const NIGHT_AT: u64 = DAY_TICKS * 6 / 10;
+pub const DAWN_TICKS: u64 = 80;
+/// [`Sim::night_level`] at full night.
+pub const NIGHT_FULL: i32 = 1_000;
 /// A lit hearth burns one unit of its fuel this often.
 pub const HEARTH_BURN_TICKS: u64 = 40;
 /// A mushroom bed in the dark grows a ration this often.
@@ -249,7 +257,37 @@ impl Sim {
     }
 
     pub fn is_night(&self) -> bool {
-        self.tick % DAY_TICKS >= DAY_TICKS * 6 / 10
+        self.tick % DAY_TICKS >= NIGHT_AT
+    }
+
+    /// The light fading before night.
+    pub fn is_dusk(&self) -> bool {
+        (DUSK_AT..NIGHT_AT).contains(&(self.tick % DAY_TICKS))
+    }
+
+    /// The first stretch of each day after the first, while the night lets go.
+    pub fn is_dawn(&self) -> bool {
+        self.tick >= DAY_TICKS && self.tick % DAY_TICKS < DAWN_TICKS
+    }
+
+    /// How dark the day cycle is, 0 (day) to [`NIGHT_FULL`] (night): ramps up
+    /// over dusk and down over dawn. Light, Shades and the curfew follow it.
+    pub fn night_level(&self) -> i32 {
+        let t = self.tick % DAY_TICKS;
+        if t >= NIGHT_AT {
+            NIGHT_FULL
+        } else if t >= DUSK_AT {
+            ((t - DUSK_AT) as i32) * NIGHT_FULL / (NIGHT_AT - DUSK_AT) as i32
+        } else if self.is_dawn() {
+            NIGHT_FULL - (t as i32) * NIGHT_FULL / DAWN_TICKS as i32
+        } else {
+            0
+        }
+    }
+
+    /// From dusk until the end of dawn nobody works or walks in the dark.
+    pub fn is_curfew(&self) -> bool {
+        self.night_level() > 0
     }
 
     pub fn day(&self) -> u64 {
