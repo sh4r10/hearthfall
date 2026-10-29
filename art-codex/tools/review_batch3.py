@@ -23,15 +23,19 @@ def comparison(pose, names=NAMES):
 
 
 def icons():
-    names = ('coal', 'food', 'survivors', 'hearth')
-    sheet = Image.new('RGB', (320,128), '#33291f')
-    draw = ImageDraw.Draw(sheet)
-    for i,name in enumerate(names):
-        icon = Image.open(OUT/'ui/icons'/f'{name}.png').convert('RGBA')
-        tiny = icon.resize((20,20),Image.Resampling.LANCZOS)
-        sheet.paste(tiny, (i*80+30,30),tiny)
-        draw.text((i*80+8,65),name,fill='white')
-    sheet.save(OUT/'contact-batch3-icons-20px.png')
+    specs = json.loads((OUT.parent/'assets.json').read_text())['assets']
+    rows = [a for a in specs if (a['batch']==3 and a['id'].startswith(('icon-','badge-','trait-'))) or a['id'] in ('icon-coal','icon-food','icon-survivors','icon-hearth')]
+    rows = [a for a in rows if (OUT.parent.parent/a['path']).exists()]
+    for size,cellw,cellh in ((20,112,72),(128,144,160)):
+        sheet = Image.new('RGB',(6*cellw,((len(rows)+5)//6)*cellh),'#33291f')
+        draw = ImageDraw.Draw(sheet)
+        for i,a in enumerate(rows):
+            im = Image.open(OUT.parent.parent/a['path']).convert('RGBA').resize((size,size),Image.Resampling.LANCZOS)
+            x,y=(i%6)*cellw,(i//6)*cellh
+            sheet.paste(im,(x+(cellw-size)//2,y+8),im)
+            label = a['id'].removeprefix('icon-').replace('badge-','role-')
+            draw.text((x+3,y+size+18),label,fill='white')
+        sheet.save(OUT/f'contact-batch3-icons-{size}px.png')
 
 
 def buildings():
@@ -70,6 +74,17 @@ def creatures():
     sheet.save(OUT/'contact-batch3-creatures.png')
 
 
+def head_scale():
+    sheet = Image.new('RGBA',(960,720),(100,100,100,255))
+    draw = ImageDraw.Draw(sheet)
+    for row,name in enumerate(('esk','mara')):
+        for col,(folder,file) in enumerate((('anim','idle.png'),('anim','walk.png'),('poses','collapse.png'))):
+            head = Image.open(OUT/'characters'/name/folder/file).convert('RGBA').crop((80,30,240,210)).resize((320,360),Image.Resampling.NEAREST)
+            sheet.alpha_composite(head,(col*320,row*360))
+            draw.text((col*320+5,row*360+5),f'{name} {file}',fill='white')
+    sheet.convert('RGB').save(OUT/'contact-batch3-head-scale.png')
+
+
 if __name__ == '__main__':
     comparison('eat')
     comparison('collapse', ('esk','mara','ostra','pim','ruta'))
@@ -77,6 +92,7 @@ if __name__ == '__main__':
     icons()
     buildings()
     creatures()
+    head_scale()
     for pose in ('climb-up','climb-down','ladder-on','ladder-off','research'):
         if all((OUT/'characters'/name/'poses'/f'{pose}.png').exists() for name in NAMES):
             comparison(pose)

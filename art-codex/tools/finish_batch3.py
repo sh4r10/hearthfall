@@ -5,7 +5,9 @@ import json
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageFilter
-from prepare_generated import ROOT, OUT
+from prepare_generated import ROOT, OUT, content
+from check_art import flood, border_mask
+from prepare_batch3 import register as register_generated
 
 
 def records():
@@ -76,6 +78,7 @@ def log_group(group):
     text = '\n## Batch 3: '+group+'\n\n'
     for r in rs:
         text += '### '+r['id']+'\n\nTries: '+str(r.get('tries',1))+'. Built-in imagegen. Source: `'+r['path']+'`.\n\nFinal prompt:\n\n'+r['prompt']+'\n\n'
+        if r.get('notes'): text += r['notes']+'\n\n'
     log = OUT/'LOG.md'
     text = '\n'.join(line.rstrip() for line in text.splitlines())+'\n'
     log.write_text((log.read_text()+text).rstrip()+'\n')
@@ -105,12 +108,100 @@ def centre_strips():
         out.save(path)
 
 
+def small_regions(mask,limit):
+    remaining = mask.copy()
+    h,w = mask.shape
+    for y,x in zip(*np.where(mask)):
+        if not remaining[y,x]: continue
+        stack,points = [(y,x)],[]
+        remaining[y,x] = False
+        while stack:
+            cy,cx = stack.pop()
+            points.append((cy,cx))
+            for ny,nx in ((cy-1,cx),(cy+1,cx),(cy,cx-1),(cy,cx+1)):
+                if 0<=ny<h and 0<=nx<w and remaining[ny,nx]:
+                    remaining[ny,nx] = False
+                    stack.append((ny,nx))
+        if len(points)<=limit: yield tuple(np.array(points).T)
+
+
+def clean_icons(ids=None):
+    specs = json.loads((ROOT/'assets.json').read_text())['assets']
+    for a in specs:
+        if a['batch'] != 3 or not a['id'].startswith(('icon-','badge-','trait-')): continue
+        if ids is not None and a['id'] not in ids: continue
+        path = ROOT.parent/a['path']
+        record = json.loads((OUT/'provenance/batch3'/f"{a['id']}.json").read_text())
+        # Always begin from the generated source so repeated cleanup is stable.
+        register_generated(record['path'],a['id'])
+        rgba = np.array(Image.open(path).convert('RGBA'))
+        alpha = rgba[:,:,3].copy()
+        if a['id']=='icon-lens':
+            # Turn generated glass opacity into a flat disc; encode its painted
+            # upper-left highlight as one transparent cutout instead of shading.
+            empty = alpha<16
+            disk = ~flood(empty,border_mask(*empty.shape,'tblr') & empty)
+            inset = np.asarray(Image.fromarray(disk.astype('uint8')*255).filter(ImageFilter.MinFilter(9)))>0
+            yy,xx = np.indices(alpha.shape)
+            highlights = list(small_regions((alpha>=240)&inset&(xx<64)&(yy<80),alpha.size))
+            if not highlights: raise ValueError('No generated lens highlight found')
+            highlight = max(highlights,key=lambda r:len(r[0]))
+            alpha = disk.astype('uint8')*255
+            alpha[highlight] = 0
+            alpha = np.array(Image.fromarray(alpha).resize((256,256),Image.Resampling.LANCZOS).resize((128,128),Image.Resampling.LANCZOS))
+        if a['id']=='badge-guard':
+            alpha = np.array(Image.fromarray(alpha).filter(ImageFilter.MaxFilter(9)))
+        if a['id']=='trait-night-owl':
+            regions = list(small_regions(alpha>=128,alpha.size))
+            largest = max(regions,key=lambda r:len(r[0]))
+            keep = np.zeros(alpha.shape,dtype=np.uint8)
+            keep[largest] = 255
+            allowed = np.asarray(Image.fromarray(keep).filter(ImageFilter.MaxFilter(3)))>0
+            alpha[~allowed] = 0
+        for region in small_regions(alpha>=16,3): alpha[region] = 0
+        solid = alpha>=128
+        empty = ~solid
+        exterior = flood(empty,border_mask(*empty.shape,'tblr') & empty)
+        for region in small_regions(empty & ~exterior,12): alpha[region] = 255
+        solid = alpha>=128
+        interior = np.asarray(Image.fromarray(solid.astype('uint8')*255).filter(ImageFilter.MinFilter(3)))>0
+        alpha[interior] = 255
+        alpha[alpha>=240] = 255
+        alpha[alpha<16] = 0
+        rgba[:,:,3] = alpha
+        rgba[:,:,:3] = 255
+        cell = content(Image.fromarray(rgba))
+        scale = min(96/cell.width,96/cell.height)
+        cell = cell.resize((round(cell.width*scale),round(cell.height*scale)),Image.Resampling.LANCZOS)
+        out = Image.new('RGBA',(128,128))
+        out.alpha_composite(cell,((128-cell.width)//2,(128-cell.height)//2))
+        out.save(path)
+
+
+def esk_frost(source):
+    strip = Image.open(OUT/'characters/esk/poses/collapse.png').convert('RGBA')
+    base = strip.crop((960,0,1280,320))
+    edited = Image.open(source).convert('RGBA').resize((320,320),Image.Resampling.LANCZOS)
+    rgba = np.array(edited)
+    rgb = rgba[:,:,:3].astype(np.int16)
+    near = np.asarray(base.getchannel('A').filter(ImageFilter.MaxFilter(13)))>=128
+    frost = (rgb[:,:,0]>=160)&(rgb[:,:,1]>=170)&(rgb[:,:,2]>=180)&(rgb[:,:,2]>=rgb[:,:,1])&(rgb[:,:,1]>=rgb[:,:,0]-1)&(rgba[:,:,3]>=32)&near
+    frost[305:] = False
+    if frost.sum()<20: raise ValueError('Generated edit contains too little usable frost')
+    overlay = np.zeros_like(rgba)
+    overlay[frost] = rgba[frost]
+    base.alpha_composite(Image.fromarray(overlay))
+    base.save(OUT/'characters/esk/poses/dead.png')
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('mode',choices=('states','wrap','log','centre'))
+    p.add_argument('mode',choices=('states','wrap','log','centre','icons','frost'))
     p.add_argument('value',nargs='?')
     args = p.parse_args()
     if args.mode == 'states': align_states()
     elif args.mode == 'centre': centre_strips()
+    elif args.mode == 'icons': clean_icons(set(args.value.split(',')) if args.value else None)
+    elif args.mode == 'frost': esk_frost(args.value)
     elif args.mode == 'wrap': wrap_texture(Path(args.value))
     else: log_group(args.value)

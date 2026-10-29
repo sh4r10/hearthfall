@@ -1515,3 +1515,25 @@ A refugee in a ragged, snow-caked coat at the edge of the light, holding up a di
 ONE horizontal animation strip, exactly 2 evenly spaced frames. Each frame has equal320x320 canvas and generous clear space from neighbours, real transparent background. Same anatomy, design and source-pixel scale in all frames. Base or lowest wisp remains on bottom row. Clean flat graphic shapes, consistent ink, no gradient, no glowing halo, no floor or background.     Survivor scale250px tall,105px head, coat95px, legs50px. Facing LEFT. Hood rounded grey-brown, face hidden in dark blue-grey shadow, ragged coat, pale frost crust. Real mittens, never fingers. No goggles. Lantern flame tiny flat orange, no halo. Boots on y304 in320px frame. Only arm waves; body and boots stay fixed.
 
 Creature cleanup: removed generated ambient haze before reduction; registered complete connected creatures where source figures crossed approximate cell divisions; kept one scale across every strip. Heat-leech fills reduced to crisp muted tones. Shade scale matches batch 2 drift, final dissolve wisps retain 65% alpha. Horizontal registration fixes centre-of-mass warnings. Refugee rests on the manifest bottom anchor.
+
+## Batch 3: final Esk scale verification
+
+Repainted collapse using only the turnaround reference, removing the oversized-hood influence from the earlier pose reference. All collapse frames share one source-pixel scale. Dead preserves the exact final collapse body, with only generated pale frost composited on top. Reviewed beside idle and walk in contact-batch3-head-scale.png. Esk check: 46 pass, zero warnings, failures or missing.
+
+### esk-pose-collapse
+
+Tries: 2. Source: /var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-1c25ac2a-6861-4cb4-ac49-ffabd60916db.png
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+The same character as the reference, same proportions, same colours. Repaint Esk's FOUR-FRAME collapse, same physical size as this exact TURNAROUND. Important: head INCLUDING pointed hood and fur ruff is105px tall and110px wide; goggle lenses only24px diameter. Standing figure250px tall: head105px, coat95px, legs50px. Do not enlarge hood, goggles, face or fur in any frame. Four equally spaced full figures in one horizontal transparent strip,320x320 cells. Frame1 standing swaying eyes half closed; frame2 knees buckle and one mitten reaches down; frame3 kneeling slumping forward; frame4 lying on side head on right, eyes closed. Standing250px, kneeling188px, lying about88px tall. Same head physical size throughout, only its angle changes. NEVER scale later poses to fill cells. Ground y304, support centredx160. Mittens not fingers. Copy model proportions literally, no extra chibi head enlargement. No floor or background.
+
+### esk-pose-dead
+
+Tries: 2. Source: /var/home/shariq/.codex/generated_images/01a18495-b86b-71d1-8789-59a825b5766a/exec-e2014258-e7ee-4fe0-bd27-210f661966c7.png
+
+Final prompt:
+
+Hand-drawn 2D game art for a side-on underground survival game. Clean, confident dark-brown ink linework of even weight, thicker on the outer silhouette and thinner inside, with slightly hand-made wobble. Flat colour fills with one crisp-edged shadow tone and one small highlight, lit evenly from the upper left. A faint paper-grain texture inside the fills only. Big simple shapes and generous plain areas; detail only where the eye should go. Muted, cold palette; warm colours only for fire, scarves and skin. In the spirit of Klei's Don't Starve and Oxygen Not Included and the flat graphic look of the Hilda animated series. Not photoreal, not 3D-rendered, no airbrushed gradients, no glow, no bloom, no rim light, no lens effects, no cast shadow on the ground, no background, no text.
+Edit target: Esk's exact last collapse frame. Keep the same character, same proportions, same colours and EVERY body, hood, face and boot pixel in the same place and at the same size. Add ONLY a THIN pale blue-white frost crust #e4f1fb #9cc4e4 along the TOP edges of hood, shoulders and boots, tiny frost on closed eyelashes. No blood, no skull or X eyes. Preserve exact320x320 transparent canvas framing, body resting on y304. No floor or frozen backdrop. Only add frost; do not redraw or move the body.

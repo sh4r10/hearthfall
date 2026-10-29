@@ -1,7 +1,7 @@
 # Art check
 
-Filters: batch=all id=* character=esk  
-**45 pass, 0 warn, 0 fail, 6 missing**
+Filters: batch=all id=esk character=*
+**46 pass, 0 warn, 0 fail, 0 missing**
 
 | id | status | problems |
 |---|---|---|
@@ -34,6 +34,11 @@ Filters: batch=all id=* character=esk
 | `esk-pose-cold` | PASS |  |
 | `esk-pose-collapse` | PASS |  |
 | `esk-pose-dead` | PASS |  |
+| `esk-pose-climb-up` | PASS |  |
+| `esk-pose-climb-down` | PASS |  |
+| `esk-pose-ladder-on` | PASS |  |
+| `esk-pose-research` | PASS |  |
+| `esk-pose-ladder-off` | PASS |  |
 | `esk-anim-idle` | PASS |  |
 | `esk-anim-walk` | PASS |  |
 | `esk-anim-dig` | PASS |  |
@@ -43,19 +48,6 @@ Filters: batch=all id=* character=esk
 | `esk-anim-celebrate` | PASS |  |
 | `esk-anim-cold` | PASS |  |
 | `esk-anim-sleep` | PASS |  |
-| `prop-pickaxe` | PASS |  |
-| `prop-hammer` | PASS |  |
-| `prop-coal-sack` | PASS |  |
-| `prop-lantern` | PASS |  |
 | `esk-side-stacked` | PASS |  |
 | `esk-front-stacked` | PASS |  |
 | `esk-back-stacked` | PASS |  |
-
-## Missing (6)
-
-- `esk-pose-climb-up` -> `art-codex/out/characters/esk/poses/climb-up.png`
-- `esk-pose-climb-down` -> `art-codex/out/characters/esk/poses/climb-down.png`
-- `esk-pose-ladder-on` -> `art-codex/out/characters/esk/poses/ladder-on.png`
-- `esk-pose-research` -> `art-codex/out/characters/esk/poses/research.png`
-- `esk-pose-ladder-off` -> `art-codex/out/characters/esk/poses/ladder-off.png`
-- `prop-crowbar` -> `art-codex/out/props/crowbar.png`
