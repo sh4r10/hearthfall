@@ -361,6 +361,45 @@ for name in CAST:
                + POSE_SCALE_RULE,
         notes="Generate all four frames in one image so they match. Same frame and feet line (y=304) as the other poses; the spit sits about one cell in front of the figure.")
 
+# Water (batch 4): see BRIEF.md "Water". The hand pump is building-water-pump (batch 3) and is reused.
+SAME_OUTLINE = "Front view, ground at the bottom edge. Every state of this building has the same outline and position, only the changing parts differ."
+for bid, cw, ch, h, states, text in [
+    ("water-barrel", 1, 1, 192, ["empty", "half", "full"],
+     "A stout wooden barrel with two iron hoops and a lid left ajar, the colony's starting water supply in the start cave. empty: dark inside the gap under the lid, nothing visible. half: a band of water just visible under the lid. full: the water close to the rim and showing bright under the lid (water painted flat, pale blue #9cc4e4 over deep #2a5f78)."),
+    ("cistern", 2, 1, 192, ["empty", "half", "full"],
+     "A squat tank of fitted stone with timber bands and a plank lid, a ladle hanging on a hook at one side. One gap between two boards in the front shows the water level inside. empty: the gap shows dark. half: water fills the lower half of the gap. full: water fills the gap to the top (painted flat, pale blue #9cc4e4 over deep #2a5f78)."),
+    ("drip-catcher", 1, 1, 192, ["dry", "dripping"],
+     "A small wooden trough on four short legs with a funnel of oiled hide pegged on a thin frame above it, built under wet rock. dry: funnel and trough empty and dull. dripping: two or three drops in the funnel and one falling, a little water shining in the trough (painted flat, pale blue)."),
+]:
+    for st in states:
+        add(f"building-{bid}-{st}", f"buildings/{bid}-{st}.png", cw * CELL, h, batch=4, kind="sprite",
+            prompt=f"{text} State: {st}.",
+            notes=f"Footprint {cw} x {ch} cells. {SAME_OUTLINE}")
+add("building-mushroom-bed-dry", "buildings/mushroom-bed-dry.png", 2 * CELL, 160, batch=4, kind="sprite",
+    prompt="The batch 1 mushroom bed (building-mushroom-bed-seedling, -growing, -ready) from a dry spell: exactly the same plank box, outline and position, but the soil is cracked and pale grey-brown, "
+           "and the few mushrooms in it have drooping, wrinkled caps leaning over. State: dry.",
+    notes=f"Footprint 2 x 1 cells. {SAME_OUTLINE} Paint it on top of building-mushroom-bed-growing as a guide so the planks line up.")
+add("prop-bucket", "props/bucket.png", 320, 320, batch=4, kind="prop", anchor="grip",
+    prompt="A wooden bucket with two iron bands and a rope handle (grip at the rope loop), water visible near the rim, a bright pale-blue surface. "
+           "Held: the grip point is exactly at (172, 238). The bucket hangs from the grip, so it falls below the rope loop and the whole bucket stays inside the frame.",
+    notes="Hangs from the grip like coal-sack, rather than pointing up like the tools.")
+for name in CAST:
+    add(f"{name}-pose-drink", f"characters/{name}/poses/drink.png", 320, 320, frames=4, batch=4, kind="pose", character=name,
+        prompt=f"{CHAR_TEXT[name]}. Crouched side view facing right, drinking from cupped hands (or a wooden ladle): the water source is not painted, the game draws it. "
+               "Frame 1: crouched, cupped mittens held out in front, a little water in them. Frame 2: hands raised to the mouth. Frame 3: head tipped back a little, drinking. "
+               "Frame 4: lowering the hands, a relieved breath. Same crouch and feet in every frame; only the arms, head and face change. " + POSE_SCALE_RULE,
+        notes="Generate all four frames in one image so they match. Same frame and feet line (y=304) as the other poses.")
+add("fx-drip", "fx/drip.png", 64, 128, frames=6, batch=4, kind="strip", anchor="centre",
+    prompt="A single water drop forming on a rock ceiling at the top of the frame: frames 1 and 2 it swells and hangs, frame 3 it lets go, frame 4 it falls as a stretched drop, "
+           "frames 5 and 6 it splashes into a few droplets at the bottom. Pale blue (#9cc4e4 #e4f1fb), small, flat painted shapes, loop.")
+for i, sym in [("water", "a single water drop"),
+               ("thirst", "a single water drop with a jagged crack running through it (thirst: the need is unmet)"),
+               ("cistern", "a squat tank with a horizontal level line inside it"),
+               ("drip-catcher", "a water drop above a small trough"),
+               ("tech-pumps", "a hand pump handle with its spout")]:
+    add(f"icon-{i}", f"ui/icons/{i}.png", 128, 128, batch=4, kind="icon", anchor="centre",
+        prompt=f"{UI_ICON} Subject: {sym}. Same family as the batch 2 and 3 icons.")
+
 add("wordmark", "ui/wordmark.png", 1600, 480, batch=2, kind="sprite", anchor="centre",
     prompt="The word HEARTHFALL as a painted logo: chunky hand-cut capital letters like carved, charred wood, warm ember light catching the top edges, frost on the bottom edges, a small flame rising from the crossbar of the first A. Transparent background. The text must be spelled exactly HEARTHFALL, and nothing else may be written.")
 
