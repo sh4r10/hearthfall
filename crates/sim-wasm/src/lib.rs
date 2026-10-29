@@ -287,7 +287,7 @@ impl WebSim {
         self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()
     }
 
-    /// Flat, `SHADE_STRIDE` values each: x, y, state (0 drifting, 1 attacking).
+    /// Flat, `SHADE_STRIDE` values each: x, y, state (0 drifting, 1 attacking, 2 retreating at dawn).
     /// Empty by day.
     pub fn shades(&self) -> Vec<i32> {
         self.sim.shades.iter().flat_map(|s| [s.x as i32, s.y as i32, s.state as i32]).collect()

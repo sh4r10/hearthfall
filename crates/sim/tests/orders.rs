@@ -50,3 +50,27 @@ fn hauling_the_start_seams_keeps_a_colony_alive_for_three_days() {
         assert!(sim.coal > 0 || sim.pile_amount.iter().sum::<i32>() == 0, "seed {seed}: coal left lying about while the stock ran dry");
     }
 }
+
+#[test]
+fn nobody_takes_an_errand_in_the_dark_after_dusk() {
+    // A sealed, unlit cave: the same dig is taken by day and left for dawn
+    // once the curfew starts.
+    for (start, expect_claimed) in [(100, true), (sim::NIGHT_AT + 10, false)] {
+        let mut sim = Sim::new(7, 128, 96);
+        let (cx, cy) = (sim.width / 2, sim.height / 2);
+        for i in 0..sim.light.len() {
+            sim.buildings[i] = Building::None;
+        }
+        sim.tick = start;
+        sim.step(&[Command::Dig { x: cx - 9, y: cy - 1 }]);
+        let mut claimed = false;
+        for _ in 0..100 {
+            for c in sim.colonists.iter_mut() {
+                c.warmth = sim::STAT_MAX;
+            }
+            sim.step(&[]);
+            claimed |= sim.jobs.iter().any(|j| j.claimed_by.is_some());
+        }
+        assert_eq!(claimed, expect_claimed, "start tick {start}");
+    }
+}

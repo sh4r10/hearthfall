@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
+import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_RETREATING, SHADE_STRIDE, nightLevel, STAT_MAX, Item, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -76,6 +76,8 @@ interface ShadeView {
   target: THREE.Vector3;
   pos: THREE.Vector3;
   attacking: boolean;
+  /** Dawn: fleeing the light and dissolving. */
+  retreating: boolean;
   /** 0..1 fade, so they loom in and out instead of popping. */
   fade: number;
   gone: boolean;
@@ -220,6 +222,9 @@ export class WorldView {
   private emberLife!: Float32Array;
   private shade!: Float32Array;
   private shadeTarget!: Float32Array;
+  /** 0..1 per cell: how warm (firelit) it is drawn, eased like `shade`. */
+  private warm!: Float32Array;
+  private warmTarget!: Float32Array;
   private lightTex!: THREE.DataTexture;
   private maskTex?: THREE.DataTexture;
   /** The second material mask: r = iron ore, g = crystal. */
@@ -324,6 +329,8 @@ export class WorldView {
     const n = this.width * this.height;
     this.shade = new Float32Array(n).fill(DARKEST);
     this.shadeTarget = new Float32Array(n).fill(DARKEST);
+    this.warm = new Float32Array(n);
+    this.warmTarget = new Float32Array(n);
 
     this.lightTex = this.gridTexture();
     if (PAINTED) {
@@ -1003,14 +1010,21 @@ export class WorldView {
         if (x < w - 1) l = Math.max(l, frame.light[c + 1]);
         if (y > 0) l = Math.max(l, frame.light[c - w]);
         if (y < h - 1) l = Math.max(l, frame.light[c + w]);
-        this.shadeTarget[c] = DARKEST + (1 - DARKEST) * Math.min((l / 255) * 1.6, 1);
+        // Dark exactly where the sim says dark (light < DARK_BELOW): those
+        // cells sit in a low, faintly readable band, the rest clearly lit.
+        this.shadeTarget[c] = l < DARK_BELOW ? 0.14 + 0.14 * (l / DARK_BELOW) : 0.62 + 0.38 * Math.min((l - DARK_BELOW) / (120 - DARK_BELOW), 1);
+        // Firelight is warm, lamp light and the dark cool.
+        this.warmTarget[c] = frame.firelight[c] >= DARK_BELOW ? 1 : 0;
       }
     }
   }
 
   private applyShade(dt: number) {
     const k = Math.min(dt * 4, 1);
-    for (let c = 0; c < this.shade.length; c++) this.shade[c] += (this.shadeTarget[c] - this.shade[c]) * k;
+    for (let c = 0; c < this.shade.length; c++) {
+      this.shade[c] += (this.shadeTarget[c] - this.shade[c]) * k;
+      this.warm[c] += (this.warmTarget[c] - this.warm[c]) * k;
+    }
     const colour = new THREE.Color();
     for (const { mesh, cells, base } of this.instanced) {
       for (let i = 0; i < cells.length; i++) {
@@ -1023,7 +1037,11 @@ export class WorldView {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const i = this.texIndex(x, y);
-        lit[i] = lit[i + 1] = lit[i + 2] = this.shade[y * this.width + x] * 255;
+        // Brightness with the tint baked in, so every material reading it agrees.
+        const c = y * this.width + x, s = this.shade[c] * 255, w = this.warm[c];
+        lit[i] = s * (0.8 + 0.2 * w);
+        lit[i + 1] = s * (0.92 - 0.04 * w);
+        lit[i + 2] = s * (1 - 0.3 * w);
         lit[i + 3] = 255;
       }
     }
@@ -1099,7 +1117,10 @@ export class WorldView {
       this.rebuildBuildings(frame.buildings, frame.hearthGrate);
     }
     this.computeShade(frame);
-    if (first) this.shade.set(this.shadeTarget);
+    if (first) {
+      this.shade.set(this.shadeTarget);
+      this.warm.set(this.warmTarget);
+    }
     this.paintField(frame);
     this.updateMarkers(frame);
     this.updatePiles(frame);
@@ -1216,7 +1237,7 @@ export class WorldView {
       if (!v) {
         const model = makeModel('shade', i);
         this.scene.add(model);
-        v = { model, target: new THREE.Vector3(), pos: new THREE.Vector3(), attacking: false, fade: 0, gone: false, facing: 1 };
+        v = { model, target: new THREE.Vector3(), pos: new THREE.Vector3(), attacking: false, retreating: false, fade: 0, gone: false, facing: 1 };
         this.cellToWorld(x, y, v.pos);
         v.pos.y -= 0.5;
         this.shades[i] = v;
@@ -1224,6 +1245,7 @@ export class WorldView {
       this.cellToWorld(x, y, v.target);
       v.target.y -= 0.5;
       v.attacking = state === SHADE_ATTACKING;
+      v.retreating = state === SHADE_RETREATING;
       v.gone = false;
     }
     for (let i = n; i < this.shades.length; i++) this.shades[i].gone = true;
@@ -1245,6 +1267,8 @@ export class WorldView {
         v.pos.y += (dy / dist) * step;
       }
       const { model } = v;
+      // At dawn a retreating Shade dissolves as the night level falls.
+      const melt = v.retreating ? 0.25 + 0.75 * this.nightAmount : 1;
       const play = model.userData.play as ((anim: ShadeAnim, frame: number) => void) | undefined;
       if (play) {
         // Painted Shade: drifts, lunges when attacking, shrinks from the light as it goes.
@@ -1253,10 +1277,11 @@ export class WorldView {
         model.rotation.set(0, v.facing > 0 ? 0 : Math.PI, 0);
         model.scale.setScalar(0.85 + v.fade * 0.15);
         if (v.gone) play('dissolve', Math.min((1 - v.fade) * 5, 4));
+        else if (v.retreating) play('dissolve', Math.min((1 - this.nightAmount) * 4, 4));
         else if (v.attacking) play('lunge', t * 6 + i);
         else if (dist < 0.02) play('idle', t * 3 + i);
         else play('drift', t * 4 + i);
-        ((model.getObjectByName('body') as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = v.fade;
+        ((model.getObjectByName('body') as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = v.fade * melt;
         return true;
       }
       model.position.set(v.pos.x, v.pos.y + Math.sin(t * 1.7 + i) * 0.12, 0.15);
@@ -1267,7 +1292,7 @@ export class WorldView {
         if (!(o instanceof THREE.Mesh)) return;
         const m = o.material as THREE.MeshBasicMaterial;
         if (o.name === 'eye') { m.opacity = 1; o.visible = v.fade > 0.3; return; }
-        m.opacity = (o.name === 'halo' || o.name === 'rim' ? 0.35 : 0.88) * v.fade;
+        m.opacity = (o.name === 'halo' || o.name === 'rim' ? 0.35 : 0.88) * v.fade * melt;
         if (o.name.startsWith('rag')) o.rotation.z = Math.sin(t * 4 + Number(o.name[3]) * 1.3) * 0.25;
       });
       return true;
@@ -1562,7 +1587,8 @@ export class WorldView {
     const t = this.clock.elapsedTime;
     const frame = this.latest;
 
-    this.nightAmount += ((frame?.night ? 1 : 0) - this.nightAmount) * Math.min(dt * 0.8, 1);
+    // The same dusk and dawn curve the sim lights by, eased a little between frames.
+    this.nightAmount += ((frame ? nightLevel(frame.tick) : 0) - this.nightAmount) * Math.min(dt * 3, 1);
     (this.grading.uniforms.uTime as THREE.IUniform).value = t;
     (this.grading.uniforms.uNight as THREE.IUniform).value = this.nightAmount;
 

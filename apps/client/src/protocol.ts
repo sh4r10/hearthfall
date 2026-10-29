@@ -74,7 +74,7 @@ export interface Frame {
   jobs: Int32Array;
   /** Flat, EVENT_STRIDE each (tick, kind, colonist), last 32, oldest first; see WebSim::events. */
   events: Int32Array;
-  /** Flat, SHADE_STRIDE each (x, y, state: SHADE_DRIFTING or SHADE_ATTACKING); empty by day. See WebSim::shades. */
+  /** Flat, SHADE_STRIDE each (x, y, state: SHADE_DRIFTING, SHADE_ATTACKING or SHADE_RETREATING); empty by day. See WebSim::shades. */
   shades: Int32Array;
 }
 
@@ -101,11 +101,34 @@ export const SMOKY = 102;
 /** Shade states, matching sim::SHADE_*. */
 export const SHADE_DRIFTING = 0;
 export const SHADE_ATTACKING = 1;
+/** Dawn: fleeing the light and dissolving; cannot attack. */
+export const SHADE_RETREATING = 2;
 /** Colonist.cause, the 13th colonist field; must match sim::CAUSE_*. */
 export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'was taken by a Shade' };
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
+/** The day cycle; must match DUSK_AT, NIGHT_AT and DAWN_TICKS in crates/sim/src/lib.rs. */
+export const DUSK_AT = (DAY_TICKS * 8) / 15;
+export const NIGHT_AT = (DAY_TICKS * 6) / 10;
+export const DAWN_TICKS = 80;
+/** 'day' | 'dusk' | 'night' | 'dawn' for a tick (no dawn before the first night). */
+export function phaseOf(tick: number): 'day' | 'dusk' | 'night' | 'dawn' {
+  const t = tick % DAY_TICKS;
+  if (t >= NIGHT_AT) return 'night';
+  if (t >= DUSK_AT) return 'dusk';
+  return tick >= DAY_TICKS && t < DAWN_TICKS ? 'dawn' : 'day';
+}
+/** How dark the day cycle is, 0..1: the same curve as Sim::night_level / 1000. */
+export function nightLevel(tick: number): number {
+  const t = tick % DAY_TICKS;
+  switch (phaseOf(tick)) {
+    case 'night': return 1;
+    case 'dusk': return (t - DUSK_AT) / (NIGHT_AT - DUSK_AT);
+    case 'dawn': return 1 - t / DAWN_TICKS;
+    default: return 0;
+  }
+}
 /** Ticks for a mushroom bed out of the firelight to grow a ration; must match MUSHROOM_TICKS in crates/sim/src/lib.rs. */
 export const MUSHROOM_TICKS = 400;
 /** Light below this counts as dark; must match DARK_BELOW in crates/sim/src/lib.rs. */

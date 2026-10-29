@@ -21,7 +21,7 @@ export const terrainVertex = /* glsl */ `
 export const terrainFragment = /* glsl */ `
   uniform sampler2D uMask;   // r = rock, g = dirt, b = coal, a = built tile
   uniform sampler2D uOre;    // r = iron ore, g = crystal
-  uniform sampler2D uLight;  // r = brightness from the sim's light field
+  uniform sampler2D uLight;  // rgb = brightness and tint from the sim's light field
   uniform sampler2D uWater;  // r = how full the cell is from its bottom, g = depth below the surface, b = surface cell (nearest filtered)
   uniform vec2 uSize;        // grid size in cells
   // Optional painted textures; the matching flag is 1.0 when one is loaded.
@@ -143,9 +143,10 @@ export const terrainFragment = /* glsl */ `
     vec3 color = mix(open, solidColor, inside);
 
     // The sim's light field: dark where the fire doesn't reach, warm where it does.
-    float light = pow(texture2D(uLight, vUv).r, 1.35);
-    float warm = smoothstep(0.3, 1.0, light);
-    color *= light * mix(vec3(0.8, 0.9, 1.1), vec3(1.3, 1.05, 0.8), warm);
+    // Cells under the sim's dark threshold sit in a low band, lit cells clearly
+    // above it; the texture already carries the warm (fire) or cool (lamp, dark) tint.
+    vec3 light = pow(texture2D(uLight, vUv).rgb, vec3(1.35));
+    color *= light * 1.2;
 
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
