@@ -48,6 +48,8 @@ export interface Frame {
   night: boolean;
   elements: Uint8Array;
   buildings: Uint8Array;
+  /** Water per cell, 0..255 (volume * 255 / 1000); the element is Water from 500/1000 up (WATER_WET in the sim). */
+  water: Uint8Array;
   light: Uint8Array;
   /** Hearth light only, 0..255; a survivor warms up where it is at least DARK_BELOW. */
   firelight: Uint8Array;

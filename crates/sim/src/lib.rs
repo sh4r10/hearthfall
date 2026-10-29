@@ -81,6 +81,15 @@ pub const EVENT_RESEARCH: u8 = 6;
 /// Smoke per cell, 0 to this. Fires add a little each tick; it rises, pools
 /// under ceilings, soaks slowly into the walls, and escapes through vents.
 pub const SMOKE_MAX: i32 = 1_000;
+/// Water in a full cell. A cell holds 0..=WATER_FULL; see `physics.rs`.
+pub const WATER_FULL: i32 = 1_000;
+/// A cell holding at least this much is [`Element::Water`] (swimming, not walkable
+/// floor). Less is a wet [`Element::Floor`] that survivors can still wade across.
+pub const WATER_WET: i32 = 500;
+/// A cell holding at least this much counts as full when working out which water is connected under pressure.
+pub const WATER_PRESSURED: i32 = 900;
+/// A resting cell holding less than this dries up, so there are no endless thin films.
+pub const WATER_MIN: i32 = 20;
 /// Smoke a lit hearth gives off per tick. Slow on purpose: one hearth in the
 /// start cave takes about three days to get thick, so it is a day-3 problem,
 /// not a day-1 one.
@@ -144,6 +153,11 @@ pub struct Sim {
     pub pile_item: Vec<u8>,
     pub pile_amount: Vec<i32>,
     pub temperature: Vec<i32>,
+    /// Water per cell, 0..=[`WATER_FULL`]. Only open cells hold any. The
+    /// element is [`Element::Water`] exactly where this is at least [`WATER_WET`].
+    pub water: Vec<i32>,
+    /// Total water lost to drying thin films and to cells built over, for conservation checks.
+    pub water_lost: i64,
     /// Light level per cell, 0..=255. Derived from hearths and lamps each tick.
     pub light: Vec<u8>,
     /// The part of `light` that comes from hearths. Only this warms.
@@ -187,12 +201,17 @@ pub struct Sim {
     rng: Rng,
     /// Snapshot buffer for heat conduction, so the result is order-independent.
     scratch: Vec<i32>,
+    /// Sideways water flow per cell for the current tick.
+    water_flow: Vec<i32>,
+    /// Surface height of the water column each cell belongs to; see `water_tick`.
+    water_level: Vec<i32>,
 }
 
 impl Sim {
     pub fn new(seed: u64, width: u32, height: u32) -> Self {
         let elements = world::generate(seed, width, height);
         let n = elements.len();
+        let water: Vec<i32> = elements.iter().map(|&e| if e == Element::Water { WATER_FULL } else { 0 }).collect();
         let (cx, cy) = (width / 2, height / 2);
         let mut buildings = vec![Building::None; n];
         let mut hearth_fuel = vec![0; n];
@@ -214,6 +233,8 @@ impl Sim {
             pile_item: vec![0; n],
             pile_amount: vec![0; n],
             temperature: vec![START_TEMP_CK; n],
+            water,
+            water_lost: 0,
             light: vec![0; n],
             firelight: vec![0; n],
             smoke: vec![0; n],
@@ -239,6 +260,8 @@ impl Sim {
             next_job_id: 1,
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
+            water_flow: vec![0; n],
+            water_level: vec![0; n],
         };
         // Esk and Mara, either side of the hearth. Everyone else follows the firelight down later.
         sim.first_two(cx, cy);
@@ -413,6 +436,7 @@ impl Sim {
         eat(&[self.smoke_warned as u8]);
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
+        eat(&self.water_lost.to_le_bytes());
         eat(&self.food.to_le_bytes());
         eat(&self.meals.to_le_bytes());
         match &self.stranger {
@@ -434,6 +458,7 @@ impl Sim {
             eat(&self.pile_amount[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());
             eat(&self.smoke[i].to_le_bytes());
+            eat(&self.water[i].to_le_bytes());
             eat(&self.room_id[i].to_le_bytes());
             eat(&[self.room_kind[i]]);
         }

@@ -209,6 +209,11 @@ impl WebSim {
         self.sim.pile_amount.clone()
     }
 
+    /// Water per cell as 0..=255 (volume * 255 / WATER_FULL).
+    pub fn water(&self) -> Vec<u8> {
+        self.sim.water.iter().map(|&v| (v * 255 / sim::WATER_FULL) as u8).collect()
+    }
+
     pub fn light(&self) -> Vec<u8> {
         self.sim.light.clone()
     }

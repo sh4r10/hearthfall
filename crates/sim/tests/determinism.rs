@@ -30,7 +30,14 @@ fn sealed_room(seed: u64, size: u32, room: (u32, u32, u32, u32)) -> Sim {
             sim.buildings[i] = Building::None;
         }
     }
+    sim.water.fill(0);
+    sim.water_lost = 0;
     sim
+}
+
+/// Total water in the world plus what has dried up, which must never change.
+fn water_total(sim: &Sim) -> i64 {
+    sim.water.iter().map(|&v| v as i64).sum::<i64>() + sim.water_lost
 }
 
 #[test]
@@ -48,12 +55,13 @@ fn water_falls() {
     let mut sim = sealed_room(4, 16, (0, 0, 15, 15));
     sim.colonists.clear();
     let i = sim.idx(8, 2);
-    sim.elements[i] = Element::Water;
+    sim.add_water(i, 1000);
     for _ in 0..30 {
         sim.step(&[]);
     }
-    let rows: Vec<usize> = (0..256).filter(|&i| sim.elements[i] == Element::Water).map(|i| i / 16).collect();
-    assert_eq!(rows, vec![15]);
+    let rows: Vec<usize> = (0..256).filter(|&i| sim.water[i] > 0).map(|i| i / 16).collect();
+    assert!(rows.iter().all(|&r| r == 15), "water floated: {rows:?}");
+    assert_eq!(water_total(&sim), 1000);
 }
 
 #[test]
@@ -207,16 +215,84 @@ fn water_levels_out_into_a_flat_pool() {
     for y in 4..16 {
         for x in 0..4 {
             let i = sim.idx(x, y);
-            sim.elements[i] = Element::Water;
+            sim.add_water(i, 1000);
         }
     }
-    for _ in 0..200 {
+    assert_pool_levels_out(&mut sim, 16, 48_000);
+}
+
+/// Run the sim until the water rests (within `limit` ticks), then check the pool is flat.
+fn assert_pool_levels_out(sim: &mut Sim, floor_row: u32, total: i64) {
+    let mut settled_after = None;
+    for t in 0..3000 {
+        let before = sim.water.clone();
         sim.step(&[]);
+        if before == sim.water {
+            settled_after = Some(t);
+            break;
+        }
     }
-    // 48 cells over a 16 wide floor: exactly the bottom three rows.
-    let water: Vec<usize> = (0..256).filter(|&i| sim.elements[i] == Element::Water).collect();
-    assert_eq!(water.len(), 48);
-    assert!(water.iter().all(|&i| i / 16 >= 13), "pool is not level");
+    let t = settled_after.expect("pool never came to rest");
+    println!("pool rested after {t} ticks");
+    for _ in 0..100 {
+        let before = sim.water.clone();
+        sim.step(&[]);
+        assert_eq!(before, sim.water, "pool started moving again");
+    }
+    assert_eq!(water_total(sim), total);
+    // Neighbouring wet cells on the bottom row differ by at most one volume step
+    // (flow stops at a difference of 1), and the whole row stays within 3% of full.
+    let row: Vec<i32> = (0..sim.width).map(|x| sim.water[sim.idx(x, floor_row - 1)]).filter(|&v| v > 0).collect();
+    assert!(row.windows(2).all(|p| (p[0] - p[1]).abs() <= 1), "surface not flat: {row:?}");
+    let (lo, hi) = (*row.iter().min().unwrap(), *row.iter().max().unwrap());
+    assert!(hi - lo <= 30, "surface not flat: {lo}..{hi}");
+}
+
+#[test]
+fn water_is_conserved_over_two_thousand_ticks() {
+    let mut sim = Sim::new(11, 128, 96);
+    sim.colonists.clear();
+    let total = water_total(&sim);
+    assert!(sim.water.iter().sum::<i32>() > 0);
+    // Pour some more in from above the start cave's dirt to keep things moving.
+    for _ in 0..2000 {
+        sim.step(&[]);
+        assert_eq!(water_total(&sim), total);
+    }
+    assert!(sim.water_lost < total / 10 + 1, "too much water dried up: {}", sim.water_lost);
+}
+
+#[test]
+fn a_dug_open_pocket_drains_into_a_cave_and_levels_flat() {
+    // A sealed pocket high up, a rock plug, and a wide empty cave below.
+    let mut sim = sealed_room(4, 24, (0, 0, 0, 0));
+    sim.colonists.clear();
+    for y in 2..22 {
+        for x in 2..22 {
+            let i = sim.idx(x, y);
+            sim.elements[i] = if y >= 14 { Element::Floor } else { Element::Rock };
+        }
+    }
+    for y in 5..8 {
+        for x in 6..10 {
+            let i = sim.idx(x, y);
+            sim.elements[i] = Element::Floor;
+            sim.add_water(i, 1000);
+        }
+    }
+    let plug = sim.idx(8, 8);
+    sim.step(&[]);
+    assert_eq!(sim.elements[plug], Element::Rock);
+    assert!(sim.water[sim.idx(8, 7)] == 1000 && sim.water[sim.idx(8, 20)] == 0);
+    for y in 8..14 {
+        let i = sim.idx(8, y);
+        sim.elements[i] = Element::Floor;
+    }
+    let total = water_total(&sim);
+    assert_eq!(total, 12_000);
+    // The cave floor is row 21, so its bottom row is y = 21 (floor_row 22).
+    assert_pool_levels_out(&mut sim, 22, total);
+    assert!(sim.water[sim.idx(8, 6)] == 0, "pocket did not drain");
 }
 
 #[test]
@@ -692,4 +768,65 @@ fn nobody_is_caught_by_a_hunting_shade_at_dawn() {
         }
     }
     assert!(sim.colonists.iter().all(|c| c.alive()), "someone died with digs in the dark");
+}
+
+fn column_level_below(sim: &Sim, x: u32, y0: u32) -> i32 {
+    let y = (y0..sim.height).find(|&y| sim.water[sim.idx(x, y)] > 0).expect("dry column");
+    (y as i32 + 1) * 1000 - sim.water[sim.idx(x, y)]
+}
+
+/// Surface height of the water in column `x`, in thousandths of a cell down from the top.
+fn column_level(sim: &Sim, x: u32) -> i32 {
+    let y = (0..sim.height).find(|&y| sim.water[sim.idx(x, y)] > 0).expect("dry column");
+    (y as i32 + 1) * 1000 - sim.water[sim.idx(x, y)]
+}
+
+#[test]
+fn connected_columns_settle_to_one_level() {
+    // A U-tube: a full left shaft, a channel along the bottom, an empty right shaft.
+    let mut sim = sealed_room(4, 24, (0, 0, 0, 0));
+    sim.colonists.clear();
+    for y in 2..21 {
+        for x in [3, 12] {
+            let i = sim.idx(x, y);
+            sim.elements[i] = Element::Floor;
+        }
+    }
+    for x in 3..=12 {
+        let i = sim.idx(x, 20);
+        sim.elements[i] = Element::Floor;
+    }
+    for y in 2..20 {
+        let i = sim.idx(3, y);
+        sim.add_water(i, 1000);
+    }
+    let total = water_total(&sim);
+    let mut rested = None;
+    for t in 0..6000 {
+        let before = sim.water.clone();
+        sim.step(&[]);
+        if before == sim.water {
+            rested = Some(t);
+            break;
+        }
+    }
+    println!("u-tube rested after {rested:?} ticks: levels {} {}", column_level(&sim, 3), column_level(&sim, 12));
+    assert!(rested.is_some(), "u-tube never came to rest");
+    assert_eq!(water_total(&sim), total);
+    assert!((column_level(&sim, 3) - column_level(&sim, 12)).abs() <= 40, "surfaces not level");
+}
+
+#[test]
+fn seed_7_shaft_settles_level_with_its_lake() {
+    let mut sim = Sim::new(7, 160, 110);
+    sim.colonists.clear();
+    let total = water_total(&sim);
+    for _ in 0..6000 {
+        sim.step(&[]);
+    }
+    assert_eq!(water_total(&sim), total);
+    // Columns 9 to 12 are roofed over by rock; the rest are open to the same air.
+    let levels: Vec<i32> = (1..=18).filter(|&x| !(9..=12).contains(&x)).filter(|&x| (80..110).any(|y| sim.water[sim.idx(x, y)] > 0)).map(|x| column_level_below(&sim, x, 80)).collect();
+    println!("seed 7 shaft columns: {levels:?}");
+    assert!(levels.windows(2).all(|p| (p[0] - p[1]).abs() <= 150), "shaft and lake not level: {levels:?}");
 }

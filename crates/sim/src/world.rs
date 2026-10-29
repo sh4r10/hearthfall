@@ -155,6 +155,17 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
             cells.push(element);
         }
     }
+    // Water spreads sideways into any cell dug open beside it, so no pocket may
+    // sit within three cells of the start shell: digging the first coal seams
+    // must never let a lake in. Deeper pockets stay as hazards.
+    for y in 0..h {
+        for x in 0..w {
+            let (dx, dy) = (x - cx, y - cy);
+            if dx.abs() <= 13 && (-10..=5).contains(&dy) && cells[(y * w + x) as usize] == Element::Water {
+                cells[(y * w + x) as usize] = Element::Dirt;
+            }
+        }
+    }
     settle_water(&mut cells, w, h, cx, cy);
     cells
 }
