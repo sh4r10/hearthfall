@@ -10,6 +10,7 @@ import { PriorityBrush, SpeedControl, StuckOrders } from './management';
 import { Inspector } from './inspect';
 import { ColonyScreen, Roster, StrangerCard, nameAt, nameOf } from './people';
 import { ResearchPanel } from './research';
+import { Goals } from './goals';
 import { BUILDING_NAMES, judge, lightFrom, line, nightRadius, refusal, type Spot } from './placement';
 import SimWorker from './sim.worker.ts?worker&inline';
 
@@ -313,6 +314,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
   colony.update(frame);
   renderDepth(frame);
   tutorialStep(frame);
+  goals.update(frame, step >= TUTORIAL.length && tutorial.hidden);
   stuck.update(frame);
   inspector.update(frame);
   research.update(frame);
@@ -402,6 +404,9 @@ function setOverlay(o: Overlay) {
 }
 setTool('dig');
 setOverlay('none');
+
+// The toolbar starts small and unfolds; the Next card follows the tutorial.
+const goals = new Goals($('goals'), logLine);
 
 document.querySelectorAll<HTMLButtonElement>('[data-tool]').forEach((b) => (b.onclick = () => setTool(b.dataset.tool as Tool)));
 document.querySelectorAll<HTMLButtonElement>('[data-overlay]').forEach((b) =>
