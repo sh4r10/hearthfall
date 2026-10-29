@@ -1,6 +1,7 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, type Frame, type FromWorker, type Tool, type ToWorker,
+  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAY_TICKS, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY,
+  GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -8,6 +9,7 @@ import { MAP_VIEWS, MapViews } from './map-views';
 import { PriorityBrush, SpeedControl, StuckOrders } from './management';
 import { Inspector } from './inspect';
 import { ColonyScreen, Roster, StrangerCard, nameAt, nameOf } from './people';
+import { ResearchPanel } from './research';
 import { BUILDING_NAMES, judge, lightFrom, line, nightRadius, refusal, type Spot } from './placement';
 import SimWorker from './sim.worker.ts?worker&inline';
 
@@ -16,7 +18,8 @@ const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
-interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number }
+/** `tech` hides a tool until that Tech is known. */
+interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number; tech?: number }
 const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
   { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
@@ -26,12 +29,26 @@ const TOOLS: ToolInfo[] = [
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'stockpile', key: '8', label: 'Stockpile', icon: 'stockpile', tip: 'Where dug coal and stone go. Nothing counts until a survivor carries it here, so build one near where you dig.', building: Building.Stockpile },
+  { tool: 'tile', key: '9', label: 'Tile', icon: 'tile', tip: 'A block of cut stone. Lay floors over gaps, bridges, ceilings and walls; dig it to take it back.', building: Building.Tile },
+  { tool: 'door', key: '0', label: 'Door', icon: 'door', tip: 'Two cells tall. Survivors walk through; smoke and Shades don\'t. Close a small space off with walls and a door to make a room.', building: Building.Door },
+  { tool: 'bench', key: 'B', label: 'Research', icon: 'research', tip: 'A research bench. A survivor studies here between other work; pick what to study with the Research button up top.', building: Building.ResearchBench },
+  { tool: 'coke', key: 'K', label: 'Coke oven', icon: 'coke', tip: 'Bakes 3 coal into 2 coke while you have coal to spare. Coke burns twice as long with half the smoke.', building: Building.CokeOven, tech: 0 },
+  { tool: 'smelter', key: 'M', label: 'Smelter', icon: 'iron', tip: 'Smelts 2 iron ore and 1 coal into iron while you have coal to spare.', building: Building.Smelter, tech: 1 },
+  { tool: 'grate', key: 'G', label: 'Grate', icon: 'grate', tip: 'Fit a hearth with an iron grate: a third less coal, warmth 2 cells further, half the smoke.', tech: 2 },
+  { tool: 'crystal-lamp', key: 'L', label: 'Crystal lamp', icon: 'crystal-lamp', tip: 'A lamp with a crystal lens. Light twice as far as a lamp, and no fuel.', building: Building.CrystalLamp, tech: 3 },
   { tool: 'priority', key: 'P', label: 'Priority', icon: 'priority', tip: 'Repaint how urgent orders are, from 1 to 9. Survivors take the most urgent order they can reach first.' },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
-  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. A building\'s floor can\'t be dug: remove the building first.',
+  dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1, rust-red ore gives iron ore and blue crystal crystal. A building\'s floor can\'t be dug: remove the building first.',
+  bench: '<b>Research bench:</b> place inside the light, then pick a study with the Research button. Research waits behind more urgent orders.',
+  coke: '<b>Coke oven:</b> place anywhere on a floor. It only works while the colony has more than 16 coal, so the fires never go short.',
+  smelter: '<b>Smelter:</b> place anywhere on a floor. Dig ore under the start cave and haul it home to feed it.',
+  grate: `<b>Grate:</b> click a hearth to have a builder fit an iron grate. Costs ${GRATE_IRON} iron.`,
+  'crystal-lamp': '<b>Crystal lamp:</b> light a long tunnel or a farm with one lamp instead of three.',
+  tile: '<b>Tile:</b> click an open cell beside any floor, wall or tile, or shift-drag a line. Costs 1 stone, and digging it out gives it back. Survivors can\'t be walled in: a tile waits until its cell is empty.',
+  door: '<b>Door:</b> place on a floor with an open cell above it. Wall a space of up to 48 cells off with a door and it becomes a room: a hearth room holds its heat, a bedroom gives the best sleep, two mushroom beds make a cellar.',
   stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
@@ -85,6 +102,7 @@ function pickSurvivor(i: number) {
 const roster = new Roster(pickSurvivor);
 const strangerCard = new StrangerCard(send, TICKS_PER_SECOND);
 const colony = new ColonyScreen(send, pickSurvivor);
+const research = new ResearchPanel(send);
 
 // --- Title screen ------------------------------------------------------------
 
@@ -168,6 +186,10 @@ function announce(frame: Frame) {
       continue;
     } else if (kind === EVENT_TURNED_AWAY) {
       logLine(`<b>${strangerName}</b> walked back into the dark.`, 'people', 'info');
+      continue;
+    } else if (kind === EVENT_RESEARCH) {
+      const tech = TECHS[who];
+      if (tech) logLine(`Research done: <b>${tech.name}</b>. ${tech.unlocks}`, tech.icon, 'info');
       continue;
     } else if (kind === EVENT_COLLAPSE) {
       logLine(`A <b>${BUILDING_NAMES[who] ?? 'building'}</b> lost its floor and fell. What could be salvaged is back in the stockpile.`, 'deconstruct', 'warn');
@@ -275,6 +297,9 @@ function onFrame(event: MessageEvent<FromWorker>) {
     stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
     stat('stone', 'Stone', frame.stone, frame.stone < 2) +
     `<div data-tip="<b>Food</b>${frame.food} raw mushrooms and ${frame.meals} roast meals. Firekeepers roast mushrooms at a hearth when there is coal to spare, and roast meals lift morale.">${stat('food', 'Food', frame.meals ? `${frame.food}+${frame.meals}` : frame.food, frame.food + frame.meals < 5)}</div>` +
+    (frame.coke ? stat('coke', 'Coke', frame.coke) : '') +
+    (frame.ore || frame.iron ? stat('iron', 'Iron', frame.ore ? `${frame.iron}<small> +${frame.ore} ore</small>` : frame.iron) : '') +
+    (frame.crystal ? stat('crystal', 'Crystal', frame.crystal) : '') +
     stat('people', 'Survivors', `${alive}/${total}`, alive < total);
   roster.update(frame);
   strangerCard.update(frame);
@@ -283,6 +308,8 @@ function onFrame(event: MessageEvent<FromWorker>) {
   tutorialStep(frame);
   stuck.update(frame);
   inspector.update(frame);
+  research.update(frame);
+  showUnlocked(frame);
   world.timeScale = speed.speed;
   views.update(frame, world.overlay);
   document.body.classList.toggle('night', frame.night);
@@ -295,18 +322,35 @@ function onFrame(event: MessageEvent<FromWorker>) {
 
 // --- Tools ---------------------------------------------------------------------
 
-/** The coal and stone a building costs, as a small badge on its tool. */
-function costBadge(building?: number) {
-  const [coal, stone] = building !== undefined ? BUILD_COST[building] ?? [0, 0] : [0, 0];
-  if (!coal && !stone) return '';
-  const parts = [coal ? `${icon('coal', 10)}${coal}` : '', stone ? `${icon('stone', 10)}${stone}` : ''].filter(Boolean).join('');
-  const words = [coal ? `${coal} coal` : '', stone ? `${stone} stone` : ''].filter(Boolean).join(' and ');
-  return `<span class="cost" title="Costs ${words}">${parts}</span>`;
+/** What a building costs, as [amount, icon, word] for each good it needs. */
+function costs(building?: number, t?: Tool): [number, string, string][] {
+  if (t === 'grate') return [[GRATE_IRON, 'iron', 'iron']];
+  if (building === undefined) return [];
+  const [coal, stone] = BUILD_COST[building] ?? [0, 0];
+  const [iron, crystal] = RARE_COST[building] ?? [0, 0];
+  return ([[coal, 'coal', 'coal'], [stone, 'stone', 'stone'], [iron, 'iron', 'iron'], [crystal, 'crystal', 'crystal']] as [number, string, string][]).filter(([n]) => n > 0);
+}
+/** The goods a building costs, as a small badge on its tool. */
+function costBadge(building?: number, t?: Tool) {
+  const list = costs(building, t);
+  if (!list.length) return '';
+  const words = list.map(([n, , w]) => `${n} ${w}`).join(' and ');
+  return `<span class="cost" title="Costs ${words}">${list.map(([n, i]) => `${icon(i, 10)}${n}`).join('')}</span>`;
+}
+/** Tools that research unlocks stay hidden until then. */
+let shownKnown = -1;
+function showUnlocked(f: Frame) {
+  if (f.known === shownKnown) return;
+  shownKnown = f.known;
+  for (const t of TOOLS) {
+    if (t.tech === undefined) continue;
+    document.querySelector<HTMLElement>(`[data-tool="${t.tool}"]`)!.hidden = !knows(f, t.tech);
+  }
 }
 
 $('tools').innerHTML = TOOLS.map((t) =>
   `<button class="tool" data-tool="${t.tool}" data-tip="<b>${t.label}</b>${t.tip}">
-    <kbd>${t.key}</kbd>${costBadge(t.building)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
+    <kbd>${t.key}</kbd>${costBadge(t.building, t.tool)}${icon(t.icon, 22)}<span class="label">${t.label}</span></button>`).join('');
 $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
@@ -365,7 +409,11 @@ window.addEventListener('keydown', (e) => {
   if (key === 'escape' && colony.open) return colony.toggle(false);
   if (key === 'escape' && inspector.cell) return inspector.close();
   if (key === 'c') return colony.toggle();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', d: 'deconstruct', x: 'cancel', p: 'priority' };
+  if (key === 'r') return research.toggle();
+  const tools: Record<string, Tool> = {
+    '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'tile', '0': 'door',
+    b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
+  };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
@@ -401,14 +449,18 @@ function click(e: PointerEvent) {
 function applies(t: Tool, f: Frame, i: number) {
   const x = i % f.width, y = Math.floor(i / f.width);
   if (t === 'dig') {
-    const e = f.elements[i];
-    return (e === Element.Dirt || e === Element.Rock || e === Element.Coal) && heldUpBy(f, x, y) === undefined;
+    return isSolid(f.elements[i]) && heldUpBy(f, x, y) === undefined;
+  }
+  if (t === 'grate') {
+    if (f.buildings[i] !== Building.Hearth || f.hearthGrate[i]) return false;
+    for (let k = 0; k < f.jobs.length; k += JOB_STRIDE) if (f.jobs[k] === x && f.jobs[k + 1] === y && f.jobs[k + 2] === JOB_UPGRADE) return false;
+    return true;
   }
   if (t === 'deconstruct') return f.buildings[i] !== Building.None && f.buildings[i] !== Building.Cairn;
   // Priority repaints any order, and a hearth keeps its refuel priority even between refuels.
   if (t === 'priority' && f.buildings[i] === Building.Hearth) return true;
   for (let k = 0; k < f.jobs.length; k += JOB_STRIDE) {
-    if (f.jobs[k] === x && f.jobs[k + 1] === y && (t === 'priority' || (f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_HAUL))) return true;
+    if (f.jobs[k] === x && f.jobs[k + 1] === y && (t === 'priority' || !COLONY_JOBS.includes(f.jobs[k + 2]))) return true;
   }
   return false;
 }
@@ -497,8 +549,7 @@ function showPreview() {
 
   const name = BUILDING_NAMES[building] ?? 'building';
   const n = Math.max(placed.length, 1);
-  const [coal, stone] = BUILD_COST[building] ?? [0, 0];
-  const cost = [coal ? `${icon('coal', 12)} ${coal * n} coal` : '', stone ? `${icon('stone', 12)} ${stone * n} stone` : ''].filter(Boolean).join(' &nbsp;') || 'Free';
+  const cost = costs(building).map(([k, i, w]) => `${icon(i, 12)} ${k * n} ${w}`).join(' &nbsp;') || 'Free';
   const title = cells.length > 1 ? `${placed.length} of ${cells.length} ${name}s fit` : name[0].toUpperCase() + name.slice(1);
   const light = radius ? `<span class="note">The glow is how far its ${building === Building.Hearth ? 'light and warmth reach' : 'light reaches'} at night.</span>` : '';
   const problem = spots.find((s) => s.fit === 'bad') ?? spots.find((s) => s.fit === 'wait');

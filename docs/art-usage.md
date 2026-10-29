@@ -19,3 +19,17 @@ Ids are the asset ids in `art-codex/assets.json`; `*` matches any part of an id.
 | `icon-coal`, `icon-food`, `icon-survivors`, `icon-hearth` | Waiting on a repaint | Their inner lines turn to mush at 20 px, so the drawn line icons stay. Codex repaints them in batch 3. | The interface, once repainted |
 | `icon-hunger` | Unused | The survivor card shows food, which uses the food icon. | Nothing yet |
 | `story-1`, `story-2`, `story-3`, `story-4`, `story-5`, `story-*-back`, `story-*-mid`, `story-*-front` | Planned | The animated story intro on the menu isn't built yet. `story-6` is the title screen backdrop. | The story intro |
+| `*-pose-research` | Planned | Survivors at the research bench use the `build` strip for now; the research pose is a single painted frame that needs its own idle loop. | Survivors studying at the bench |
+| `*-pose-climb-up`, `*-pose-climb-down`, `*-pose-ladder-on`, `*-pose-ladder-off`, `building-ladder-top`, `building-ladder-middle`, `building-ladder-bottom`, `building-ladder-peg-*` | Batch 3, not imported yet | The batch 3 ladder system: tiled ladder pieces and climb poses. Needs the ladder renderer to pick pieces per cell. | The ladder rework |
+| `item-coke-pile`, `item-iron-bar-stack` | Planned | Coke and iron are made straight into stock at the oven and smelter, so they never lie on the floor. | Stockpiles that show coke and iron |
+| `item-coal-pile`, `item-stone-pile`, `item-stone-chunk`, `item-scrap-pile` | Planned | Dug piles use `item-coal-chunk`, `item-iron-ore-pile` and `item-crystal-pile`; stone piles still use the code-built heap. Scrap isn't in the game. | Bigger heaps, stone piles, salvage |
+| `building-stockpile-stone-half`, `building-stockpile-stone-full` | Planned | Stockpiles show the colony's coal only. | Stockpiles that show stone too |
+| `building-lens-bench-idle`, `building-lens-bench-working`, `icon-lens` | Planned | The crystal lamp takes raw crystal; there is no lens-grinding step yet. | A lens bench refining step |
+| `building-crystal-lamp-off` | Unused | A crystal lamp never goes out. | Nothing yet |
+| `building-heater-off`, `building-heater-on`, `icon-tech-heater` | Planned | The first research branch is coke, the grate and the crystal lamp. A heater is the next fire upgrade. | A heater tech |
+| `building-crate-*`, `building-kitchen-*`, `building-medbay-empty`, `building-door-*`, `building-water-pump-*` | Batch 3, not imported yet | Buildings for mechanics the game doesn't have yet (storage crates, cooking, a medic, doors, pumping water). | Those mechanics |
+| `creature-heat-leech-*`, `creature-burrower-*`, `creature-shade-idle`, `creature-shade-dissolve`, `refugee` | Batch 3, not imported yet | New creatures and Shade states, and the refugee arrival. | Creatures beyond the Shade, Shade polish, refugee arrivals |
+| `prop-crowbar` | Planned | Nothing pries things open yet. | Salvage |
+| `tex-ice`, `tex-gravel`, `tex-deep-rock`, `tex-backwall-1`, `tex-backwall-2`, `tex-backwall-3` | Planned | The map has one rock and one back wall. These are for the deeper layers. | Layers 2 to 5 |
+| `icon-pause`, `icon-speed`, `icon-priority`, `icon-alert`, `icon-inspect`, `icon-haul`, `icon-stone`, `icon-deconstruct`, `icon-area`, `icon-cancel-area` | Batch 3, not imported yet | The drawn line icons for these are in use; the painted ones need a pass to check they read at 14 to 22 px. | The interface |
+| `badge-*`, `trait-*` | Batch 3, not imported yet | Role badges and trait icons for the survivor cards. | The roster and the personalities work |

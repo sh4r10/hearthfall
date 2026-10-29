@@ -230,7 +230,7 @@ export class ColonyScreen {
       head = `<th>Survivor</th><th>Role</th>${SKILLS.map((s, k) => `<th><button data-col="${k}" data-tip="<b>${s.name}</b>${s.errands}. Click to raise it for everyone.">${icon(s.icon, 14)}<span>${s.name}</span></button></th>`).join('')}`;
       body = order.map((i) => {
         const c = row(f, i);
-        if (dead(c)) return `<tr class="dead">${who(i)}<td colspan="5" class="muted">${doing(c, f)}</td></tr>`;
+        if (dead(c)) return `<tr class="dead">${who(i)}<td colspan="${SKILLS.length + 1}" class="muted">${doing(c, f)}</td></tr>`;
         const role = `<select data-role="${i}" aria-label="Role for ${nameOf(c)}">${ROLES.map((r, k) => `<option value="${k}"${k === c[2] ? ' selected' : ''}>${r}</option>`).join('')}</select>`;
         return `<tr>${who(i)}<td>${role}</td>${SKILLS.map((_, k) => {
           const p = c[C_PREF + k];

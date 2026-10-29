@@ -2,8 +2,8 @@
 // what it is doing and why. It reads every frame, so the numbers stay live.
 
 import {
-  ACTIVITIES, BLOCK_REASONS, Building, C_TRAITS, CAUSES, COLONIST_STRIDE, JOB_COOK, SKILLS, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_REFUEL, JOB_STRIDE,
-  CARRY_MAX, ITEM_NAMES, Item, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROLES, SMOKY, STAT_MAX, type Frame, type ToWorker,
+  ACTIVITIES, BLOCK_REASONS, Building, C_TRAITS, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
+  CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
 import { moraleBlock, nameAt, skillCell, temperament, traitChips } from './people';
@@ -60,6 +60,7 @@ export class Inspector {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!b || !this.cell) return;
       if (b.dataset.close !== undefined) return this.close();
+      if (b.dataset.grate !== undefined) this.send({ type: 'command', tool: 'grate', x: this.cell[0], y: this.cell[1] });
       if (b.dataset.priority) this.send({ type: 'priority', x: this.cell[0], y: this.cell[1], priority: Number(b.dataset.priority) });
     });
   }
@@ -138,21 +139,52 @@ export class Inspector {
         `<h4>Skills</h4><div class="skills">${SKILLS.map((s, k) => `<div>${icon(s.icon, 14)}<span>${s.name}</span>${skillCell(c, k)}</div>`).join('')}</div>`;
     } else if (b === Building.Hearth) {
       const fuel = f.hearthFuel[i];
+      const grate = !!f.hearthGrate[i];
+      const coke = Math.min(f.hearthClean[i], fuel);
+      const burn = grate ? GRATE_BURN_TICKS : HEARTH_BURN_TICKS;
+      const reach = grate ? GRATE_RADIUS : 0;
       const lit = f.light[i] > 0 && fuel > 0;
-      title = 'Hearth';
+      const fitting = this.jobAt(f, x, y) >= 0 && f.jobs[this.jobAt(f, x, y) + 2] === JOB_UPGRADE;
+      title = grate ? 'Hearth with grate' : 'Hearth';
       glyph = 'hearth';
-      status = lit ? 'Burning' : 'Out of coal';
+      status = !lit ? 'Out of fuel' : coke > 0 ? 'Burning coke: half the smoke' : 'Burning coal';
       const pct = Math.round((fuel / HEARTH_CAPACITY) * 100);
+      // Smoke halves for the grate and again while coke burns.
+      const smoke = ['Full', 'Half', 'A quarter'][(grate ? 1 : 0) + (coke > 0 ? 1 : 0)];
       body =
         `<div class="meter ${pct < 25 ? 'bad' : pct < 50 ? 'low' : ''}"><i><b style="width:${pct}%"></b></i></div>` +
-        row('Coal inside', `${fuel} of ${HEARTH_CAPACITY}`) +
-        row('Burns', `1 coal every ${seconds(HEARTH_BURN_TICKS, this.tps)}`) +
-        row('Goes out in', lit ? seconds(fuel * HEARTH_BURN_TICKS, this.tps) : 'now') +
-        row('Warms', `${LIGHT_RADIUS_DAY} cells by day, ${LIGHT_RADIUS_NIGHT} at night`) +
-        row('Stockpile', `${f.coal} coal`) +
+        row('Fuel inside', `${fuel} of ${HEARTH_CAPACITY}${coke ? ` (${coke} from coke)` : ''}`) +
+        row('Burns', `1 fuel every ${seconds(burn, this.tps)}`) +
+        row('Goes out in', lit ? seconds(fuel * burn, this.tps) : 'now') +
+        row('Warms', `${LIGHT_RADIUS_DAY + reach} cells by day, ${LIGHT_RADIUS_NIGHT + reach} at night`) +
+        row('Smoke', smoke) +
+        row('Stockpile', `${f.coal} coal${f.coke ? `, ${f.coke} coke` : ''}`) +
         row('Cooking', f.jobs.some((_, j) => j % JOB_STRIDE === 0 && f.jobs[j] === x && f.jobs[j + 1] === y && f.jobs[j + 2] === JOB_COOK) ? 'Mushrooms on the spit' : f.food < 2 ? 'Nothing to roast' : f.coal < 25 ? 'Saving coal for the fire' : 'Enough meals for now') +
-        `<p class="note">A firekeeper tops it up once it drops below ${REFUEL_BELOW}.${f.coal === 0 ? ' <em>The stockpile is empty: dig coal.</em>' : ''}</p>` +
+        `<p class="note">A firekeeper tops it up once it drops below ${REFUEL_BELOW}, with coke first.${f.coal === 0 && f.coke === 0 ? ' <em>The stockpile is empty: dig coal.</em>' : ''}</p>` +
+        (grate || !knows(f, 2) ? '' : fitting ? `<p class="note">A builder is fitting an iron grate.</p>`
+          : `<button class="quiet grate" data-grate>${icon('grate', 14)}Fit an iron grate · ${GRATE_IRON} iron${f.iron < GRATE_IRON ? ` (have ${f.iron})` : ''}</button>`) +
         this.priorityPicker(f.refuelPriority[i] || DEFAULT_PRIORITY, 'Refuel priority');
+    } else if (b === Building.CrystalLamp) {
+      title = 'Crystal lamp'; glyph = 'crystal-lamp'; status = 'Lit';
+      body = row('Lights', `${CRYSTAL_RADIUS_DAY} cells by day, ${CRYSTAL_RADIUS_NIGHT} at night`) + '<p class="note">Keeps Shades out of a long stretch. No warmth, like any lamp.</p>';
+    } else if (b === Building.ResearchBench) {
+      title = 'Research bench'; glyph = 'research';
+      const t = f.researching;
+      status = t >= 0 ? `Studying ${TECHS[t].name}` : 'Nothing picked to study';
+      body = (t >= 0 ? row('Progress', `${f.researchPoints[t]} of ${TECHS[t].cost}`) : '') +
+        row('Known', TECHS.filter((_, k) => knows(f, k)).map((tt) => tt.name).join(', ') || 'nothing yet') +
+        '<p class="note">Pick a study with the Research button up top, or press R. Research waits behind more urgent orders, and a Researcher studies fastest.</p>';
+    } else if (b === Building.CokeOven || b === Building.Smelter) {
+      const oven = b === Building.CokeOven;
+      const working = k >= 0 && f.jobs[k + 5] === 1;
+      title = oven ? 'Coke oven' : 'Smelter'; glyph = oven ? 'coke' : 'iron';
+      const full = oven ? f.coke >= COKE_KEEP : f.iron >= IRON_KEEP;
+      const short = f.coal <= COAL_RESERVE + (oven ? 2 : 0) ? `Waiting: keeping ${COAL_RESERVE} coal for the fires` : !oven && f.ore < 2 ? 'Waiting for iron ore' : '';
+      status = working ? (oven ? 'Baking coke' : 'Smelting') : full ? `Idle: ${oven ? COKE_KEEP + ' coke' : IRON_KEEP + ' iron'} in stock is enough` : short || 'Waiting for a firekeeper';
+      body = (oven ? row('Makes', '2 coke from 3 coal') + row('Coke in stock', String(f.coke))
+        : row('Makes', '1 iron from 2 ore and 1 coal') + row('Ore in stock', String(f.ore)) + row('Iron in stock', String(f.iron))) +
+        row('Coal in stock', String(f.coal)) +
+        `<p class="note">Runs itself while there is coal to spare, and never takes the stockpile below ${COAL_RESERVE} coal.</p>`;
     } else if (b === Building.Lamp) {
       title = 'Lamp'; glyph = 'lamp'; status = 'Lit';
       body = row('Lights', `${LAMP_RADIUS_DAY} cells by day, ${LAMP_RADIUS_NIGHT} at night`) + '<p class="note">Keeps Shades out. Gives no warmth, so survivors still cool down slowly here.</p>';
@@ -181,11 +213,23 @@ export class Inspector {
     } else if (f.pileItem[i] && who < 0) {
       const what = ITEM_NAMES[f.pileItem[i]];
       const waiting = f.night && f.light[i] < DARK_BELOW;
-      title = `Pile of ${what}`; glyph = f.pileItem[i] === Item.Coal ? 'coal' : 'stone';
+      title = `Pile of ${what}`; glyph = ({ [Item.Coal]: 'coal', [Item.Ore]: 'ore', [Item.Crystal]: 'crystal' } as Record<number, string>)[f.pileItem[i]] ?? 'stone';
       status = !f.buildings.includes(Building.Stockpile) ? 'No stockpile to take it to' : waiting ? 'In the dark: it waits for dawn' : 'Waiting for a hauler';
       body = row('Amount', `${f.pileAmount[i]} ${what}`) + row('Trips', String(Math.ceil(f.pileAmount[i] / CARRY_MAX)));
     } else if (b === Building.Ladder) {
       title = 'Ladder'; glyph = 'ladder'; status = 'Survivors climb it';
+    } else if (b === Building.Door || (y + 1 < f.height && f.buildings[i + f.width] === Building.Door)) {
+      const base = b === Building.Door ? i : i + f.width;
+      let inDoor = false;
+      for (let s = 0; s < f.colonists.length; s += COLONIST_STRIDE) {
+        const at = f.colonists[s + 1] * f.width + f.colonists[s];
+        if ((at === base || at === base - f.width) && f.colonists[s + 3] !== 5) inDoor = true;
+      }
+      title = 'Door'; glyph = 'door'; status = inDoor ? 'Open: someone is in the doorway' : 'Closed';
+      const sides = [base - 1, base + 1].filter((c) => c >= 0 && c < f.rooms.length).map((c) => f.rooms[c]).filter((r) => r !== ROOM_NONE);
+      body = row('Lets through', 'Survivors only. Smoke and Shades stay out.') +
+        row('Closes off', sides.length ? sides.map((r) => ROOM_NAMES[r]).join(' and ') : 'nothing yet') +
+        (sides.length ? '' : `<p class="note">Wall off a space of up to ${ROOM_MAX_CELLS} cells on one side of it to make a room.</p>`);
     } else if (b === Building.Cairn) {
       let dead = -1;
       for (let s = 0; s < f.colonists.length / COLONIST_STRIDE; s++) {
@@ -200,7 +244,10 @@ export class Inspector {
         [Element.Coal]: ['Coal seam', 'coal', 'Digging it gives 4 coal.'],
         [Element.Rock]: ['Rock', 'stone', 'Digging it gives 3 stone.'],
         [Element.Dirt]: ['Dirt', 'stone', 'Digging it gives 1 stone.'],
+        [Element.Iron]: ['Iron ore', 'ore', 'Digging it gives 2 iron ore, for a smelter.'],
+        [Element.Crystal]: ['Crystal', 'crystal', 'Digging it gives 1 crystal, for a crystal lamp.'],
         [Element.Water]: ['Water', 'depth', 'Flows down and pools. Survivors can\'t walk through it.'],
+        [Element.Tile]: ['Stone tile', 'tile', 'Laid by survivors. Dig it to take it down and get the stone back.'],
       };
       const w = what[e];
       if (w) [title, glyph, status] = w;
@@ -208,7 +255,12 @@ export class Inspector {
       else return this.close();
     }
 
-    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_COOK) {
+    const room = f.rooms[i];
+    if (room !== ROOM_NONE && b !== Building.Door) {
+      body += `<h4>${ROOM_NAMES[room]}</h4><p class="note">${ROOM_EFFECTS[room]}</p>`;
+    }
+
+    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
       const [kind, , progress, claimed, priority, blocked] = [f.jobs[k + 2], f.jobs[k + 3], f.jobs[k + 4], f.jobs[k + 5], f.jobs[k + 6], f.jobs[k + 7]];
       const name = JOB_NAMES[kind];
       body += `<h4>Order: ${name}</h4>` +

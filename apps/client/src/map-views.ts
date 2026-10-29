@@ -23,7 +23,8 @@ const LEGENDS: Record<MapView['overlay'], (night: boolean) => string> = {
     swatch('lamp', '<b>Lamp light.</b> Shades keep out, but it is cold.') +
     swatch('dark', '<b>Dark.</b> Survivors freeze, and Shades hunt at night.') +
     (night ? '' : swatch('shrink', '<b>Goes cold tonight.</b> The fire reaches less far after dark.')) +
-    swatch('coal', '<b>Coal.</b> Dig it to keep the fire going.'),
+    swatch('coal', '<b>Coal.</b> Dig it to keep the fire going.') +
+    swatch('room', '<b>Rooms.</b> Outlined where walls and a door close a space off. Amber holds the heat, violet is a bedroom, teal a mushroom cellar.'),
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

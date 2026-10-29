@@ -449,7 +449,8 @@ fn the_start_room_is_sealed_with_coal_in_its_walls() {
 
 #[test]
 fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
-    let mut sim = sealed_room(4, 64, (10, 30, 54, 30));
+    // Wider than a room can be (48 cells), so the corridor doesn't hold the heat.
+    let mut sim = sealed_room(4, 64, (6, 30, 58, 30));
     let centre = sim.idx(32, 30);
     sim.buildings[centre] = Building::Hearth;
     sim.hearth_fuel[centre] = 40;
@@ -459,7 +460,7 @@ fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
     sim.colonists[0].role = sim::Role::Digger;
     // A dig far out in the dark, past the firelight. Once they are at work
     // there, the cold gets to them.
-    sim.step(&[Command::Dig { x: 55, y: 30 }]);
+    sim.step(&[Command::Dig { x: 59, y: 30 }]);
     let (mut turned_back, mut warmed) = (false, false);
     for _ in 0..600 {
         sim.step(&[]);
@@ -473,6 +474,13 @@ fn a_cold_survivor_drops_work_and_goes_back_to_the_fire() {
         if turned_back && sim.is_warm(sim.idx(c.x, c.y)) {
             warmed = true;
         }
+    }
+    // The walk is long, so let the current trip back finish before looking.
+    for _ in 0..400 {
+        if sim.colonists[0].heading != sim::HEADING_WARM && sim.is_warm(sim.idx(sim.colonists[0].x, sim.colonists[0].y)) {
+            break;
+        }
+        sim.step(&[]);
     }
     let c = &sim.colonists[0];
     assert!(turned_back, "never headed back to the fire");
@@ -622,4 +630,41 @@ fn smoke_pools_under_the_ceiling_and_a_vent_clears_it() {
     }
     assert_eq!(sim.smoke[ceiling], 0);
     assert!(sim.smoke[beside] < before / 2, "the ceiling should drain towards the vent: {} -> {}", before, sim.smoke[beside]);
+}
+
+#[test]
+fn a_walled_pocket_with_a_door_becomes_a_room_that_holds_the_heat() {
+    // A long, two-tall sealed cave: hearth on the left, survivors beside it,
+    // and a pocket on the right that one two-tall door closes off.
+    let mut sim = sealed_room(5, 64, (4, 29, 44, 30));
+    let hearth = sim.idx(24, 30);
+    sim.buildings[hearth] = Building::Hearth;
+    sim.hearth_fuel[hearth] = 40;
+    sim.coal = 500;
+    sim.stone = 500;
+    for (c, x) in [(0, 22), (1, 26)] {
+        sim.colonists[c].x = x;
+        sim.colonists[c].y = 30;
+    }
+    // A door at (36, 30) fills (36, 29) too; a tile laid in mid-air beside the floor at (30, 29).
+    sim.step(&[Command::Build { x: 36, y: 30, building: Building::Door }, Command::Build { x: 30, y: 29, building: Building::Tile }]);
+    for _ in 0..1500 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.elements[sim.idx(30, 29)], Element::Tile, "tiles get built, and need no floor");
+    assert_eq!(sim.buildings[sim.idx(36, 30)], Building::Door, "the door gets built");
+    // The pocket (37..=44, 29..=30) is 16 cells: a plain room. The 64-cell side is no room.
+    let inside = sim.idx(40, 29);
+    assert_eq!(sim.room_kind[inside], sim::ROOM_PLAIN, "the closed-off pocket is a room");
+    assert_eq!(sim.room_kind[sim.idx(20, 29)], sim::ROOM_NONE, "the open cave is too big to be one");
+    assert!(sim.smoke[inside] < 20, "the door keeps the smoke out: {}", sim.smoke[inside]);
+    // Put a hearth in the pocket and it holds the heat right to the far wall.
+    let second = sim.idx(38, 30);
+    sim.buildings[second] = Building::Hearth;
+    sim.hearth_fuel[second] = 40;
+    for _ in 0..20 {
+        sim.step(&[]);
+    }
+    assert_eq!(sim.room_kind[inside], sim::ROOM_HEARTH);
+    assert!(sim.is_warm(sim.idx(44, 29)), "every cell of a hearth room is warm");
 }

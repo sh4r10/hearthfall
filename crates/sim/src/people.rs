@@ -22,7 +22,9 @@ pub const SKILL_BUILD: usize = 1;
 /// Refuelling hearths and cooking.
 pub const SKILL_FIRE: usize = 2;
 pub const SKILL_HAUL: usize = 3;
-pub const SKILLS: usize = 4;
+/// Study at the research bench.
+pub const SKILL_RESEARCH: usize = 4;
+pub const SKILLS: usize = 5;
 /// No skill goes past this level.
 pub const MAX_LEVEL: i32 = 10;
 /// Experience for level `n` is `LEVEL_XP * n * (n + 1) / 2`: level 1 after
@@ -49,16 +51,17 @@ impl JobKind {
     pub fn skill(self) -> usize {
         match self {
             JobKind::Dig => SKILL_DIG,
-            JobKind::Build(_) | JobKind::Deconstruct => SKILL_BUILD,
-            JobKind::Refuel | JobKind::Cook => SKILL_FIRE,
+            JobKind::Build(_) | JobKind::Deconstruct | JobKind::Upgrade => SKILL_BUILD,
+            JobKind::Refuel | JobKind::Cook | JobKind::Refine => SKILL_FIRE,
             JobKind::Haul => SKILL_HAUL,
+            JobKind::Research => SKILL_RESEARCH,
         }
     }
 }
 
 /// The role that leans on each skill.
 pub fn skill_role(skill: usize) -> Role {
-    [Role::Digger, Role::Builder, Role::Firekeeper, Role::Hauler][skill]
+    [Role::Digger, Role::Builder, Role::Firekeeper, Role::Hauler, Role::Researcher][skill]
 }
 
 // --- Errand preferences ----------------------------------------------------------
@@ -133,6 +136,8 @@ pub const SLEPT_FLOOR_DARK: u8 = 1;
 pub const SLEPT_FLOOR_LIT: u8 = 2;
 pub const SLEPT_BED_DARK: u8 = 3;
 pub const SLEPT_BED_LIT: u8 = 4;
+/// In a bed in a bedroom: a closed room with no fire (see `crate::ROOM_BEDROOM`).
+pub const SLEPT_BEDROOM: u8 = 5;
 
 // --- Arrivals ----------------------------------------------------------------------
 
@@ -141,9 +146,9 @@ pub const REFUGEE_FIRST_DAY: u64 = 3;
 /// A stranger only asks to join a colony with this much food to spare.
 pub const REFUGEE_FOOD: i32 = 5;
 /// [`crate::Event::kind`] for a stranger at the edge of the light, waiting for an answer.
-pub const EVENT_STRANGER: u8 = 6;
+pub const EVENT_STRANGER: u8 = 7;
 /// [`crate::Event::kind`] for a stranger turned away, or tired of waiting at nightfall.
-pub const EVENT_TURNED_AWAY: u8 = 7;
+pub const EVENT_TURNED_AWAY: u8 = 8;
 
 /// Who someone is beyond their role: rolled once when they appear.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -261,6 +266,7 @@ impl Sim {
             _ => 0,
         };
         p[MORALE_SLEEP] = match col.slept {
+            SLEPT_BEDROOM => 3,
             SLEPT_BED_LIT => 2,
             SLEPT_BED_DARK => 1,
             SLEPT_FLOOR_DARK if !col.has(TRAIT_SOUND_SLEEPER) => -1,
