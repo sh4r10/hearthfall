@@ -31,6 +31,8 @@ function sendFrame(s: WebSim) {
     coal: s.coal(),
     stone: s.stone(),
     food: s.food(),
+    meals: s.meals(),
+    stranger: s.stranger(),
     night: s.is_night(),
     elements: s.elements(),
     buildings: s.buildings(),
@@ -48,7 +50,7 @@ function sendFrame(s: WebSim) {
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.colonists, frame.jobs, frame.events, frame.shades].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.colonists, frame.jobs, frame.events, frame.shades, frame.stranger].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -91,6 +93,10 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
     sim.build(msg.x, msg.y, msg.building);
   } else if (msg.type === 'role' && sim) {
     sim.set_role(msg.colonist, msg.role);
+  } else if (msg.type === 'answer') {
+    sim.answer_stranger(msg.accept);
+  } else if (msg.type === 'pref') {
+    sim.set_pref(msg.colonist, msg.skill, msg.pref);
   } else if (msg.type === 'priority' && sim) {
     sim.set_priority(msg.x, msg.y, msg.priority);
   }

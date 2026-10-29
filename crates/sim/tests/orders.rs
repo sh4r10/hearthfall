@@ -10,7 +10,7 @@ fn higher_priority_orders_go_first() {
     sim.step(&[Command::Dig { x: near.0, y: near.1 }, Command::Dig { x: far.0, y: far.1 }, Command::SetPriority { x: far.0, y: far.1, priority: 9 }]);
     let first_claimed = (0..200).find_map(|_| {
         sim.step(&[]);
-        sim.jobs.iter().find(|j| j.claimed_by.is_some()).map(|j| (j.x, j.y))
+        sim.jobs.iter().find(|j| j.claimed_by.is_some() && j.kind == sim::JobKind::Dig).map(|j| (j.x, j.y))
     });
     assert_eq!(first_claimed, Some(far));
 }

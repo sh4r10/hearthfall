@@ -14,6 +14,8 @@ pub enum JobKind {
     Deconstruct,
     /// Pick up a pile of dug goods and carry it to a stockpile.
     Haul,
+    /// Roast raw rations at a lit hearth into better meals; see `people::COOK_RAW`.
+    Cook,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,6 +101,7 @@ impl JobKind {
             JobKind::Refuel => Role::Firekeeper,
             JobKind::Deconstruct => Role::Builder,
             JobKind::Haul => Role::Hauler,
+            JobKind::Cook => Role::Firekeeper,
         }
     }
 
@@ -109,24 +112,37 @@ impl JobKind {
             JobKind::Refuel => 2,
             JobKind::Deconstruct => 3,
             JobKind::Haul => 4,
+            // 5 to 7 are kept for research and refining.
+            JobKind::Cook => 8,
         }
     }
 }
 
 impl Sim {
     pub(crate) fn add_job(&mut self, x: u32, y: u32, kind: JobKind) {
-        // A haul shares its cell with any order: a pile lying there blocks nothing.
-        if self.jobs.iter().any(|j| j.x == x && j.y == y && (j.kind == JobKind::Haul) == (kind == JobKind::Haul)) {
+        // A haul shares its cell with any order: a pile lying there blocks
+        // nothing. Cooking shares its hearth with refuelling, so it never keeps the fire waiting.
+        let lane = |k: JobKind| match k {
+            JobKind::Haul => 1,
+            JobKind::Cook => 2,
+            _ => 0,
+        };
+        if self.jobs.iter().any(|j| j.x == x && j.y == y && lane(j.kind) == lane(kind)) {
             return;
         }
         let id = self.next_job_id;
         self.next_job_id += 1;
-        let priority = if kind == JobKind::Refuel { self.refuel_priority[self.idx(x, y)] } else { DEFAULT_PRIORITY };
+        // Cooking can wait: it sits a step under ordinary orders, and under the fire it cooks on.
+        let priority = match kind {
+            JobKind::Refuel => self.refuel_priority[self.idx(x, y)],
+            JobKind::Cook => DEFAULT_PRIORITY - 1,
+            _ => DEFAULT_PRIORITY,
+        };
         self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul)) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Cook)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -257,6 +273,7 @@ impl Sim {
             JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
             JobKind::Deconstruct => removable(self.buildings[i]),
             JobKind::Haul => self.haul_doable(i),
+            JobKind::Cook => self.buildings[i] == Building::Hearth && self.hearth_lit(i) && self.food >= crate::people::COOK_RAW && self.coal > 0,
         }
     }
 
@@ -276,6 +293,7 @@ impl Sim {
             },
             // Scooping up a pile; the walk to the stockpile comes after.
             JobKind::Haul => 15,
+            JobKind::Cook => 60,
         }
     }
 
@@ -312,6 +330,11 @@ impl Sim {
             JobKind::Deconstruct => self.take_down(i),
             // The colonist picks the pile up; see `Sim::pick_up`.
             JobKind::Haul => {}
+            JobKind::Cook => {
+                self.food -= crate::people::COOK_RAW;
+                self.coal -= 1;
+                self.meals += crate::people::COOK_MEALS;
+            }
         }
     }
 
@@ -327,6 +350,7 @@ impl Sim {
                 }
             }
         }
+        self.raise_cook_job();
         let mut k = 0;
         while k < self.jobs.len() {
             let job = &self.jobs[k];
@@ -334,7 +358,7 @@ impl Sim {
                 JobKind::Dig => !self.elements[self.idx(job.x, job.y)].is_diggable(),
                 // Ground dug out from under a planned building drops the plan.
                 JobKind::Build(b) => self.buildings[self.idx(job.x, job.y)] != Building::None || !self.fits(job.x, job.y, b),
-                JobKind::Refuel => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
+                JobKind::Refuel | JobKind::Cook => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
                 JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
                 JobKind::Haul => self.pile_amount[self.idx(job.x, job.y)] <= 0,
             };

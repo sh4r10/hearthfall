@@ -1,19 +1,19 @@
 import { WorldView, type Overlay } from './world-view';
 import {
-  ACTIVITIES, heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRIDE, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, JOB_NAMES, ROLES, STAT_MAX, type Frame, type FromWorker, type Tool, type ToWorker,
+  heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, DAY_TICKS, Element, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, HEARTH_COST, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
 import { MAP_VIEWS, MapViews } from './map-views';
 import { PriorityBrush, SpeedControl, StuckOrders } from './management';
-import { Inspector, NEEDS, doing, needBar } from './inspect';
+import { Inspector } from './inspect';
+import { ColonyScreen, Roster, StrangerCard, nameAt, nameOf } from './people';
 import { BUILDING_NAMES, judge, lightFrom, line, nightRadius, refusal, type Spot } from './placement';
 import SimWorker from './sim.worker.ts?worker&inline';
 
 const TICKS_PER_SECOND = 10;
 const MAP_WIDTH = 160;
 const MAP_HEIGHT = 110;
-const NAMES = ['Esk', 'Mara', 'Tobin', 'Ostra', 'Pim', 'Ruta', 'Juno', 'Wren']; // the cast in the art brief, in art order
 const NIGHT_AT = (DAY_TICKS * 6) / 10;
 
 interface ToolInfo { tool: Tool; key: string; label: string; icon: string; tip: string; building?: number }
@@ -48,7 +48,6 @@ const $ = (id: string) => document.getElementById(id)!;
 const canvas = $('game') as HTMLCanvasElement;
 const stats = $('stats');
 const clock = $('clock');
-const roster = $('roster');
 const hint = $('hint');
 const tooltip = $('tooltip');
 const world = new WorldView(canvas);
@@ -64,7 +63,7 @@ let drag: { x: number; y: number; vx: number; vy: number; moved: boolean; box?: 
 let pointer: { x: number; y: number } | undefined;
 const speed = new SpeedControl(send);
 const brush = new PriorityBrush();
-const inspector = new Inspector(NAMES, TICKS_PER_SECOND, send, () => { world.select(); hint.hidden = false; });
+const inspector = new Inspector(TICKS_PER_SECOND, send, () => { world.select(); hint.hidden = false; });
 function inspect(x: number, y: number) {
   if (!last) return;
   inspector.open(x, y, last);
@@ -72,6 +71,20 @@ function inspect(x: number, y: number) {
   hint.hidden = true;
 }
 const stuck = new StuckOrders(world, inspect);
+/** Find survivor `i`: centre the camera on them and follow them in the inspect panel. */
+function pickSurvivor(i: number) {
+  if (!last) return;
+  const o = i * COLONIST_STRIDE;
+  const p = world.cellToWorld(last.colonists[o], last.colonists[o + 1]);
+  world.view.x = p.x;
+  world.view.y = p.y;
+  inspector.openSurvivor(i, last);
+  world.select([last.colonists[o], last.colonists[o + 1]]);
+  hint.hidden = true;
+}
+const roster = new Roster(pickSurvivor);
+const strangerCard = new StrangerCard(send, TICKS_PER_SECOND);
+const colony = new ColonyScreen(send, pickSurvivor);
 
 // --- Title screen ------------------------------------------------------------
 
@@ -105,7 +118,7 @@ function start() {
   const title = $('title');
   title.classList.add('leaving');
   setTimeout(() => (title.hidden = true), 900);
-  for (const id of ['top', 'roster', 'toolbar', 'hint', 'log']) $(id).hidden = false;
+  for (const id of ['top', 'roster', 'colony-open', 'toolbar', 'hint', 'log']) $(id).hidden = false;
   worker = new SimWorker();
   worker.onerror = (e) => console.error('sim worker failed:', e.message);
   worker.onmessage = onFrame;
@@ -123,53 +136,19 @@ function stat(name: string, label: string, value: string | number, warn = false)
   return `<div class="stat${warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}</b></div></div>`;
 }
 
-function renderRoster(frame: Frame) {
-  const count = frame.colonists.length / COLONIST_STRIDE;
-  if (roster.childElementCount !== count) {
-    roster.innerHTML = Array.from({ length: count }, (_, i) => {
-      const portrait = artUrl(`survivor-${i % 2}-portrait`);
-      return `
-      <article class="survivor" data-i="${i}">
-        <header>
-          <div class="portrait" style="${portrait ? `background-image:url(${portrait})` : ''}"></div>
-          <div class="who">
-            <h3>${NAMES[i % NAMES.length]}</h3>
-            <select id="role-${i}" aria-label="Role for ${NAMES[i % NAMES.length]}">
-              ${ROLES.map((r, k) => `<option value="${k}">${r}</option>`).join('')}
-            </select>
-          </div>
-        </header>
-        <p class="doing"></p>
-        <div class="needs"></div>
-      </article>`;
-    }).join('');
-    roster.querySelectorAll('select').forEach((sel, i) =>
-      sel.addEventListener('change', () => send({ type: 'role', colonist: i, role: Number(sel.value) })));
-  }
-  roster.querySelectorAll<HTMLElement>('.survivor').forEach((card, i) => {
-    const c = frame.colonists.subarray(i * COLONIST_STRIDE, (i + 1) * COLONIST_STRIDE);
-    const activity = ACTIVITIES[c[3]];
-    const sel = card.querySelector('select')!;
-    if (document.activeElement !== sel) sel.value = String(c[2]);
-    const dead = activity === 'Dead';
-    card.classList.toggle('dead', dead);
-    card.classList.toggle('struggling', !dead && NEEDS.some(([, o]) => c[o] < STAT_MAX / 4));
-    card.querySelector('.doing')!.textContent = doing(c, frame);
-    card.querySelector('.needs')!.innerHTML = NEEDS.map(([label, o, name]) => needBar(label, c[o], name)).join('');
-  });
-}
-
 // --- Event log -----------------------------------------------------------------
 
 const log = $('log');
 let lastEventTick = -1;
+/** The last stranger's name, for the line when they leave. */
+let strangerName = 'The stranger';
 /** Announces new sim events (deaths so far) in the log; each line fades after a while. */
 function announce(frame: Frame) {
   for (let i = 0; i < frame.events.length; i += EVENT_STRIDE) {
     const [tick, kind, who] = [frame.events[i], frame.events[i + 1], frame.events[i + 2]];
     if (tick <= lastEventTick) continue;
     lastEventTick = tick;
-    const name = NAMES[who % NAMES.length];
+    const name = who < frame.colonists.length / COLONIST_STRIDE ? nameAt(frame, who) : '';
     let text: string, glyph: string;
     if (kind === EVENT_DEATH) {
       text = `<b>${name}</b> ${CAUSES[frame.colonists[who * COLONIST_STRIDE + 12]] ?? 'died'} on day ${Math.floor(tick / DAY_TICKS) + 1}.`;
@@ -181,7 +160,14 @@ function announce(frame: Frame) {
       logLine('Smoke is gathering under the ceiling. Dig a flue up from the fire, or build a <b>vent</b> where it pools.', 'vent', 'warn');
       continue;
     } else if (kind === EVENT_ARRIVAL) {
-      logLine(`<b>${name}</b> followed the firelight down to you.`, 'people', 'info');
+      logLine(`<b>${name}</b> joins the colony.`, 'people', 'info');
+      continue;
+    } else if (kind === EVENT_STRANGER) {
+      if (frame.stranger.length) strangerName = nameOf(frame.stranger);
+      logLine(`<b>${strangerName}</b> followed the firelight down and asks to join. They leave at nightfall.`, 'people', 'info');
+      continue;
+    } else if (kind === EVENT_TURNED_AWAY) {
+      logLine(`<b>${strangerName}</b> walked back into the dark.`, 'people', 'info');
       continue;
     } else if (kind === EVENT_COLLAPSE) {
       logLine(`A <b>${BUILDING_NAMES[who] ?? 'building'}</b> lost its floor and fell. What could be salvaged is back in the stockpile.`, 'deconstruct', 'warn');
@@ -201,7 +187,7 @@ function logLine(html: string, glyph: string, tone: 'danger' | 'warn' | 'info' =
   setTimeout(() => line.remove(), stay + 1000);
 }
 
-const views = new MapViews(NAMES, logLine);
+const views = new MapViews(nameAt, logLine);
 
 // --- First-night tutorial ------------------------------------------------------
 
@@ -211,7 +197,7 @@ const TUTORIAL: { text: string; tool?: Tool; done: (f: Frame) => boolean }[] = [
     done: (f) => { for (let i = 0; i < f.jobs.length; i += JOB_STRIDE) if (f.jobs[i + 2] === 0) return true; return false; } },
   { text: 'Shades come out of the dark at night. <b>Build a lamp</b> in a tunnel to keep them out of it.', tool: 'lamp',
     done: (f) => f.buildings.includes(Building.Lamp) || hasBuildJob(f, Building.Lamp) },
-  { text: 'Tired survivors work slowly, and refugees only join a colony with a spare bed. <b>Build a bed</b> inside the light.', tool: 'bed',
+  { text: 'Tired survivors work slowly, and strangers only ask to join a colony with a spare bed. <b>Build a bed</b> inside the light.', tool: 'bed',
     done: (f) => f.buildings.includes(Building.Bed) || hasBuildJob(f, Building.Bed) },
   { text: 'Keep everyone in the light and the fire fed, and <b>get through the first night</b>.',
     done: (f) => f.tick >= DAY_TICKS },
@@ -243,7 +229,7 @@ function tutorialStep(frame: Frame) {
   if (!TUTORIAL[step].done(frame)) return;
   step++;
   if (step >= TUTORIAL.length) {
-    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Keep a spare bed and food ready: from day 3, refugees follow the firelight down to you. The Deep Hearth is five layers below.</p>';
+    tutorial.innerHTML = '<small>First night</small><p><b>You made it to dawn.</b> Keep a spare bed and food ready: from day 3, strangers follow the firelight down and ask to join. Press <b>C</b> to see your colony. The Deep Hearth is five layers below.</p>';
     setTimeout(endTutorial, 8000);
   } else showStep();
 }
@@ -288,9 +274,11 @@ function onFrame(event: MessageEvent<FromWorker>) {
   stats.innerHTML =
     stat('coal', 'Coal', frame.coal, frame.coal < HEARTH_COST) +
     stat('stone', 'Stone', frame.stone, frame.stone < 2) +
-    stat('food', 'Food', frame.food, frame.food < 5) +
+    `<div data-tip="<b>Food</b>${frame.food} raw mushrooms and ${frame.meals} roast meals. Firekeepers roast mushrooms at a hearth when there is coal to spare, and roast meals lift morale.">${stat('food', 'Food', frame.meals ? `${frame.food}+${frame.meals}` : frame.food, frame.food + frame.meals < 5)}</div>` +
     stat('people', 'Survivors', `${alive}/${total}`, alive < total);
-  renderRoster(frame);
+  roster.update(frame);
+  strangerCard.update(frame);
+  colony.update(frame);
   renderDepth(frame);
   tutorialStep(frame);
   stuck.update(frame);
@@ -323,18 +311,24 @@ $('overlays').innerHTML = MAP_VIEWS.map((o) =>
   `<button class="tool" data-overlay="${o.overlay}" data-tip="<b>${o.label}</b>${o.tip}"${views.isOpen(o.overlay) ? '' : ' hidden'}>
     <kbd>${o.key}</kbd>${icon(o.icon, 22)}<span class="label">${o.label}</span></button>`).join('');
 
-document.querySelectorAll<HTMLElement>('[data-tip]').forEach((el) => {
-  el.addEventListener('pointerenter', () => {
-    if (!el.dataset.tip) return;
-    tooltip.innerHTML = el.dataset.tip;
-    tooltip.hidden = false;
-    const r = el.getBoundingClientRect();
-    const t = tooltip.getBoundingClientRect();
-    tooltip.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8)}px`;
-    // Above the button, or below it for the top bar.
-    tooltip.style.top = `${r.top - t.height - 10 < 8 ? r.bottom + 10 : r.top - t.height - 10}px`;
-  });
-  el.addEventListener('pointerleave', () => (tooltip.hidden = true));
+// Tooltips for anything with a data-tip, including rows drawn after start.
+let tipFor: HTMLElement | undefined;
+document.addEventListener('pointerover', (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
+  if (el === tipFor) return;
+  tipFor = el ?? undefined;
+  if (!el || !el.dataset.tip) {
+    if (!tooltip.dataset.cursor) tooltip.hidden = true;
+    return;
+  }
+  delete tooltip.dataset.cursor;
+  tooltip.innerHTML = el.dataset.tip;
+  tooltip.hidden = false;
+  const r = el.getBoundingClientRect();
+  const t = tooltip.getBoundingClientRect();
+  tooltip.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8)}px`;
+  // Above the element, or below it near the top of the screen.
+  tooltip.style.top = `${r.top - t.height - 10 < 8 ? r.bottom + 10 : r.top - t.height - 10}px`;
 });
 
 function selectButton(attr: string, value: string) {
@@ -368,7 +362,9 @@ window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
   // With the Priority tool out, the number keys pick the level instead of a tool.
   if (tool === 'priority' && /^[1-9]$/.test(key)) return brush.set(Number(key));
+  if (key === 'escape' && colony.open) return colony.toggle(false);
   if (key === 'escape' && inspector.cell) return inspector.close();
+  if (key === 'c') return colony.toggle();
   const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', d: 'deconstruct', x: 'cancel', p: 'priority' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };

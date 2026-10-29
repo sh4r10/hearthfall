@@ -8,6 +8,10 @@ export type ToWorker =
   /** Order any building by its Building number, e.g. Building.Lamp or Building.Bed. */
   | { type: 'build'; building: number; x: number; y: number }
   | { type: 'role'; colonist: number; role: number }
+  /** Take in or turn away the stranger waiting at the edge of the light. */
+  | { type: 'answer'; accept: boolean }
+  /** How keen a survivor is on a group of errands (by skill): one of PREF_*. */
+  | { type: 'pref'; colonist: number; skill: number; pref: number }
   /** Set the priority (1 to 9) of the order on a cell. */
   | { type: 'priority'; x: number; y: number; priority: number }
   /** Ticks per second as a multiple of the normal rate; 0 pauses. */
@@ -21,7 +25,12 @@ export interface Frame {
   height: number;
   coal: number;
   stone: number;
+  /** Raw rations. */
   food: number;
+  /** Roast meals, cooked at a hearth and eaten first. */
+  meals: number;
+  /** The stranger waiting to be taken in, one COLONIST_STRIDE row, or empty. */
+  stranger: Int32Array;
   night: boolean;
   elements: Uint8Array;
   buildings: Uint8Array;
@@ -51,7 +60,7 @@ export interface Frame {
 
 export type FromWorker = Frame;
 
-export const COLONIST_STRIDE = 15;
+export const COLONIST_STRIDE = 42;
 export const JOB_STRIDE = 8;
 export const EVENT_STRIDE = 3;
 export const SHADE_STRIDE = 3;
@@ -62,6 +71,9 @@ export const EVENT_SHADE_ATTACK = 2;
 export const EVENT_COLLAPSE = 3;
 export const EVENT_ARRIVAL = 4;
 export const EVENT_SMOKE = 5;
+/** A stranger waits at the edge of the light for an answer; gone at nightfall. */
+export const EVENT_STRANGER = 6;
+export const EVENT_TURNED_AWAY = 7;
 /** A cell is smoky from this much smoke (SMOKY / SMOKE_MAX of 255). */
 export const SMOKY = 102;
 /** Shade states, matching sim::SHADE_*. */
@@ -87,9 +99,53 @@ export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.S
 export const CARRY_MAX = 10;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper', 'Hauler'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
-export const JOB_NAMES = ['digging', 'building', 'refuelling a hearth', 'taking a building down', 'hauling goods'] as const;
 /** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
-export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4;
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_COOK = 8;
+export const JOB_NAMES: Record<number, string> = {
+  [JOB_DIG]: 'digging', [JOB_BUILD]: 'building', [JOB_REFUEL]: 'refuelling a hearth', [JOB_DECONSTRUCT]: 'taking a building down', [JOB_HAUL]: 'hauling goods', [JOB_COOK]: 'roasting mushrooms',
+};
+
+// --- Who survivors are: see crates/sim/src/people.rs --------------------------------
+
+/** Offsets into a colonist row after the first 15 fields; must match row() in crates/sim-wasm. */
+export const C_WHO = 15, C_TRAITS = 16, C_KNACK = 17, C_LEVEL = 18, C_PROGRESS = 22, C_PREF = 26, C_MORALE = 30, C_EXPECT = 31, C_PARTS = 32, C_MEAL = 39, C_COLD_AT = 40, C_EAGER = 41;
+/** The cast, in art order; must match people::CAST. */
+export const CAST = ['Esk', 'Mara', 'Tobin', 'Ostra', 'Pim', 'Ruta'] as const;
+/** Skills, one per errand group; must match the SKILL_ indexes. */
+export const SKILLS = [
+  { name: 'Digging', icon: 'dig', errands: 'Digging rock, dirt and coal' },
+  { name: 'Building', icon: 'ladder', errands: 'Building and taking buildings down' },
+  { name: 'Firekeeping', icon: 'hearth', errands: 'Feeding hearths and roasting mushrooms' },
+  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile' },
+] as const;
+export const MAX_LEVEL = 10;
+/** Errand preferences; must match people::PREF_*. */
+export const PREF_OFF = 0, PREF_LOW = 1, PREF_NORMAL = 2, PREF_HIGH = 3;
+export const PREF_NAMES = ['Off', 'Low', 'Normal', 'High'] as const;
+/** Trait bits, matching people::TRAIT_*, with what each does in play. */
+export const TRAITS: { bit: number; name: string; good: boolean; does: string }[] = [
+  { bit: 1 << 0, name: 'Iron lungs', good: true, does: 'Smoke never bothers them.' },
+  { bit: 1 << 1, name: 'Frostborn', good: true, does: 'Loses warmth a quarter slower in the dark.' },
+  { bit: 1 << 2, name: 'Quick learner', good: true, does: 'Skills grow twice as fast.' },
+  { bit: 1 << 3, name: 'Hard worker', good: true, does: 'Works a little faster at everything.' },
+  { bit: 1 << 4, name: 'Cheerful', good: true, does: '+2 morale, always.' },
+  { bit: 1 << 5, name: 'Sound sleeper', good: true, does: 'Sleeps well anywhere, even on cold rock.' },
+  { bit: 1 << 6, name: 'Light eater', good: true, does: 'Gets hungry a quarter slower.' },
+  { bit: 1 << 7, name: 'Night owl', good: true, does: 'Works faster at night and stays up later. The dark bothers them less.' },
+  { bit: 1 << 8, name: 'Afraid of the dark', good: false, does: 'The dark costs twice the morale.' },
+  { bit: 1 << 9, name: 'Big appetite', good: false, does: 'Gets hungry a quarter faster.' },
+  { bit: 1 << 10, name: 'Gloomy', good: false, does: '-2 morale, always.' },
+  { bit: 1 << 11, name: 'Dawdler', good: false, does: 'Works a little slower at everything.' },
+  { bit: 1 << 12, name: 'Light sleeper', good: false, does: 'Sleeps badly anywhere but a bed.' },
+  { bit: 1 << 13, name: 'Picky eater', good: false, does: 'Raw mushrooms cost them morale. Wants them roasted.' },
+  { bit: 1 << 14, name: 'Thin-blooded', good: false, does: 'Loses warmth a quarter faster in the dark.' },
+];
+/** Morale parts in people::MORALE_ order. */
+export const MORALE_PARTS = ['Food', 'Sleep', 'By the fire', 'Dark', 'Smoke', 'Hardship', 'Temperament'] as const;
+/** Last meal, the C_MEAL field; must match people::MEAL_*. */
+export const MEAL_NAMES = ['nothing yet', 'raw mushrooms', 'roast mushrooms'] as const;
+/** Mood settles here (out of STAT_MAX) when morale meets expectations; must match people::MOOD_AT_PAR. */
+export const MOOD_AT_PAR = 6000;
 /** Order priorities, the seventh job field; must match DEFAULT_PRIORITY and MAX_PRIORITY in crates/sim/src/jobs.rs. */
 export const DEFAULT_PRIORITY = 5, MAX_PRIORITY = 9;
 /** Why an order is stuck, the eighth job field; must match the BLOCK_ values in crates/sim/src/orders.rs. */
