@@ -10,6 +10,9 @@ pub enum Element {
     Water = 3,
     /// Fuel for hearths. Digging it adds to the colony's fuel stock.
     Coal = 4,
+    /// Cut stone laid by survivors: a platform, a bridge or a wall. Solid
+    /// like rock, and dug out again like it (giving its stone back).
+    Tile = 5,
 }
 
 impl Element {
@@ -18,7 +21,12 @@ impl Element {
     }
 
     pub fn is_diggable(self) -> bool {
-        matches!(self, Element::Dirt | Element::Rock | Element::Coal)
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile)
+    }
+
+    /// Solid ground or wall: anything that blocks light and smoke.
+    pub fn is_wall(self) -> bool {
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile)
     }
 
     /// Thermal conductivity on a 0..=1024 scale.
@@ -29,6 +37,7 @@ impl Element {
             Element::Rock => 600,
             Element::Water => 800,
             Element::Coal => 400,
+            Element::Tile => 600,
         }
     }
 }
@@ -53,6 +62,12 @@ pub enum Building {
     Bed = 7,
     /// Where hauled goods go. Coal and stone only count once they are here.
     Stockpile = 8,
+    /// A build order only: finishing it turns the cell into [`Element::Tile`].
+    /// Never found in `Sim::buildings`.
+    Tile = 9,
+    /// A plank door in a timber frame, two cells tall. Survivors pass; smoke and Shades don't.
+    /// The cells it closes off can make a room (see `rooms.rs`).
+    Door = 10,
 }
 
 /// Temperatures are in centi-kelvin.

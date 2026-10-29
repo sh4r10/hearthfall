@@ -85,7 +85,8 @@ impl Sim {
     /// and in this or a neighbouring cell (diagonals count).
     fn can_strike(&self, x: u32, y: u32, c: usize) -> bool {
         let col = &self.colonists[c];
-        col.alive() && self.is_dark(self.idx(col.x, col.y)) && col.x.abs_diff(x) <= 1 && col.y.abs_diff(y) <= 1
+        // A closed room (walls and a door) keeps a Shade off whoever is inside it.
+        col.alive() && self.is_dark(self.idx(col.x, col.y)) && col.x.abs_diff(x) <= 1 && col.y.abs_diff(y) <= 1 && self.room_id[self.idx(col.x, col.y)] == self.room_id[self.idx(x, y)]
     }
 
     /// Whether some Shade is attacking survivor `c` this tick.
@@ -194,7 +195,7 @@ impl Sim {
                     continue;
                 }
                 let j = (ny * w + nx) as usize;
-                if dist[j] == UNREACHED && self.elements[j].is_open() && self.is_dark(j) {
+                if dist[j] == UNREACHED && self.elements[j].is_open() && !self.doorway(j) && self.is_dark(j) {
                     dist[j] = dist[i] + 1;
                     parent[j] = i;
                     queue.push_back(j);

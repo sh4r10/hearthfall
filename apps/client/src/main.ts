@@ -26,12 +26,16 @@ const TOOLS: ToolInfo[] = [
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
   { tool: 'bed', key: '7', label: 'Bed', icon: 'bed', tip: 'Survivors sleep better in a bed, best if it is lit.', building: Building.Bed },
   { tool: 'stockpile', key: '8', label: 'Stockpile', icon: 'stockpile', tip: 'Where dug coal and stone go. Nothing counts until a survivor carries it here, so build one near where you dig.', building: Building.Stockpile },
+  { tool: 'tile', key: '9', label: 'Tile', icon: 'tile', tip: 'A block of cut stone. Lay floors over gaps, bridges, ceilings and walls; dig it to take it back.', building: Building.Tile },
+  { tool: 'door', key: '0', label: 'Door', icon: 'door', tip: 'Two cells tall. Survivors walk through; smoke and Shades don\'t. Close a small space off with walls and a door to make a room.', building: Building.Door },
   { tool: 'priority', key: 'P', label: 'Priority', icon: 'priority', tip: 'Repaint how urgent orders are, from 1 to 9. Survivors take the most urgent order they can reach first.' },
   { tool: 'deconstruct', key: 'D', label: 'Remove', icon: 'deconstruct', tip: 'Have a building taken down. Survivors salvage half of what it cost, and a hearth gives back its fuel.' },
   { tool: 'cancel', key: 'X', label: 'Cancel', icon: 'cancel', tip: 'Take back orders you have marked. Right-click does this with any tool.' },
 ];
 const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock to mark it, or shift-drag a box over many cells. Black seams give coal, grey rock gives 3 stone and dirt 1. A building\'s floor can\'t be dug: remove the building first.',
+  tile: '<b>Tile:</b> click an open cell beside any floor, wall or tile, or shift-drag a line. Costs 1 stone, and digging it out gives it back. Survivors can\'t be walled in: a tile waits until its cell is empty.',
+  door: '<b>Door:</b> place on a floor with an open cell above it. Wall a space of up to 48 cells off with a door and it becomes a room: a hearth room holds its heat, a bedroom gives the best sleep, two mushroom beds make a cellar.',
   stockpile: '<b>Stockpile:</b> place on a floor near your digging. Haulers carry piles to the nearest one, and never into the dark at night.',
   ladder: '<b>Ladder:</b> click open cells to build a ladder survivors can climb, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
@@ -369,7 +373,7 @@ window.addEventListener('keydown', (e) => {
   // With the Priority tool out, the number keys pick the level instead of a tool.
   if (tool === 'priority' && /^[1-9]$/.test(key)) return brush.set(Number(key));
   if (key === 'escape' && inspector.cell) return inspector.close();
-  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', d: 'deconstruct', x: 'cancel', p: 'priority' };
+  const tools: Record<string, Tool> = { '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'tile', '0': 'door', d: 'deconstruct', x: 'cancel', p: 'priority' };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };
   if (overlays[key]) setOverlay(world.overlay === overlays[key] ? 'none' : overlays[key]);
@@ -406,7 +410,7 @@ function applies(t: Tool, f: Frame, i: number) {
   const x = i % f.width, y = Math.floor(i / f.width);
   if (t === 'dig') {
     const e = f.elements[i];
-    return (e === Element.Dirt || e === Element.Rock || e === Element.Coal) && heldUpBy(f, x, y) === undefined;
+    return (e === Element.Dirt || e === Element.Rock || e === Element.Coal || e === Element.Tile) && heldUpBy(f, x, y) === undefined;
   }
   if (t === 'deconstruct') return f.buildings[i] !== Building.None && f.buildings[i] !== Building.Cairn;
   // Priority repaints any order, and a hearth keeps its refuel priority even between refuels.

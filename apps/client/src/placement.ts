@@ -5,7 +5,7 @@ import { BUILD_COST, Building, Element, JOB_BUILD, JOB_STRIDE, LAMP_RADIUS_NIGHT
 
 export const BUILDING_NAMES: Record<number, string> = {
   [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.Stockpile]: 'stockpile', [Building.MushroomBed]: 'mushroom bed',
-  [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Vent]: 'vent', [Building.Cairn]: 'cairn',
+  [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Vent]: 'vent', [Building.Cairn]: 'cairn', [Building.Tile]: 'stone tile', [Building.Door]: 'door',
 };
 
 /** 'ok' places now, 'wait' places but waits for coal or stone, 'bad' is refused. */
@@ -15,8 +15,8 @@ export interface Spot { x: number; y: number; fit: Fit; reason?: string }
 const reach = (b: number) => REACH[b] ?? 0;
 const open = (f: Frame, x: number, y: number) =>
   x >= 0 && y >= 0 && x < f.width && y < f.height && f.elements[y * f.width + x] === Element.Floor;
-const needsFloor = (b: number) => b !== Building.Ladder && b !== Building.Vent;
-const solid = (e: number) => e === Element.Dirt || e === Element.Rock || e === Element.Coal;
+const needsFloor = (b: number) => b !== Building.Ladder && b !== Building.Vent && b !== Building.Tile;
+const solid = (e: number) => e === Element.Dirt || e === Element.Rock || e === Element.Coal || e === Element.Tile;
 
 /**
  * Why `b` can't go at (x, y), or undefined if it can. `planned` holds builds
@@ -38,6 +38,13 @@ export function refusal(f: Frame, x: number, y: number, b: number, planned: { x:
       if (below === Element.Water) return `A ${name} can't stand in water.`;
       if (!solid(below)) return `Needs solid floor under ${r ? 'all of it' : 'it'}.`;
     }
+  }
+  // A door is two cells tall: its frame fills the cell above, and nothing goes into the top of a door.
+  if (y + 1 < f.height && f.buildings[(y + 1) * w + x] === Building.Door) return "That is the top of a door.";
+  if (b === Building.Door) {
+    if (!open(f, x, y - 1)) return 'A door is two cells tall: it needs the cell above open too.';
+    if (f.buildings[(y - 1) * w + x] !== Building.None) return `A door is two cells tall, and there is a ${BUILDING_NAMES[f.buildings[(y - 1) * w + x]] ?? 'building'} above.`;
+    if (planned.some((o) => o.x === x && o.y === y - 1)) return 'A door is two cells tall: the cell above is taken.';
   }
   const crowds = (ox: number, other: number) => other !== Building.None && ox !== x && Math.abs(ox - x) <= r + reach(other);
   for (let ox = Math.max(0, x - 3); ox <= Math.min(w - 1, x + 3); ox++) {

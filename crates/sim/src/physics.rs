@@ -1,6 +1,6 @@
 //! Environment: light, smoke, water and heat.
 
-use crate::{Building, Element, Sim, DARK_BELOW, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
+use crate::{Building, Element, Sim, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT};
 use crate::world::water_outlet;
 
 impl Sim {
@@ -17,6 +17,15 @@ impl Sim {
         self.light.copy_from_slice(&self.firelight);
         let lamps: Vec<usize> = (0..self.buildings.len()).filter(|&i| self.buildings[i] == Building::Lamp).collect();
         flood_light(self.width, self.height, &self.elements, &lamps, lamp_radius, &mut self.light);
+        // A small closed room with a fire in it holds the heat: every cell of
+        // it counts as warm, however far from the hearth. The smoke it holds
+        // still dims it below, so a hearth room wants a vent.
+        for i in 0..self.light.len() {
+            if self.room_kind[i] == ROOM_HEARTH {
+                self.firelight[i] = self.firelight[i].max(ROOM_GLOW);
+                self.light[i] = self.light[i].max(ROOM_GLOW);
+            }
+        }
         // Smoke dims the light: a smoky cave shrinks the lit and warm area,
         // which lets the cold and the Shades in closer. Thick smoke cuts up
         // to 70%, so the fire itself always stays warm.
@@ -36,7 +45,9 @@ impl Sim {
     pub(crate) fn smoke_tick(&mut self) {
         let (w, h) = (self.width as usize, self.height as usize);
         let snap = self.smoke.clone();
-        let open = |i: usize| self.elements[i].is_open();
+        // A door's hide flap holds the smoke back, so a room keeps its own.
+        let passable: Vec<bool> = (0..self.elements.len()).map(|i| self.elements[i].is_open() && !self.doorway(i)).collect();
+        let open = |i: usize| passable[i];
         for y in 0..h {
             for x in 0..w {
                 let i = y * w + x;
@@ -58,7 +69,7 @@ impl Sim {
                 let walled = [x.checked_sub(1).map(|nx| y * w + nx), (x + 1 < w).then(|| i + 1), y.checked_sub(1).map(|ny| ny * w + x), (y + 1 < h).then(|| i + w)]
                     .into_iter()
                     .flatten()
-                    .any(|j| matches!(self.elements[j], Element::Dirt | Element::Rock));
+                    .any(|j| self.elements[j].is_wall());
                 if walled {
                     self.smoke[i] -= snap[i] / SMOKE_SOAK_DIV;
                 }

@@ -12,14 +12,16 @@ mod nav;
 mod orders;
 mod physics;
 mod rng;
+mod rooms;
 mod shades;
 mod world;
 
 pub use colonist::{Activity, Colonist, Role, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
-pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW};
+pub use jobs::{build_cost, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW, TILE_STONE};
 pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
 pub use haul::{Item, CARRY_MAX};
 pub use rng::Rng;
+pub use rooms::{ROOM_BEDROOM, ROOM_CELLAR, ROOM_GLOW, ROOM_HEARTH, ROOM_MAX_CELLS, ROOM_NONE, ROOM_PLAIN, ROOM_TICKS};
 pub use shades::{
     Shade, SHADE_ATTACKING, SHADE_DRAIN, SHADE_DRIFTING, SHADE_FIRST_DAY, SHADE_GIVE_UP, SHADE_SPAWN_FROM_LIGHT, SHADE_SPAWN_RANGE, SHADE_SPAWN_TICKS, SHADE_STEP_TICKS,
 };
@@ -127,6 +129,10 @@ pub struct Sim {
     pub smoke: Vec<i32>,
     /// Whether [`EVENT_SMOKE`] has been sent.
     pub smoke_warned: bool,
+    /// Which room each cell is in, 0 for none; see `rooms.rs`.
+    pub room_id: Vec<u16>,
+    /// What kind of room each cell is in, one of the `ROOM_` values.
+    pub room_kind: Vec<u8>,
     pub coal: i32,
     /// Stone from digging rock. Everything you stack is built from it.
     pub stone: i32,
@@ -176,6 +182,8 @@ impl Sim {
             firelight: vec![0; n],
             smoke: vec![0; n],
             smoke_warned: false,
+            room_id: vec![0; n],
+            room_kind: vec![rooms::ROOM_NONE; n],
             coal: START_COAL,
             stone: START_STONE,
             food: START_FOOD,
@@ -187,6 +195,7 @@ impl Sim {
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
         };
+        sim.rooms_tick();
         sim.update_light();
         sim
     }
@@ -248,6 +257,7 @@ impl Sim {
         }
         self.buildings_tick();
         self.smoke_tick();
+        self.rooms_tick();
         self.update_light();
         self.water_tick();
         self.maintain_jobs();
@@ -298,6 +308,8 @@ impl Sim {
     fn buildings_tick(&mut self) {
         let burn = self.tick % HEARTH_BURN_TICKS == 0;
         let grow = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS - 1;
+        // A cellar grows a second ration halfway through each cycle.
+        let grow_cellar = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS / 2 - 1;
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
                 Building::Hearth if self.hearth_lit(i) => {
@@ -309,7 +321,7 @@ impl Sim {
                     }
                 }
                 // Mushrooms shun the fire's light and heat; lamp light doesn't bother them.
-                Building::MushroomBed if grow && !self.is_warm(i) => self.food += 1,
+                Building::MushroomBed if (grow || (grow_cellar && self.room_kind[i] == rooms::ROOM_CELLAR)) && !self.is_warm(i) => self.food += 1,
                 _ => {}
             }
         }
@@ -343,6 +355,8 @@ impl Sim {
             eat(&self.pile_amount[i].to_le_bytes());
             eat(&self.temperature[i].to_le_bytes());
             eat(&self.smoke[i].to_le_bytes());
+            eat(&self.room_id[i].to_le_bytes());
+            eat(&[self.room_kind[i]]);
         }
         for c in &self.colonists {
             c.hash_into(&mut eat);

@@ -43,6 +43,8 @@ impl WebSim {
             4 => Building::MushroomBed,
             6 => Building::Lamp,
             7 => Building::Bed,
+            9 => Building::Tile,
+            10 => Building::Door,
             8 => Building::Stockpile,
             _ => return,
         };
@@ -156,6 +158,11 @@ impl WebSim {
     }
 
     /// Smoke per cell scaled to 0..=255; see `sim::SMOKE_MAX`.
+    /// Which kind of room each cell is in (sim::ROOM_*), 0 outside any room.
+    pub fn rooms(&self) -> Vec<u8> {
+        self.sim.room_kind.clone()
+    }
+
     pub fn smoke(&self) -> Vec<u8> {
         self.sim.smoke.iter().map(|&s| (s * 255 / sim::SMOKE_MAX) as u8).collect()
     }

@@ -1,6 +1,6 @@
 // Messages between the main thread and the simulation worker.
 
-export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed' | 'stockpile';
+export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed' | 'stockpile' | 'tile' | 'door';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -39,6 +39,8 @@ export interface Frame {
   temperature: Int32Array;
   /** Smoke per cell, 0..=255 (SMOKE_MAX in the sim); see WebSim::smoke. */
   smoke: Uint8Array;
+  /** Which kind of room each cell is in (ROOM_*), ROOM_NONE outside any room; see WebSim::rooms. */
+  rooms: Uint8Array;
   /** Flat, COLONIST_STRIDE each; see WebSim::colonists in crates/sim-wasm. */
   colonists: Int32Array;
   /** Flat, JOB_STRIDE each; see WebSim::jobs. */
@@ -78,8 +80,20 @@ export const MUSHROOM_TICKS = 400;
 export const DARK_BELOW = 40;
 
 // Mirror the enums in crates/sim/src/world.rs. Building 1 was the oxygen diffuser; the number stays unused.
-export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4 } as const;
-export const Building = { None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7, Stockpile: 8 } as const;
+export const Element = { Floor: 0, Dirt: 1, Rock: 2, Water: 3, Coal: 4, Tile: 5 } as const;
+/** Building.Tile is only ever a build order: the finished cell is Element.Tile. */
+export const Building = { None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7, Stockpile: 8, Tile: 9, Door: 10 } as const;
+/** Room kinds, matching sim::ROOM_* in crates/sim/src/rooms.rs. */
+export const ROOM_NONE = 0, ROOM_PLAIN = 1, ROOM_HEARTH = 2, ROOM_BEDROOM = 3, ROOM_CELLAR = 4;
+/** A pocket bigger than this is a cave, not a room; must match ROOM_MAX_CELLS. */
+export const ROOM_MAX_CELLS = 48;
+export const ROOM_NAMES: Record<number, string> = { [ROOM_PLAIN]: 'Room', [ROOM_HEARTH]: 'Hearth room', [ROOM_BEDROOM]: 'Bedroom', [ROOM_CELLAR]: 'Mushroom cellar' };
+export const ROOM_EFFECTS: Record<number, string> = {
+  [ROOM_PLAIN]: 'Closed off: Shades and smoke stay out. Add a hearth, beds or two mushroom beds to give it a use.',
+  [ROOM_HEARTH]: 'Holds the heat: every cell in it is warm. It holds the smoke too, so vent it.',
+  [ROOM_BEDROOM]: 'Quiet and dark: beds here give the best sleep there is, and rest faster.',
+  [ROOM_CELLAR]: 'Still, damp air: mushrooms grow twice as fast.',
+};
 /** Loose goods, matching sim::Item; 0 is nothing. The 14th and 15th colonist fields are what they carry and how much. */
 export const Item = { Coal: 1, Stone: 2 } as const;
 export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone' };
@@ -111,6 +125,8 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.MushroomBed]: [0, 2],
   [Building.Bed]: [0, 3],
   [Building.Stockpile]: [0, 2],
+  [Building.Tile]: [0, 1],
+  [Building.Door]: [0, 3],
 };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
 /** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */

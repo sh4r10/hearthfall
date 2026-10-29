@@ -28,6 +28,8 @@ const paths: Record<string, string> = {
   vent: '<path d="M12 21V9"/><path d="M8 9h8l-1-4H9Z"/><path d="M6 14c2-2 4 2 6 0s4-2 6 0"/><path d="M9 21h6"/>',
   stone: '<path d="M4 14 7 8l6-2 6 3 1 5-4 4H8Z"/><path d="m7 8 4 4 8-1M11 12l-3 7"/>',
   stockpile: '<path d="M3 19h18M4 19l1-3h14l1 3"/><path d="M7 16l2-4 3 1 3-2 2 5"/><path d="M18 16V5l-3 1.5"/>',
+  tile: '<path d="M3 20h18v-5H3Z"/><path d="M7 15v-5h10v5"/><path d="M12 20v-5"/>',
+  door: '<path d="M5 21V4h14v17"/><path d="M3 21h18"/><path d="M8 7h8v10l-2-1-2 1-2-1-2 1Z"/><path d="M14 11h.01"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   priority: '<path d="M5 20v-5M12 20v-9M19 20V5"/>',
   alert: '<path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 10v4M12 17.5h.01"/>',

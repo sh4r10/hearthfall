@@ -378,6 +378,46 @@ registerModel('bed', (variant = 0) => {
   return g;
 });
 
+// Cut stone for built tiles and door frames: lighter and cooler than cave rock.
+const CUT_STONE = ['#7a7e86', '#6a6e76', '#8a8e95'];
+
+/** A tile block as a build order shows it: one squared cell of cut stone. The built cell is terrain. */
+registerModel('tile', () => {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.BoxGeometry(0.98, 0.98, 0.9), mat(CUT_STONE[0]), 0, 0.49, 0));
+  return g;
+});
+
+/**
+ * A door, two cells tall, as Codex batch 3 paints it: a rough plank door in a
+ * timber frame with iron straps. The 'closed' leaf and the 'open' leaf (swung
+ * to the side) are swapped by the view as survivors pass.
+ */
+registerModel('door', () => {
+  const g = new THREE.Group();
+  const timber = mat('#5a4330', { roughness: 0.95 });
+  const post = new THREE.BoxGeometry(0.14, 1.96, 0.3);
+  g.add(mesh(post, timber, -0.42, 0.98, 0), mesh(post, timber, 0.42, 0.98, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.98, 0.14, 0.32), timber, 0, 1.9, 0));
+  const leaf = (name: string, x: number, w: number, z: number) => {
+    const d = new THREE.Group();
+    d.name = name;
+    const plank = mat('#7d5a3a', { roughness: 1 });
+    for (let i = 0; i < 3; i++) d.add(mesh(new THREE.BoxGeometry(w / 3 - 0.02, 1.76, 0.06), plank, x - w / 2 + w / 6 + (i * w) / 3, 0.9, z));
+    const strap = mat('#3a3d44', { roughness: 0.6, metalness: 0.5 });
+    d.add(mesh(new THREE.BoxGeometry(w, 0.07, 0.08), strap, x, 1.45, z + 0.01), mesh(new THREE.BoxGeometry(w, 0.07, 0.08), strap, x, 0.4, z + 0.01));
+    d.add(mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), mat('#c2452f'), x + w * 0.3, 0.95, z + 0.05)); // red leather pull
+    return d;
+  };
+  g.add(leaf('closed', 0, 0.7, 0));
+  const open = leaf('open', 0, 0.7, 0);
+  open.visible = false;
+  open.rotation.y = -1.2; // swung back into the room
+  open.position.set(-0.35, 0, -0.1);
+  g.add(open);
+  return g;
+});
+
 /** A Shade: a tattered dark wisp with two pale eyes. Not lit by the fire; it is the dark. */
 registerModel('shade', (variant = 0) => {
   const g = new THREE.Group();

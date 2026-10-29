@@ -137,12 +137,17 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Bed]: 'bed',
   [Building.Vent]: 'vent',
   [Building.Stockpile]: 'stockpile',
+  [Building.Tile]: 'tile', // only a build order, shown as a ghost block; the finished cell is Element.Tile
+  [Building.Door]: 'door',
 };
+
+const TILE = Element.Tile;
 
 const ELEMENT_COLOURS: Record<number, string[]> = {
   [Element.Rock]: ['#5a5b5f', '#4d4e53', '#66655f'],
   [Element.Dirt]: ['#7d5638', '#6e4a30', '#8a6242'],
   [Element.Coal]: ['#2e2c31', '#242327', '#38353a'],
+  [TILE]: ['#7a7e86', '#72767e', '#80848b'], // cut stone: lighter, cooler grey than rock
 };
 
 /** At most this many cells light up in a preview. */
@@ -353,7 +358,7 @@ export class WorldView {
   // --- Terrain ---------------------------------------------------------------
 
   private isSolid(e: number) {
-    return e === Element.Rock || e === Element.Dirt || e === Element.Coal;
+    return e === Element.Rock || e === Element.Dirt || e === Element.Coal || e === TILE;
   }
 
   private addInstances(geo: THREE.BufferGeometry, material: THREE.Material, placements: { cell: number; matrix: THREE.Matrix4; colour: THREE.Color }[], castShadow: boolean) {
@@ -383,7 +388,7 @@ export class WorldView {
           mask[i] = e === Element.Rock ? 255 : 0;
           mask[i + 1] = e === Element.Dirt ? 255 : 0;
           mask[i + 2] = e === Element.Coal ? 255 : 0;
-          mask[i + 3] = 0;
+          mask[i + 3] = e === TILE ? 255 : 0; // a = built tile
         }
       }
       this.maskTex.needsUpdate = true;
@@ -397,7 +402,7 @@ export class WorldView {
     const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? Element.Rock : elements[y * w + x]);
 
     type Placement = { cell: number; matrix: THREE.Matrix4; colour: THREE.Color };
-    const edge: Placement[] = [], inner: Placement[] = [], spikes: Placement[] = [], pebbles: Placement[] = [], gems: Placement[] = [], glow: Placement[] = [];
+    const blocks: Placement[] = [], edge: Placement[] = [], inner: Placement[] = [], spikes: Placement[] = [], pebbles: Placement[] = [], gems: Placement[] = [], glow: Placement[] = [];
     const q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3();
     const place = (list: Placement[], cell: number, pos: THREE.Vector3, rot: THREE.Euler, scale: THREE.Vector3, colour: string) =>
       list.push({ cell, matrix: new THREE.Matrix4().compose(pos, q.setFromEuler(rot), scale), colour: new THREE.Color(colour) });
@@ -411,6 +416,11 @@ export class WorldView {
         const exposed = openAbove || openBelow || !this.isSolid(at(x - 1, y)) || !this.isSolid(at(x + 1, y));
         this.cellToWorld(x, y, p);
         const palette = ELEMENT_COLOURS[el];
+        if (el === TILE) {
+          // Built stone: a flat squared block, no lumps, spikes, pebbles or glow.
+          place(blocks, c, p.clone(), e.set(0, 0, 0), s.set(1, 1, 1), palette[Math.floor(hash(c, 1) * palette.length)]);
+          continue;
+        }
         let colour = palette[Math.floor(hash(c, 1) * palette.length)];
         if (exposed && el !== Element.Coal) colour = `#${new THREE.Color(colour).multiplyScalar(1.18).getHexString()}`;
         const k = 1.35 + hash(c, 2) * 0.2;
@@ -443,6 +453,7 @@ export class WorldView {
     }
 
     const rock = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 });
+    this.addInstances(new THREE.BoxGeometry(0.98, 0.98, 0.9), rock, blocks, true);
     this.addInstances(lumpGeometry(7, 0.5, 0), rock, edge, true);
     this.addInstances(lumpGeometry(11, 0.5, 0), rock, inner, false);
     this.addInstances(new THREE.ConeGeometry(0.11, 1, 5).translate(0, 0.5, 0), rock, spikes, true);
@@ -852,6 +863,25 @@ export class WorldView {
     }
   }
 
+  /** A door swings open while a survivor is in its doorway (either of its two cells). */
+  private swingDoors(frame: Frame) {
+    const inDoor = new Set<number>();
+    for (let s = 0; s < frame.colonists.length; s += COLONIST_STRIDE) {
+      if (frame.colonists[s + 3] === 5) continue;
+      const c = frame.colonists[s + 1] * this.width + frame.colonists[s];
+      inDoor.add(c);
+      inDoor.add(c + this.width);
+    }
+    for (const b of this.buildings.children) {
+      if (frame.buildings[b.userData.cell] !== Building.Door) continue;
+      const open = inDoor.has(b.userData.cell);
+      for (const [name, show] of [['closed', !open], ['open', open]] as const) {
+        const o = b.getObjectByName(name);
+        if (o) o.visible = show;
+      }
+    }
+  }
+
   /** Stockpiles show the colony's coal: an empty pallet, a heap, a big heap. */
   private fillStockpiles(frame: Frame) {
     const level = frame.coal >= 40 ? 'full' : frame.coal >= 10 ? 'half' : 'empty';
@@ -976,6 +1006,7 @@ export class WorldView {
         field[i + 3] = open ? 255 : 0;
         marks[i] = frame.elements[c] === Element.Coal ? 255 : 0;
         marks[i + 1] = frame.smoke[c];
+        marks[i + 2] = frame.rooms[c] * 51; // room kind, 0..4, spread over the byte
       }
     }
     this.fieldTex.needsUpdate = true;
@@ -1030,6 +1061,7 @@ export class WorldView {
     this.updateMarkers(frame);
     this.updatePiles(frame);
     this.fillStockpiles(frame);
+    this.swingDoors(frame);
 
     this.survivors.forEach((s, i) => {
       const o = i * COLONIST_STRIDE;
@@ -1082,7 +1114,7 @@ export class WorldView {
 
   /** A burst of rock, dirt or coal where a cell was dug out. */
   private dugOut(before: Uint8Array, after: Uint8Array) {
-    const kind: Record<number, string> = { [Element.Rock]: 'debris-rock', [Element.Dirt]: 'debris-dirt', [Element.Coal]: 'debris-coal' };
+    const kind: Record<number, string> = { [Element.Rock]: 'debris-rock', [Element.Dirt]: 'debris-dirt', [Element.Coal]: 'debris-coal', [TILE]: 'debris-rock' };
     const p = new THREE.Vector3();
     after.forEach((e, i) => {
       if (e !== Element.Floor || !kind[before[i]]) return;
