@@ -574,25 +574,47 @@ export class WorldView {
     const data = this.waterTex!.image.data as Uint8Array;
     data.fill(0);
     const level = this.surfaceLevels(elements);
-    const set = (x: number, y: number, fill: number, depth: number, top: boolean) => {
+    const isWater = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && elements[y * w + x] === Element.Water;
+    // kind: 255 = the pool's surface cell, 128 = falling stream, 0 = body.
+    const set = (x: number, y: number, fill: number, depth: number, kind: number, landing = false) => {
       if (y < 0) return;
       const i = this.texIndex(x, y);
       data[i] = Math.max(data[i], Math.round(Math.min(Math.max(fill, 0), 1) * 255));
       data[i + 1] = Math.round(Math.min(Math.max(depth, 0) / 8, 1) * 255);
-      data[i + 2] = top ? 255 : 0;
+      data[i + 2] = kind;
+      data[i + 3] = landing ? 255 : 0;
+    };
+    // A column of water one cell wide that runs down into a wider pool is a
+    // stream above that pool's surface. Returns the pool's level, or -1.
+    const streamLevel = (x: number, y: number) => {
+      let y1 = y;
+      while (isWater(x, y1) && !isWater(x - 1, y1) && !isWater(x + 1, y1)) y1++;
+      if (y1 === y || !isWater(x, y1)) return -1;
+      const xn = isWater(x - 1, y1) ? x - 1 : x + 1;
+      let ty = y1;
+      while (isWater(xn, ty - 1)) ty--;
+      const lv = level.get(ty * w + xn) ?? ty;
+      return lv > y ? lv : -1;
     };
     for (let x = 0; x < w; x++) {
-      let lv = -1;
+      let lv = -1, streamTo = -1;
       for (let y = 0; y < h; y++) {
         const c = y * w + x;
-        if (elements[c] !== Element.Water) { lv = -1; continue; }
-        if (lv < 0) {
+        if (elements[c] !== Element.Water) { lv = -1; streamTo = -1; continue; }
+        const sl = streamLevel(x, y);
+        if (sl >= 0) {
+          lv = sl;
+          streamTo = Math.floor(sl);
+          if (y < streamTo) set(x, y, 1, 0, 128);
+          else set(x, y, y + 1 - lv, 0, 255, true);
+        } else if (lv < 0) {
           lv = level.get(c) ?? y;
           // The surface sits at the pool's average level, which may be above this cell.
           const above = lv < y && elements[c - w] === Element.Floor;
-          set(x, y, y + 1 - lv, 0, !above);
-          if (above) set(x, y - 1, y - lv, 0, true);
-        } else set(x, y, 1, y - lv, false);
+          set(x, y, y + 1 - lv, 0, above ? 0 : 255);
+          if (above) set(x, y - 1, y - lv, 0, 255);
+        } else if (y === streamTo) set(x, y, y + 1 - lv, 0, 255, true);
+        else set(x, y, 1, y - lv, 0);
       }
     }
     this.waterTex!.needsUpdate = true;

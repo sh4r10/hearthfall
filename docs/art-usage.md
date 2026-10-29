@@ -15,6 +15,7 @@ Ids are the asset ids in `art-codex/assets.json`; `*` matches any part of an id.
 | `prop-lantern` | Planned | Nothing in the game carries a lantern yet. | Refugees following the light down, and night errands |
 | `building-diffuser-on`, `building-diffuser-off`, `icon-diffuser`, `icon-breath` | Retired | Air is shelved: the oxygen diffuser and the breath need are gone from the game. | Nothing, unless air comes back |
 | `building-lamp-off` | Unused | Under the current rules a lamp never goes out. | A lamp that needs fuel, if one is added |
+| `water` | Retired | A tiled painted texture inside a flat-colour water body looked busy and muddy. Water is now drawn flat in the shader: palette bands by depth, an ink surface line and pale highlight, shaded by the light field. | Nothing |
 | `water-surface` | Unused | The pool surface is drawn by the animated water mesh, which shades it by firelight cell by cell. The painted strip would need the same per-cell light. | The water rework |
 | `icon-hunger` | Unused | The survivor card shows food, which uses the food icon. | Nothing yet |
 | `story-1`, `story-2`, `story-3`, `story-4`, `story-5`, `story-*-back`, `story-*-mid`, `story-*-front` | Planned | The animated story intro on the menu isn't built yet. `story-6` is the title screen backdrop. | The story intro |
