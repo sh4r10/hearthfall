@@ -410,6 +410,8 @@ impl Sim {
                 } else {
                     self.buildings[i] = b;
                 }
+                // Whatever lay in this cell is pushed out (or stored, for a stockpile).
+                self.clear_pile_at(i);
             }
             JobKind::Refuel => {
                 // Coke first: it goes twice as far and smokes half as much.

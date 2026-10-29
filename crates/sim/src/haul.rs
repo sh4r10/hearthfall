@@ -33,39 +33,89 @@ impl Item {
 pub const CARRY_MAX: i32 = 10;
 /// A new pile joins a pile of the same thing up to this many cells along the floor.
 const MERGE_REACH: i32 = 2;
+/// A pile pushed out of a new tile or building looks this far for a new place.
+const DISPLACE_REACH: i32 = 5;
+const DISPLACE_REACH_Y: i32 = 3;
 
 impl Sim {
-    /// Put `amount` of `item` down at cell `i`, onto a pile of the same thing
-    /// close by if there is one, so a tunnel leaves a few heaps, not a trail.
+    /// Put `amount` of `item` down at cell `i`: it falls to the first floor
+    /// below, then joins a pile of the same thing close by if there is one, so
+    /// a tunnel leaves a few heaps, not a trail.
     pub(crate) fn drop_pile(&mut self, i: usize, item: Item, amount: i32) {
         if amount <= 0 {
             return;
         }
         let w = self.width as i32;
-        let (x, y) = (i as i32 % w, i as i32 / w);
-        let mut spot = None;
-        for d in 0..=MERGE_REACH {
-            for nx in [x - d, x + d] {
-                if nx < 0 || nx >= w || !self.open(nx, y) {
-                    continue;
-                }
-                let j = (y * w + nx) as usize;
-                if self.pile_item[j] == item as u8 {
-                    spot = Some(j);
-                    break;
-                }
-            }
-            if spot.is_some() {
-                break;
-            }
+        let (x, mut y) = (i as i32 % w, i as i32 / w);
+        while self.open(x, y) && !self.supported(x, y) {
+            y += 1;
         }
-        let spot = spot.or_else(|| (0..=MERGE_REACH).flat_map(|d| [x - d, x + d]).find(|&nx| nx >= 0 && nx < w && self.open(nx, y) && self.pile_item[(y * w + nx) as usize] == 0).map(|nx| (y * w + nx) as usize));
-        match spot {
+        // Nowhere to put it down at all: it isn't lost, it goes to stock.
+        match self.pile_spot(x, y, item, MERGE_REACH, 0) {
             Some(j) => {
                 self.pile_item[j] = item as u8;
                 self.pile_amount[j] += amount;
             }
-            // Nowhere to put it down at all: it isn't lost, it goes to stock.
+            None => self.store(item, amount),
+        }
+    }
+
+    /// Whether goods can lie in cell `j`: open, held up, and with no building
+    /// (a ladder is walked past, so a heap may sit on one).
+    fn pile_fits(&self, j: usize) -> bool {
+        let (x, y) = ((j as u32 % self.width) as i32, (j as u32 / self.width) as i32);
+        self.open(x, y) && matches!(self.buildings[j], Building::None | Building::Ladder) && self.supported(x, y)
+    }
+
+    /// The best cell within `reach` across and `reach_y` up or down of (x, y)
+    /// to lay `item` in: a heap of the same thing first, else the nearest
+    /// empty cell. Ties go to the lowest index.
+    fn pile_spot(&self, x: i32, y: i32, item: Item, reach: i32, reach_y: i32) -> Option<usize> {
+        let w = self.width as i32;
+        let mut best: Option<((bool, i32, usize), usize)> = None;
+        for ny in (y - reach_y).max(0)..=(y + reach_y).min(self.height as i32 - 1) {
+            for nx in (x - reach).max(0)..=(x + reach).min(w - 1) {
+                let j = (ny * w + nx) as usize;
+                if !self.pile_fits(j) || (self.pile_item[j] != 0 && self.pile_item[j] != item as u8) {
+                    continue;
+                }
+                let key = (self.pile_item[j] == 0, (nx - x).abs().max((ny - y).abs()), j);
+                if best.map_or(true, |(k, _)| key < k) {
+                    best = Some((key, j));
+                }
+            }
+        }
+        best.map(|(_, j)| j)
+    }
+
+    /// If the pile at cell `i` is stuck in something solid (a finished tile,
+    /// water that flowed over it) or under a building, move it out: onto the
+    /// nearest free floor, merging with a heap of the same thing if one is
+    /// close. A stockpile built on a pile takes it in. With nowhere to go it
+    /// is put in stock.
+    pub(crate) fn clear_pile_at(&mut self, i: usize) {
+        let Some(item) = Item::from_u8(self.pile_item[i]) else { return };
+        let amount = self.pile_amount[i];
+        if amount <= 0 {
+            return;
+        }
+        let (x, y) = ((i as u32 % self.width) as i32, (i as u32 / self.width) as i32);
+        let stored = self.open(x, y) && self.buildings[i] == Building::Stockpile;
+        // A heap lying in a free cell stays; one in the air is `settle_piles`' business.
+        if !stored && self.open(x, y) && matches!(self.buildings[i], Building::None | Building::Ladder) {
+            return;
+        }
+        self.pile_item[i] = 0;
+        self.pile_amount[i] = 0;
+        if stored {
+            self.store(item, amount);
+            return;
+        }
+        match self.pile_spot(x, y, item, DISPLACE_REACH, DISPLACE_REACH_Y) {
+            Some(j) => {
+                self.pile_item[j] = item as u8;
+                self.pile_amount[j] += amount;
+            }
             None => self.store(item, amount),
         }
     }
@@ -114,6 +164,7 @@ impl Sim {
     pub(crate) fn raise_haul_jobs(&mut self) {
         self.settle_piles();
         for i in 0..self.pile_item.len() {
+            self.clear_pile_at(i);
             if self.pile_amount[i] > 0 {
                 let (x, y) = (i as u32 % self.width, i as u32 / self.width);
                 self.add_job(x, y, JobKind::Haul);
@@ -179,5 +230,72 @@ impl Sim {
             // No way to a stockpile: set it down and get on with something else.
             None => self.drop_load(c),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world::Element;
+
+    /// A rock block with a floor corridor of `len` cells along row `y`.
+    fn corridor(y: u32, x0: u32, len: u32) -> Sim {
+        let mut sim = Sim::new(7, 64, 64);
+        for x in x0 - 2..x0 + len + 2 {
+            for yy in y - 1..=y + 1 {
+                let i = sim.idx(x, yy);
+                sim.elements[i] = Element::Rock;
+            }
+        }
+        for x in x0..x0 + len {
+            let i = sim.idx(x, y);
+            sim.elements[i] = Element::Floor;
+        }
+        sim
+    }
+
+    fn pile_total(sim: &Sim, item: Item) -> i32 {
+        (0..sim.pile_item.len()).filter(|&i| sim.pile_item[i] == item as u8).map(|i| sim.pile_amount[i]).sum()
+    }
+
+    #[test]
+    fn a_tile_built_on_a_pile_pushes_it_out() {
+        let mut sim = corridor(30, 20, 7);
+        let (coal0, w) = (sim.coal, sim.width);
+        let at = sim.idx(23, 30);
+        sim.pile_item[at] = Item::Coal as u8;
+        sim.pile_amount[at] = 6;
+        let job = crate::jobs::Job { id: 0, x: 23, y: 30, kind: JobKind::Build(Building::Tile), progress: 0, created: 0, claimed_by: None, priority: 5 };
+        sim.finish_job(&job);
+        assert_eq!(sim.elements[at], Element::Tile);
+        assert_eq!(sim.pile_amount[at], 0, "nothing may stay inside the tile");
+        assert_eq!(pile_total(&sim, Item::Coal), 6, "the coal is moved, not lost");
+        assert_eq!(sim.coal, coal0, "and it didn't fall back to stock");
+        for i in 0..sim.pile_item.len() {
+            if sim.pile_amount[i] > 0 {
+                assert!(sim.elements[i].is_open(), "pile in a solid cell");
+                assert!((i as i32 % w as i32 - 23).abs() <= 2 && i as u32 / w == 30, "pile should lie beside the tile");
+            }
+        }
+    }
+
+    #[test]
+    fn a_pile_falls_when_its_floor_is_dug() {
+        let mut sim = corridor(30, 20, 7);
+        for x in 20..27 {
+            let i = sim.idx(x, 31);
+            sim.elements[i] = Element::Rock;
+        }
+        let at = sim.idx(23, 30);
+        sim.pile_item[at] = Item::Stone as u8;
+        sim.pile_amount[at] = 4;
+        let job = crate::jobs::Job { id: 0, x: 23, y: 31, kind: JobKind::Dig, progress: 0, created: 0, claimed_by: None, priority: 5 };
+        sim.finish_job(&job);
+        for _ in 0..4 {
+            sim.settle_piles();
+        }
+        let below = sim.idx(23, 31);
+        assert_eq!(sim.pile_amount[at], 0);
+        assert_eq!(sim.pile_amount[below], 4 + crate::jobs::STONE_PER_CELL);
     }
 }
