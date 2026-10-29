@@ -550,6 +550,15 @@ export class WorldView {
         if (isSurface(x + 1, ny) && isWater(x, lower) && isWater(x + 1, lower)) parent.set(find(ny * w + x + 1), find(i));
       }
     }
+    // A falling stream between two surface cells is not a surface cell itself,
+    // but the pools on either side are the same body of water.
+    for (const i of parent.keys()) {
+      const x = i % w, y = Math.floor(i / w);
+      for (const ny of [y - 1, y, y + 1]) {
+        const lower = Math.max(y, ny);
+        if (isSurface(x + 2, ny) && isWater(x, lower) && isWater(x + 1, lower) && isWater(x + 2, lower)) parent.set(find(ny * w + x + 2), find(i));
+      }
+    }
     const sum = new Map<number, [number, number]>();
     for (const i of parent.keys()) {
       const r = find(i), acc = sum.get(r) ?? [0, 0];
@@ -566,8 +575,10 @@ export class WorldView {
 
   /**
    * Painted water lives in the terrain shader: a nearest-filtered texture
-   * holding, per cell, how full it is (from the bottom) and how deep it sits
-   * below the pool's surface.
+   * holding, per cell, how full it is (from the bottom) and how deep its top
+   * edge sits below the pool's surface (plus one cell, so the surface cell
+   * itself is not negative). Water also spills into the solid cells beside and
+   * under it, so the smooth rock outline, not the cell grid, shapes the edge.
    */
   private paintWater(elements: Uint8Array) {
     const { width: w, height: h } = this;
@@ -606,15 +617,40 @@ export class WorldView {
           lv = sl;
           streamTo = Math.floor(sl);
           if (y < streamTo) set(x, y, 1, 0, 128);
-          else set(x, y, y + 1 - lv, 0, 255, true);
+          else set(x, y, y + 1 - lv, y + 1 - lv, 255, true);
         } else if (lv < 0) {
           lv = level.get(c) ?? y;
           // The surface sits at the pool's average level, which may be above this cell.
           const above = lv < y && elements[c - w] === Element.Floor;
-          set(x, y, y + 1 - lv, 0, above ? 0 : 255);
-          if (above) set(x, y - 1, y - lv, 0, 255);
-        } else if (y === streamTo) set(x, y, y + 1 - lv, 0, 255, true);
-        else set(x, y, 1, y - lv, 0);
+          set(x, y, y + 1 - lv, y + 1 - lv, above ? 0 : 255);
+          if (above) set(x, y - 1, y - lv, y - lv, 255);
+        } else if (y === streamTo) set(x, y, y + 1 - lv, y + 1 - lv, 255, true);
+        else set(x, y, 1, y - lv + 1, 0);
+      }
+    }
+    // Spill into solid neighbours (sides first, then underneath): the terrain
+    // shader draws rock over water, so only the rounded corners show.
+    const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && this.isSolid(elements[y * w + x]);
+    const src = data.slice();
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!solid(x, y)) continue;
+        const to = this.texIndex(x, y);
+        const copy = (nx: number, ny: number) => {
+          const from = this.texIndex(nx, ny);
+          if (src[from] === 0 || src[from + 2] === 128 || src[from + 3] !== 0) return false;
+          data[to] = src[from];
+          data[to + 1] = src[from + 1];
+          data[to + 2] = src[from + 2];
+          data[to + 3] = 0;
+          return true;
+        };
+        if (!(x > 0 && copy(x - 1, y)) && !(x < w - 1 && copy(x + 1, y)) && y > 0 && isWater(x, y - 1) && src[this.texIndex(x, y - 1) + 2] !== 128) {
+          data[to] = 255;
+          data[to + 1] = Math.min(255, src[this.texIndex(x, y - 1) + 1] + 32);
+          data[to + 2] = 0;
+          data[to + 3] = 0;
+        }
       }
     }
     this.waterTex!.needsUpdate = true;

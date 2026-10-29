@@ -123,24 +123,33 @@ export const terrainFragment = /* glsl */ `
     vec4 wc = texture2D(uWater, wuv);
     float fillFrac = fract(cell.y);                       // 0 at a cell's bottom edge, 1 at its top
     float ripple = sin(cell.x * 2.6 + uTime * 1.7) * 0.03 + sin(cell.x * 5.1 - uTime * 2.6) * 0.015;
-    float surfaceAt = wc.r + ripple;
-    // b marks the cell holding the pool's surface; every cell below it is full.
+    // g = how far the cell's top edge sits below the pool's surface, plus one
+    // cell, so depth is one continuous number down the whole pool: the surface
+    // line, band and shading never jump at a cell edge. The ripple lifts it.
+    float surfaceDepth = wc.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple;
     // b = 1 on the surface cell, about half on a falling stream; a = 1 where a stream lands.
     float topCell = step(0.7, wc.b);
     float isStream = step(0.3, wc.b) * (1.0 - topCell);
     float landing = wc.a * topCell;
-    float water = step(0.001, wc.r) * mix(1.0, 1.0 - smoothstep(surfaceAt - 0.02, surfaceAt + 0.02, fillFrac), topCell);
+    float water = step(0.001, wc.r) * smoothstep(-0.02, 0.02, surfaceDepth);
     // A stream is narrower than its cell and wobbles a little as it falls.
     float sx = fract(cell.x) - 0.5 + sin(cell.y * 3.0 + uTime * 2.0) * 0.03;
     float streamMask = 1.0 - smoothstep(0.17, 0.21, abs(sx));
     water = mix(water, step(0.001, wc.r) * streamMask, isStream);
-    float surface = water * topCell * (1.0 - smoothstep(surfaceAt - 0.14, surfaceAt - 0.02, fillFrac));
     // Flat ink-and-colour water: banded by depth in the art brief's blues, a
     // crisp ink line and a pale band at the surface, soft glints, and the back
     // wall showing faintly through. The light field darkens it below.
-    float inTop = step(0.5, topCell);
-    float depth = mix(wc.g * 8.0 + (1.0 - fillFrac), max(surfaceAt - fillFrac, 0.0), inTop);
-    float bandDepth = depth + sin(cell.x * 0.9 + uTime * 0.4) * 0.12 + sin(cell.x * 2.3 - uTime * 0.7) * 0.05;
+    float inTop = 1.0 - isStream;
+    float depth = max(surfaceDepth, 0.0);
+    // Colour depth is blended with the neighbouring column's across the cell edge, so two
+    // pools (or a pool and a deeper shaft) meet in a soft gradient instead of a cut.
+    float side = fract(cell.x) < 0.5 ? -1.0 : 1.0;
+    vec4 wn = texture2D(uWater, wuv + vec2(side / uSize.x, 0.0));
+    float nbDepth = max(wn.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple, 0.0);
+    float nbOk = step(0.001, wn.r) * (1.0 - step(0.3, wn.b) * (1.0 - step(0.7, wn.b))) * (1.0 - isStream);
+    float edgeDist = 0.5 - abs(fract(cell.x) - 0.5);
+    float shadeDepth = mix(depth, mix(depth, nbDepth, 0.5), nbOk * (1.0 - smoothstep(0.0, 0.5, edgeDist)));
+    float bandDepth = shadeDepth + sin(cell.x * 0.9 + uTime * 0.4) * 0.12 + sin(cell.x * 2.3 - uTime * 0.7) * 0.05;
     vec3 shallowColor = vec3(0.045, 0.19, 0.30), midColor = vec3(0.027, 0.12, 0.20), deepColor = vec3(0.013, 0.07, 0.125);
     vec3 waterColor = mix(mix(shallowColor, midColor, smoothstep(1.7, 2.5, bandDepth)), deepColor, smoothstep(4.6, 5.6, bandDepth));
     // Pale surface band under a dark ink line, only on the pool's top cell.
