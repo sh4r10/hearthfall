@@ -139,8 +139,10 @@ impl Sim {
     ///    levels out and then holds still (differences of 1 are left alone).
     /// 3. Resting cells below WATER_MIN dry up, counted in `water_lost`.
     ///
-    /// There is no upward pressure: a full column does not push water up a
-    /// side pipe. Elements follow volume (see [`WATER_WET`]); heat stays put.
+    /// 4. Pressure: `water_pressure` levels connected full columns, so water
+    ///    does rise up a side pipe.
+    ///
+    /// Elements follow volume (see [`WATER_WET`]); heat stays put.
     pub(crate) fn water_tick(&mut self) {
         let (w, h) = (self.width as usize, self.height as usize);
         let fluid = |e: Element| matches!(e, Element::Floor | Element::Water);
