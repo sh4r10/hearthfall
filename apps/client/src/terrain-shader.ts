@@ -29,8 +29,6 @@ export const terrainFragment = /* glsl */ `
   uniform vec4 uHasArt;      // rock, dirt, coal, back wall
   uniform sampler2D uIronTex, uCrystalTex;
   uniform vec2 uHasOreArt;   // iron ore, crystal
-  uniform sampler2D uWaterTex;
-  uniform float uHasWaterArt;
   uniform float uTime;
   varying vec2 vUv;
 
@@ -129,16 +127,29 @@ export const terrainFragment = /* glsl */ `
     float topCell = wc.b;
     float water = step(0.001, wc.r) * mix(1.0, 1.0 - smoothstep(surfaceAt - 0.02, surfaceAt + 0.02, fillFrac), topCell);
     float surface = water * topCell * (1.0 - smoothstep(surfaceAt - 0.14, surfaceAt - 0.02, fillFrac));
-    float depth = wc.g * 8.0 + (1.0 - fillFrac);
-    vec3 shallowColor = vec3(0.22, 0.52, 0.62), deepColor = vec3(0.05, 0.16, 0.26);
-    vec3 waterColor = mix(shallowColor, deepColor, smoothstep(0.0, 6.0, depth));
-    waterColor *= 0.9 + 0.2 * fbm(cell * 2.0 + vec2(uTime * 0.15, -uTime * 0.1)); // caustic shimmer
-    waterColor = mix(waterColor, texture2D(uWallTex, cell / 8.0).rgb * vec3(0.5, 0.8, 1.0), 0.12 * uHasArt.w * (1.0 - uHasWaterArt));
-    // Painted water drifts slowly and darkens with depth like the plain colour.
-    vec3 paintedWater = texture2D(uWaterTex, cell / 4.0 + vec2(uTime * 0.025, uTime * 0.01)).rgb;
-    waterColor = mix(waterColor, paintedWater * mix(1.0, 0.35, smoothstep(0.0, 6.0, depth)), 0.85 * uHasWaterArt);
-    vec3 open = mix(wall, waterColor, water * 0.9);
-    open += surface * vec3(0.28, 0.4, 0.42) * (0.7 + 0.3 * sin(cell.x * 3.0 + uTime * 2.2));
+    // Flat ink-and-colour water: banded by depth in the art brief's blues, a
+    // crisp ink line and a pale band at the surface, soft glints, and the back
+    // wall showing faintly through. The light field darkens it below.
+    float inTop = step(0.5, topCell);
+    float depth = mix(wc.g * 8.0 + (1.0 - fillFrac), max(surfaceAt - fillFrac, 0.0), inTop);
+    float bandDepth = depth + sin(cell.x * 0.9 + uTime * 0.4) * 0.12 + sin(cell.x * 2.3 - uTime * 0.7) * 0.05;
+    vec3 shallowColor = vec3(0.045, 0.19, 0.30), midColor = vec3(0.027, 0.12, 0.20), deepColor = vec3(0.013, 0.07, 0.125);
+    vec3 waterColor = mix(mix(shallowColor, midColor, step(2.0, bandDepth)), deepColor, step(5.0, bandDepth));
+    // Pale surface band under a dark ink line, only on the pool's top cell.
+    float lineAA = 0.02;
+    float ink = inTop * (1.0 - smoothstep(0.075 - lineAA, 0.075 + lineAA, depth));
+    float band = inTop * (1.0 - smoothstep(0.24 - lineAA, 0.24 + lineAA, depth));
+    waterColor = mix(waterColor, vec3(0.34, 0.56, 0.78), band * 0.9);
+    // Soft glints: short pale dashes that fade in and out near the surface.
+    vec2 gc = cell * vec2(0.8, 1.6), gi = floor(gc), gf = fract(gc);
+    float gh = hash(gi + 3.0);
+    float gon = smoothstep(0.55, 1.0, sin(uTime * 0.7 + gh * 6.28)) * step(0.55, gh);
+    float dash = (1.0 - smoothstep(0.05, 0.1, abs(gf.y - 0.5))) * (1.0 - smoothstep(0.18, 0.3, abs(gf.x - 0.5)));
+    waterColor += vec3(0.05, 0.11, 0.17) * dash * gon * (1.0 - smoothstep(1.0, 6.0, depth)) * step(0.3, depth);
+    waterColor = mix(waterColor, vec3(0.03, 0.06, 0.09), ink * 0.9);
+    // The back wall shows through the body.
+    vec3 open = mix(wall, waterColor + wall * vec3(0.5, 0.85, 1.2) * 0.9, water * 0.8);
+    open = mix(open, waterColor, ink * water);
 
     vec3 color = mix(open, solidColor, inside);
 
@@ -146,6 +157,9 @@ export const terrainFragment = /* glsl */ `
     float light = pow(texture2D(uLight, vUv).r, 1.35);
     float warm = smoothstep(0.3, 1.0, light);
     color *= light * mix(vec3(0.8, 0.9, 1.1), vec3(1.3, 1.05, 0.8), warm);
+
+    // Water keeps a faint glow of its own so a pool in the dark still reads as water.
+    color += waterColor * water * (1.0 - inside) * 0.2;
 
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
@@ -171,15 +185,13 @@ export function terrainMaterial(mask: THREE.DataTexture, ores: THREE.DataTexture
 function paintedTextures() {
   const blank = new THREE.Texture();
   const art = (name: string) => (artUrl(name) ? artTexture(name, () => blank, { repeat: true }) : null);
-  const [rock, dirt, coal, wall, water, iron, crystal] = ['rock', 'dirt', 'coal', 'backwall', 'water', 'iron-ore', 'crystal'].map(art);
+  const [rock, dirt, coal, wall, iron, crystal] = ['rock', 'dirt', 'coal', 'backwall', 'iron-ore', 'crystal'].map(art);
   return {
     uRockTex: { value: rock ?? blank },
     uDirtTex: { value: dirt ?? blank },
     uCoalTex: { value: coal ?? blank },
     uWallTex: { value: wall ?? blank },
     uHasArt: { value: new THREE.Vector4(rock ? 1 : 0, dirt ? 1 : 0, coal ? 1 : 0, wall ? 1 : 0) },
-    uWaterTex: { value: water ?? blank },
-    uHasWaterArt: { value: water ? 1 : 0 },
     uIronTex: { value: iron ?? blank },
     uCrystalTex: { value: crystal ?? blank },
     uHasOreArt: { value: new THREE.Vector2(iron ? 1 : 0, crystal ? 1 : 0) },
