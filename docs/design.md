@@ -126,6 +126,10 @@ Start with dig, ladder, hearth and mushroom bed **(built)**. Everything but a la
 
 **(built)** On the first run a four-step guide sits under the top bar: mark coal to dig, build a lamp, build a bed, get through the first night. Each step waits for the world to show it done and pulses the button it needs. Skip remembers itself in the browser. Still to come: a fixed tutorial map and replaying it from the menu.
 
+**The toolbar unfolds (built).** The game starts with Dig, Ladder, Hearth, Lamp, Bed, Mushrooms, Stockpile, Remove, Cancel and Priority. The rest arrive as the colony is ready, and each reveal pulses the new button and logs one line saying what it is for: Research bench from day 2; Tile and Door from day 2 or once the colony holds 20 stone; Vent when smoke first warns or on day 3. Tools behind research stay hidden until studied. Hidden tools have no keyboard shortcut until revealed.
+
+**Goals (built).** When the tutorial ends (or was skipped on an earlier run), a small "Next" card takes its place and sets one goal at a time, each checked from the world and logged when done: store 40 coal; build a research bench and start a study; wall off a bedroom; grow food (two mushroom beds); reach the next layer. The card lights up the tool it needs, shows progress where it can, and can be skipped. Like the tutorial, skipping or finishing is remembered.
+
 ## Look
 
 Side-on, as in Oxygen Not Included: painted 2D sprites and textures (AI-generated, cleaned up) standing in a 3D scene, with smooth ink-outlined terrain, an animated flame, embers and bloom **(built)**. Firelight and darkness carry the mood. Every model comes from one registry, so better art can replace any piece without touching the game, and without the images it falls back to a low-poly look. Details in [art-brief.md](art-brief.md).
