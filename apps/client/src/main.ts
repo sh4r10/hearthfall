@@ -476,7 +476,7 @@ function openFlyout(id?: string) {
     b.setAttribute('aria-expanded', String(b.dataset.cat === id));
   });
   fly.hidden = !id;
-  if (id) hideTip();
+  if (id) hideHoverTip();
   if (!id) return;
   const r = catButton(id).getBoundingClientRect();
   const w = fly.getBoundingClientRect().width;
@@ -499,7 +499,7 @@ $('overlays').innerHTML = MAP_VIEWS.map((o) =>
 
 // Tooltips for anything with a data-tip, including rows drawn after start.
 let tipFor: HTMLElement | undefined;
-function hideTip() {
+function hideHoverTip() {
   if (!tooltip.dataset.cursor) tooltip.hidden = true;
   tipFor = undefined;
 }
