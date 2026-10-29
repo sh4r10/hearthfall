@@ -6,6 +6,7 @@
 //! replay verification rely on.
 
 mod colonist;
+mod farm;
 mod haul;
 mod jobs;
 mod nav;
@@ -18,6 +19,7 @@ mod rooms;
 mod shades;
 mod world;
 
+pub use farm::{WATER_MAX, WATER_LOW, IRRIGATION_REACH};
 pub use colonist::{Activity, Colonist, Role, MISERABLE, WORK_UNIT, BED_REACH, CAUSE_ALIVE, CAUSE_FROZE, CAUSE_TAKEN, HEADING_NONE, HEADING_WARM, LIT_COLD_DRAIN, STAT_MAX};
 pub use jobs::{build_cost, rare_cost, CRYSTAL_PER_CELL, ORE_PER_CELL, DEFAULT_PRIORITY, MAX_PRIORITY, reach, refund, removable, Job, JobKind, COAL_PER_CELL, STONE_PER_CELL, STONE_PER_DIRT, HEARTH_CAPACITY, HEARTH_COST, LAMP_COST, REFUEL_BELOW, TILE_STONE};
 pub use orders::{BLOCK_NONE, BLOCK_NO_COAL, BLOCK_NO_CRYSTAL, BLOCK_NO_IRON, BLOCK_NO_HANDS, BLOCK_NO_STOCKPILE, BLOCK_NO_STONE, BLOCK_UNREACHABLE, BLOCK_UNDER_BUILDING, NO_HANDS_TICKS};
@@ -78,6 +80,8 @@ pub const EVENT_ARRIVAL: u8 = 4;
 pub const EVENT_SMOKE: u8 = 5;
 /// [`Event::kind`] for a finished study. Its `colonist` field holds the [`Tech`] number instead.
 pub const EVENT_RESEARCH: u8 = 6;
+/// [`Event::kind`] for the first mushroom bed to be watered. Sent once.
+pub const EVENT_WATERED: u8 = 9;
 /// Smoke per cell, 0 to this. Fires add a little each tick; it rises, pools
 /// under ceilings, soaks slowly into the walls, and escapes through vents.
 pub const SMOKE_MAX: i32 = 1_000;
@@ -157,6 +161,10 @@ pub struct Sim {
     pub room_id: Vec<u16>,
     /// What kind of room each cell is in, one of the `ROOM_` values.
     pub room_kind: Vec<u8>,
+    /// Water in each mushroom bed, 0 to `farm::WATER_MAX`; see `farm.rs`.
+    pub bed_water: Vec<i32>,
+    /// Whether [`EVENT_WATERED`] has been sent.
+    pub water_noted: bool,
     pub coal: i32,
     /// Stone from digging rock. Everything you stack is built from it.
     pub stone: i32,
@@ -220,6 +228,8 @@ impl Sim {
             smoke_warned: false,
             room_id: vec![0; n],
             room_kind: vec![rooms::ROOM_NONE; n],
+            bed_water: vec![0; n],
+            water_noted: false,
             coal: START_COAL,
             stone: START_STONE,
             food: START_FOOD,
@@ -368,6 +378,9 @@ impl Sim {
         let grow = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS - 1;
         // A cellar grows a second ration halfway through each cycle.
         let grow_cellar = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS / 2 - 1;
+        // A watered bed grows an extra ration three quarters of the way round.
+        let grow_water = self.tick % MUSHROOM_TICKS == MUSHROOM_TICKS * 3 / 4 - 1;
+        self.beds_water_tick();
         for i in 0..self.buildings.len() {
             match self.buildings[i] {
                 Building::Hearth if self.hearth_lit(i) => {
@@ -387,7 +400,7 @@ impl Sim {
                     }
                 }
                 // Mushrooms shun the fire's light and heat; lamp light doesn't bother them.
-                Building::MushroomBed if (grow || (grow_cellar && self.room_kind[i] == rooms::ROOM_CELLAR)) && !self.is_warm(i) => self.food += 1,
+                Building::MushroomBed if (grow || (grow_cellar && self.room_kind[i] == rooms::ROOM_CELLAR) || (grow_water && self.bed_water[i] > 0)) && !self.is_warm(i) => self.food += 1,
                 _ => {}
             }
         }
@@ -410,7 +423,7 @@ impl Sim {
             }
         };
         eat(&self.tick.to_le_bytes());
-        eat(&[self.smoke_warned as u8]);
+        eat(&[self.smoke_warned as u8, self.water_noted as u8]);
         eat(&self.coal.to_le_bytes());
         eat(&self.stone.to_le_bytes());
         eat(&self.food.to_le_bytes());
@@ -436,6 +449,7 @@ impl Sim {
             eat(&self.smoke[i].to_le_bytes());
             eat(&self.room_id[i].to_le_bytes());
             eat(&[self.room_kind[i]]);
+            eat(&self.bed_water[i].to_le_bytes());
         }
         for c in &self.colonists {
             c.hash_into(&mut eat);

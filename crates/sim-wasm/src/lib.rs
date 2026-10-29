@@ -224,6 +224,15 @@ impl WebSim {
     }
 
     /// Smoke per cell scaled to 0..=255; see `sim::SMOKE_MAX`.
+    /// Water in each mushroom bed's cell, 0..=100 (`sim::WATER_MAX`), plus 128 if the bed waters
+    /// itself from a pool beside it. 0 on cells without a mushroom bed.
+    pub fn bed_water(&self) -> Vec<u8> {
+        let s = &self.sim;
+        (0..s.buildings.len())
+            .map(|i| if s.buildings[i] == sim::Building::MushroomBed { s.bed_water[i] as u8 | if s.irrigated(i) { 128 } else { 0 } } else { 0 })
+            .collect()
+    }
+
     /// Which kind of room each cell is in (sim::ROOM_*), 0 outside any room.
     pub fn rooms(&self) -> Vec<u8> {
         self.sim.room_kind.clone()
@@ -253,7 +262,7 @@ impl WebSim {
     }
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
-    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade), building (to build, or to take down), progress percent,
+    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade, 8 cook, 9 water: fill a bucket at the pool at x, y), building (to build, or to take down), progress percent,
     /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
     /// `sim::BLOCK_` value, 0 if it isn't).
     pub fn jobs(&mut self) -> Vec<i32> {
@@ -281,7 +290,7 @@ impl WebSim {
     /// Flat, `EVENT_STRIDE` values each, oldest first: tick, kind (1 death,
     /// 2 a Shade starts an attack, 3 a building fell, 4 a stranger was taken
     /// in, 5 smoke, 6 a finished study, 7 a stranger is waiting, 8 a stranger
-    /// was turned away or left), colonist index (for 3 the building number,
+    /// was turned away or left, 9 the first bed was watered), colonist index (for 3 the building number,
     /// for 6 the `sim::Tech` number). Only the last 32 events are kept.
     pub fn events(&self) -> Vec<i32> {
         self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()

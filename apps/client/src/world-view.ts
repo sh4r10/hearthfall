@@ -147,6 +147,8 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Door]: 'door',
 };
 /** Model for each loose good. */
+/** Multiplies the light tint of a mushroom bed with no water in it. */
+const DRY_BED_TINT = new THREE.Color(0.9, 0.8, 0.68);
 const PILE_MODELS: Record<number, string> = { [Item.Coal]: 'pile-coal', [Item.Stone]: 'pile-stone', [Item.Ore]: 'pile-ore', [Item.Crystal]: 'pile-crystal' };
 
 const TILE = Element.Tile;
@@ -1613,7 +1615,10 @@ export class WorldView {
       o.getWorldPosition(p);
       const s = this.shadeAt(p.x, p.y + 0.4) * (o.userData.shade ?? 1);
       const warm = THREE.MathUtils.smoothstep(s, 0.3, 1);
-      (o.material as THREE.MeshBasicMaterial).color.setRGB(s * (0.8 + warm * 0.4), s * (0.9 + warm * 0.12), s * (1.1 - warm * 0.32));
+      const color = (o.material as THREE.MeshBasicMaterial).color;
+      color.setRGB(s * (0.8 + warm * 0.4), s * (0.9 + warm * 0.12), s * (1.1 - warm * 0.32));
+      // A dry mushroom bed is a little browner and greyer.
+      if (o.userData.dry) color.multiply(DRY_BED_TINT);
     });
     tint(this.buildings);
     tint(this.effects);
@@ -1630,7 +1635,13 @@ export class WorldView {
     const phase = (frame.tick % MUSHROOM_TICKS) / MUSHROOM_TICKS;
     for (const b of this.buildings.children) {
       const stage = b.userData.stage as ((n: number) => void) | undefined;
-      if (stage) stage(frame.firelight[b.userData.cell] >= DARK_BELOW ? 0 : Math.min(Math.floor(phase * 3), 2));
+      if (!stage) continue;
+      stage(frame.firelight[b.userData.cell] >= DARK_BELOW ? 0 : Math.min(Math.floor(phase * 3), 2));
+      const dry = frame.bedWater[b.userData.cell] === 0;
+      if (b.userData.dry !== dry) {
+        b.userData.dry = dry;
+        b.traverse((o) => { o.userData.dry = dry; });
+      }
     }
   }
 

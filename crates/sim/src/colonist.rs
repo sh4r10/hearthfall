@@ -572,6 +572,9 @@ impl Sim {
                 let i = self.idx(job.x, job.y);
                 self.pick_up(c, i);
             }
+            if job.kind == JobKind::Water {
+                self.fill_bucket(c);
+            }
         }
     }
 

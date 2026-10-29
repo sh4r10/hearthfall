@@ -66,6 +66,8 @@ export interface Frame {
   temperature: Int32Array;
   /** Smoke per cell, 0..=255 (SMOKE_MAX in the sim); see WebSim::smoke. */
   smoke: Uint8Array;
+  /** Water in each mushroom bed's cell, 0..WATER_MAX, plus BED_SELF_WATERING (128) when a pool beside it waters it; see WebSim::bed_water. */
+  bedWater: Uint8Array;
   /** Which kind of room each cell is in (ROOM_*), ROOM_NONE outside any room; see WebSim::rooms. */
   rooms: Uint8Array;
   /** Flat, COLONIST_STRIDE each; see WebSim::colonists in crates/sim-wasm. */
@@ -96,6 +98,12 @@ export const EVENT_RESEARCH = 6;
 /** A stranger waits at the edge of the light for an answer; gone at nightfall. */
 export const EVENT_STRANGER = 7;
 export const EVENT_TURNED_AWAY = 8;
+/** The first mushroom bed was watered. */
+export const EVENT_WATERED = 9;
+/** A full mushroom bed, and the level under which a bucket is fetched; must match WATER_MAX and WATER_LOW in crates/sim/src/farm.rs. */
+export const WATER_MAX = 100, WATER_LOW = 50;
+/** Flag bit in Frame.bedWater: the bed has a pool within 2 cells and waters itself. */
+export const BED_SELF_WATERING = 128;
 /** A cell is smoky from this much smoke (SMOKY / SMOKE_MAX of 255). */
 export const SMOKY = 102;
 /** Shade states, matching sim::SHADE_*. */
@@ -155,20 +163,20 @@ export const ROOM_EFFECTS: Record<number, string> = {
   [ROOM_CELLAR]: 'Still, damp air: mushrooms grow twice as fast.',
 };
 /** Loose goods, matching sim::Item; 0 is nothing. The 14th and 15th colonist fields are what they carry and how much. */
-export const Item = { Coal: 1, Stone: 2, Ore: 3, Crystal: 4 } as const;
-export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone', [Item.Ore]: 'iron ore', [Item.Crystal]: 'crystal' };
+export const Item = { Coal: 1, Stone: 2, Ore: 3, Crystal: 4, Water: 5 } as const;
+export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone', [Item.Ore]: 'iron ore', [Item.Crystal]: 'crystal', [Item.Water]: 'water' };
 /** Most a survivor carries in one trip; must match CARRY_MAX in crates/sim/src/haul.rs. */
 export const CARRY_MAX = 10;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper', 'Hauler', 'Researcher'] as const;
 export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
 /** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
-export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8;
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8, JOB_WATER = 9;
 export const JOB_NAMES: Record<number, string> = {
   [JOB_DIG]: 'digging', [JOB_BUILD]: 'building', [JOB_REFUEL]: 'refuelling a hearth', [JOB_DECONSTRUCT]: 'taking a building down', [JOB_HAUL]: 'hauling goods',
-  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms',
+  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms', [JOB_WATER]: 'fetching water',
 };
 /** Orders the colony raises itself, which the player can't cancel. */
-export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK];
+export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK, JOB_WATER];
 
 // --- Who survivors are: see crates/sim/src/people.rs --------------------------------
 
@@ -179,7 +187,7 @@ export const SKILLS = [
   { name: 'Digging', icon: 'dig', errands: 'Digging rock, dirt and coal' },
   { name: 'Building', icon: 'ladder', errands: 'Building and taking buildings down' },
   { name: 'Firekeeping', icon: 'hearth', errands: 'Feeding hearths and roasting mushrooms' },
-  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile' },
+  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile, and water to the mushroom beds' },
   { name: 'Research', icon: 'research', errands: 'Studying at a research bench' },
 ] as const;
 export const MAX_LEVEL = 10;
