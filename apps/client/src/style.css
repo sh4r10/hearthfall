@@ -178,7 +178,7 @@ body.night .clock-text span { color: var(--warn); }
 .tool.cat.open .caret { transform: rotate(180deg); }
 .tool.cat.open:not(.active) { background: rgba(255, 255, 255, 0.06); color: var(--ink); }
 #flyout {
-  position: fixed; z-index: 6; bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  position: fixed; z-index: 31; bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   padding: 6px; box-sizing: border-box; max-width: calc(100% - 16px); animation: slide-up 0.2s ease-out;
 }
 #flyout .row { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }

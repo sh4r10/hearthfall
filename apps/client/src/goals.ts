@@ -19,17 +19,13 @@ interface Reveal {
 }
 const REVEALS: Reveal[] = [
   {
-    tools: ['bench'], glyph: 'research', ready: (_f, day) => day >= 2,
-    line: () => 'New order: <b>Research</b>. A survivor studies at a bench between other work; pick a study with the Research button up top.',
-  },
-  {
     tools: ['tile', 'door'], glyph: 'door', ready: (f, day) => day >= 2 || f.stone >= STONE_ENOUGH,
-    line: () => 'New orders: <b>Tile</b> and <b>Door</b>. Wall a small space off to make a room: a bedroom, a mushroom cellar or a hearth room.',
+    line: () => 'New orders: <b>Tile</b> and <b>Door</b>, in <b>Build</b>. Wall a small space off to make a room: a bedroom, a mushroom cellar or a hearth room.',
   },
   {
     // The smoke warning already says what a vent is for.
     tools: ['vent'], glyph: 'vent', ready: (_f, day, smoke) => smoke || day >= 3,
-    line: (smoke) => smoke ? '' : 'New order: <b>Vent</b>. Fires smoke slowly; a vent clears it where it pools under the ceiling.',
+    line: (smoke) => smoke ? '' : 'New order: <b>Vent</b>, in <b>Fire and light</b>. Fires smoke slowly; a vent clears it where it pools under the ceiling.',
   },
 ];
 
@@ -47,7 +43,7 @@ const count = (f: Frame, b: number) => { let n = 0; for (let i = 0; i < f.buildi
 const GOALS: Goal[] = [
   { title: 'Store 40 coal', tool: 'dig', text: 'Dig coal seams and haul it to the stockpile. Every fire, and every meal, runs on it.',
     done: (f) => f.coal >= 40, progress: (f) => `${f.coal} / 40 coal` },
-  { title: 'Start a study', tool: 'bench', text: 'Build a <b>research bench</b> in the light, then open Research and pick something to study.',
+  { title: 'Start a study', tool: 'bench', text: 'Build a <b>research bench</b> (in <b>Industry</b>) in the light, then open Research and pick something to study.',
     done: (f) => count(f, Building.ResearchBench) > 0 && (f.researching >= 0 || f.known !== 0) },
   { title: 'Wall off a bedroom', tool: 'door', text: 'Close a small space off with <b>tiles</b> and a <b>door</b>, then put a bed inside. Bedrooms give the best sleep.',
     done: (f) => f.rooms.includes(ROOM_BEDROOM) },

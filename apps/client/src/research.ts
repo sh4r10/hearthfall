@@ -11,9 +11,11 @@ export class ResearchPanel {
   private readonly panel = $('research-panel');
   /** What the panel was last drawn from, so it only redraws on a change. */
   private drawn = '';
+  private bench = false;
 
-  constructor(private send: (msg: ToWorker) => void) {
-    this.button.onclick = () => this.toggle();
+  /** `findBench` is called instead of opening the panel when there is no bench yet. */
+  constructor(private send: (msg: ToWorker) => void, private findBench: () => void) {
+    this.button.onclick = () => (this.bench || !this.panel.hidden ? this.toggle() : this.findBench());
   }
 
   toggle(open = this.panel.hidden) {
@@ -24,7 +26,7 @@ export class ResearchPanel {
 
   update(f: Frame) {
     const t = f.researching;
-    const bench = f.buildings.includes(Building.ResearchBench);
+    const bench = this.bench = f.buildings.includes(Building.ResearchBench);
     const percent = (k: number) => Math.min(100, Math.floor((f.researchPoints[k] * 100) / TECHS[k].cost));
     this.button.innerHTML = `${icon('research', 18)}<div><span>Research</span><b>${
       t >= 0 ? `${TECHS[t].name} ${percent(t)}%` : TECHS.every((_, k) => knows(f, k)) ? 'All known' : bench ? 'Pick a study' : 'Build a bench'}</b></div>`;
@@ -47,7 +49,7 @@ export class ResearchPanel {
         <p>${tech.unlocks}</p>${meter}</article>`;
     }).join('');
     const note = bench ? 'A survivor studies at the bench between other work. A Researcher studies fastest.'
-      : 'Build a <b>research bench</b> (key B) inside the light first.';
+      : 'Build a <b>research bench</b> (Industry, key B) inside the light first.';
     this.panel.innerHTML = `<header><b>Research</b><span>Fire and forge</span><button class="close quiet" aria-label="Close">${icon('cancel', 14)}</button></header>
       <p class="note">${note}</p>${cards}`;
     this.panel.querySelector<HTMLButtonElement>('.close')!.onclick = () => this.toggle(false);

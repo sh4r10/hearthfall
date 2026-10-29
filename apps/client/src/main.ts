@@ -43,7 +43,7 @@ const TOOLS: ToolInfo[] = [
 /** One short sentence each; the hint panel shows at most two lines. */
 const HINTS: Record<Tool, string> = {
   dig: '<b>Dig:</b> click rock or shift-drag a box. Black seams are coal.',
-  bench: '<b>Research bench:</b> place it in the light, then pick a study (R).',
+  bench: '<b>Research bench:</b> place it in the light, then pick a study with the Research button (R).',
   coke: '<b>Coke oven:</b> bakes coal into coke while you hold over 16 coal.',
   smelter: '<b>Smelter:</b> haul ore to it; it turns ore and coal into iron.',
   grate: `<b>Grate:</b> click a hearth to fit one. Costs ${GRATE_IRON} iron.`,
@@ -103,7 +103,7 @@ function pickSurvivor(i: number) {
 const roster = new Roster(pickSurvivor);
 const strangerCard = new StrangerCard(send, TICKS_PER_SECOND);
 const colony = new ColonyScreen(send, pickSurvivor);
-const research = new ResearchPanel(send);
+const research = new ResearchPanel(send, () => setTool('bench'));
 
 // --- Title screen ------------------------------------------------------------
 
@@ -476,6 +476,7 @@ function openFlyout(id?: string) {
     b.setAttribute('aria-expanded', String(b.dataset.cat === id));
   });
   fly.hidden = !id;
+  if (id) hideTip();
   if (!id) return;
   const r = catButton(id).getBoundingClientRect();
   const w = fly.getBoundingClientRect().width;
@@ -498,10 +499,19 @@ $('overlays').innerHTML = MAP_VIEWS.map((o) =>
 
 // Tooltips for anything with a data-tip, including rows drawn after start.
 let tipFor: HTMLElement | undefined;
+function hideTip() {
+  if (!tooltip.dataset.cursor) tooltip.hidden = true;
+  tipFor = undefined;
+}
 document.addEventListener('pointerover', (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
   if (el === tipFor) return;
   tipFor = el ?? undefined;
+  // An open category's own tooltip would cover its flyout.
+  if (el?.dataset.cat !== undefined && el.dataset.cat === openCat) {
+    if (!tooltip.dataset.cursor) tooltip.hidden = true;
+    return;
+  }
   if (!el || !el.dataset.tip) {
     if (!tooltip.dataset.cursor) tooltip.hidden = true;
     return;
@@ -514,6 +524,12 @@ document.addEventListener('pointerover', (e) => {
   tooltip.style.left = `${Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8)}px`;
   // Above the element, or below it near the top of the screen.
   tooltip.style.top = `${r.top - t.height - 10 < 8 ? r.bottom + 10 : r.top - t.height - 10}px`;
+  // A tool inside the flyout clears the whole flyout, not just its button.
+  const fly = $('flyout');
+  if (!fly.hidden && fly.contains(el)) {
+    const top = fly.getBoundingClientRect().top - t.height - 8;
+    tooltip.style.top = `${Math.max(8, top)}px`;
+  }
 });
 
 function selectButton(attr: string, value: string) {
