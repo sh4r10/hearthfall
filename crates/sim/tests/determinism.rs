@@ -769,3 +769,64 @@ fn nobody_is_caught_by_a_hunting_shade_at_dawn() {
     }
     assert!(sim.colonists.iter().all(|c| c.alive()), "someone died with digs in the dark");
 }
+
+fn column_level_below(sim: &Sim, x: u32, y0: u32) -> i32 {
+    let y = (y0..sim.height).find(|&y| sim.water[sim.idx(x, y)] > 0).expect("dry column");
+    (y as i32 + 1) * 1000 - sim.water[sim.idx(x, y)]
+}
+
+/// Surface height of the water in column `x`, in thousandths of a cell down from the top.
+fn column_level(sim: &Sim, x: u32) -> i32 {
+    let y = (0..sim.height).find(|&y| sim.water[sim.idx(x, y)] > 0).expect("dry column");
+    (y as i32 + 1) * 1000 - sim.water[sim.idx(x, y)]
+}
+
+#[test]
+fn connected_columns_settle_to_one_level() {
+    // A U-tube: a full left shaft, a channel along the bottom, an empty right shaft.
+    let mut sim = sealed_room(4, 24, (0, 0, 0, 0));
+    sim.colonists.clear();
+    for y in 2..21 {
+        for x in [3, 12] {
+            let i = sim.idx(x, y);
+            sim.elements[i] = Element::Floor;
+        }
+    }
+    for x in 3..=12 {
+        let i = sim.idx(x, 20);
+        sim.elements[i] = Element::Floor;
+    }
+    for y in 2..20 {
+        let i = sim.idx(3, y);
+        sim.add_water(i, 1000);
+    }
+    let total = water_total(&sim);
+    let mut rested = None;
+    for t in 0..6000 {
+        let before = sim.water.clone();
+        sim.step(&[]);
+        if before == sim.water {
+            rested = Some(t);
+            break;
+        }
+    }
+    println!("u-tube rested after {rested:?} ticks: levels {} {}", column_level(&sim, 3), column_level(&sim, 12));
+    assert!(rested.is_some(), "u-tube never came to rest");
+    assert_eq!(water_total(&sim), total);
+    assert!((column_level(&sim, 3) - column_level(&sim, 12)).abs() <= 40, "surfaces not level");
+}
+
+#[test]
+fn seed_7_shaft_settles_level_with_its_lake() {
+    let mut sim = Sim::new(7, 160, 110);
+    sim.colonists.clear();
+    let total = water_total(&sim);
+    for _ in 0..6000 {
+        sim.step(&[]);
+    }
+    assert_eq!(water_total(&sim), total);
+    // Columns 9 to 12 are roofed over by rock; the rest are open to the same air.
+    let levels: Vec<i32> = (1..=18).filter(|&x| !(9..=12).contains(&x)).filter(|&x| (80..110).any(|y| sim.water[sim.idx(x, y)] > 0)).map(|x| column_level_below(&sim, x, 80)).collect();
+    println!("seed 7 shaft columns: {levels:?}");
+    assert!(levels.windows(2).all(|p| (p[0] - p[1]).abs() <= 150), "shaft and lake not level: {levels:?}");
+}

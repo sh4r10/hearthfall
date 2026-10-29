@@ -1,7 +1,7 @@
 //! Environment: light, smoke, water and heat.
 
 use crate::research::GRATE_RADIUS;
-use crate::{Building, Element, Sim, WATER_FULL, WATER_MIN, WATER_WET, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, NIGHT_FULL};
+use crate::{Building, Element, Sim, WATER_PRESSURED, WATER_FULL, WATER_MIN, WATER_WET, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, DARK_BELOW, ROOM_GLOW, ROOM_HEARTH, EVENT_SMOKE, SMOKE_MAX, SMOKE_SOAK_DIV, SMOKY, VENT_CLEAR, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, NIGHT_FULL};
 
 impl Sim {
     /// Flood light outwards from every lit hearth and every lamp through
@@ -191,12 +191,96 @@ impl Sim {
         }
         for i in 0..self.water.len() {
             self.water[i] += self.water_flow[i];
+        }
+        self.water_pressure(w, h);
+        for i in 0..self.water.len() {
             let v = self.water[i];
             if v > 0 && v < WATER_MIN && rests(self, i) {
                 self.water_lost += v as i64;
                 self.water[i] = 0;
             }
             self.sync_water_element(i);
+        }
+    }
+
+    /// Communicating vessels. Full cells (at least WATER_PRESSURED, since sideways
+    /// spreading leaves gradients of a unit a cell) joined side to side or top to bottom
+    /// form one body of water under pressure, and its surfaces (the cells
+    /// resting on top of it) must end up at one height. Per body and tick, a
+    /// quarter of the height difference between its highest surface that has
+    /// water to give and its lowest surface moves from one to the other, in
+    /// thousandths of a cell (smaller level = higher). Bodies are found in
+    /// index order, so the result is fixed, and one transfer per body per tick
+    /// keeps it from overshooting.
+    fn water_pressure(&mut self, w: usize, h: usize) {
+        let fluid = |e: Element| matches!(e, Element::Floor | Element::Water);
+        let seen = &mut self.water_level; // 0 = unvisited, 1 = in a body already
+        seen.fill(0);
+        let mut stack: Vec<usize> = Vec::new();
+        for start in 0..w * h {
+            if self.water[start] < WATER_PRESSURED || self.water_level[start] != 0 {
+                continue;
+            }
+            // (level, cell) of the highest surface holding water, and of the lowest surface.
+            let mut donor: Option<(i32, usize)> = None;
+            let mut taker: Option<(i32, usize)> = None;
+            self.water_level[start] = 1;
+            stack.push(start);
+            while let Some(c) = stack.pop() {
+                let (x, y) = (c % w, c / w);
+                // The surface of this column of the body, if `c` is its top: `c` itself when
+                // it is not quite full, else the cell above it (when that is open).
+                let above_in_body = y > 0 && self.water[c - w] >= WATER_PRESSURED;
+                // A full top cell can give from itself, and take into the open cell above it.
+                let surface = if above_in_body {
+                    None
+                } else if self.water[c] < WATER_FULL {
+                    Some((c, c, (y as i32 + 1) * WATER_FULL - self.water[c]))
+                } else if y > 0 && fluid(self.elements[c - w]) {
+                    Some((c, c - w, (y as i32) * WATER_FULL - self.water[c - w]))
+                } else {
+                    None
+                };
+                if let Some((give, take, level)) = surface {
+                    if donor.map_or(true, |d| (level, give) < d) {
+                        donor = Some((level, give));
+                    }
+                    if taker.map_or(true, |t| (level, usize::MAX - take) > (t.0, usize::MAX - t.1)) {
+                        taker = Some((level, take));
+                    }
+                }
+                let mut visit = |n: usize, this: &mut Sim| {
+                    if this.water[n] >= WATER_PRESSURED && this.water_level[n] == 0 {
+                        this.water_level[n] = 1;
+                        stack.push(n);
+                    }
+                };
+                if x > 0 {
+                    visit(c - 1, self);
+                }
+                if x + 1 < w {
+                    visit(c + 1, self);
+                }
+                if y > 0 {
+                    visit(c - w, self);
+                }
+                if y + 1 < h {
+                    visit(c + w, self);
+                }
+            }
+            if let (Some((dl, src)), Some((tl, dst))) = (donor, taker) {
+                // A fresh film under WATER_MIN would dry up at once, so open a cell only with that much.
+                let least = if self.water[dst] == 0 { WATER_MIN } else { 1 };
+                let diff = tl - dl;
+                if src == dst || diff < 2 * least {
+                    continue;
+                }
+                let f = (diff / 4).max(least).min(self.water[src]).min(WATER_FULL - self.water[dst]);
+                if f >= least {
+                    self.water[src] -= f;
+                    self.water[dst] += f;
+                }
+            }
         }
     }
 

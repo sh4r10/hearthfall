@@ -86,6 +86,8 @@ pub const WATER_FULL: i32 = 1_000;
 /// A cell holding at least this much is [`Element::Water`] (swimming, not walkable
 /// floor). Less is a wet [`Element::Floor`] that survivors can still wade across.
 pub const WATER_WET: i32 = 500;
+/// A cell holding at least this much counts as full when working out which water is connected under pressure.
+pub const WATER_PRESSURED: i32 = 900;
 /// A resting cell holding less than this dries up, so there are no endless thin films.
 pub const WATER_MIN: i32 = 20;
 /// Smoke a lit hearth gives off per tick. Slow on purpose: one hearth in the
@@ -201,6 +203,8 @@ pub struct Sim {
     scratch: Vec<i32>,
     /// Sideways water flow per cell for the current tick.
     water_flow: Vec<i32>,
+    /// Surface height of the water column each cell belongs to; see `water_tick`.
+    water_level: Vec<i32>,
 }
 
 impl Sim {
@@ -257,6 +261,7 @@ impl Sim {
             rng: Rng::new(seed ^ 0xC010_C010),
             scratch: vec![0; n],
             water_flow: vec![0; n],
+            water_level: vec![0; n],
         };
         // Esk and Mara, either side of the hearth. Everyone else follows the firelight down later.
         sim.first_two(cx, cy);
