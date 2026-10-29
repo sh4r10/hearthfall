@@ -39,6 +39,18 @@ COPY = {
     "stockpile-half": "buildings/stockpile-half.png",
     "stockpile-full": "buildings/stockpile-full.png",
     "pile-coal": "items/coal-chunk.png",
+    "pile-ore": "items/iron-ore-pile.png",
+    "pile-crystal": "items/crystal-pile.png",
+    "iron-ore": "terrain/iron-ore.png",
+    "crystal": "terrain/crystal.png",
+    "hearth-grate": "buildings/hearth-grate.png",
+    "workbench": "buildings/workbench-idle.png",
+    "workbench-working": "buildings/workbench-working.png",
+    "coke-oven": "buildings/coke-oven-off.png",
+    "coke-oven-on": "buildings/coke-oven-on.png",
+    "smelter": "buildings/smelter-off.png",
+    "smelter-on": "buildings/smelter-on.png",
+    "crystal-lamp": "buildings/crystal-lamp-on.png",
 }
 # Props cut to their painted area, for markers and icons in the world.
 CROP = {"pickaxe": "props/pickaxe.png"}
@@ -76,7 +88,8 @@ SHADE = ["drift", "lunge", "recoil"]
 # icons stay for those until then (see docs/art-usage.md).
 ICONS = {"dig": "dig", "ladder": "ladder", "mushroom": "mushroom-bed", "cancel": "cancel", "sun": "day", "moon": "night",
          "warmth": "warmth", "energy": "energy", "mood": "mood", "sleep": "sleep", "lamp": "lamp", "bed": "bed",
-         "skull": "death"}
+         "skull": "death", "research": "research", "coke": "coke", "crystal": "crystal", "ore": "iron", "iron": "iron-bar",
+         "grate": "tech-burner", "crystal-lamp": "tech-crystal-lamp"}
 
 
 def save(img, path):

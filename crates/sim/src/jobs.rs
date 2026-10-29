@@ -2,6 +2,7 @@
 //! Survivors claim them, walk to them and work them off.
 
 use crate::haul::Item;
+use crate::research::{COKE_FUEL, GRATE_IRON, RESEARCH_PRIORITY, RESEARCH_STINT};
 use crate::{Building, Element, Role, Sim};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -14,6 +15,12 @@ pub enum JobKind {
     Deconstruct,
     /// Pick up a pile of dug goods and carry it to a stockpile.
     Haul,
+    /// A stint of study at a research bench.
+    Research,
+    /// A batch at a coke oven or smelter.
+    Refine,
+    /// Fit an iron grate to a hearth.
+    Upgrade,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,6 +58,9 @@ pub const REFUEL_BELOW: i32 = 20;
 pub const STONE_PER_CELL: i32 = 3;
 /// Stone gained from digging one dirt cell: dirt is full of small stones.
 pub const STONE_PER_DIRT: i32 = 1;
+/// Iron ore gained from digging one ore cell, and crystal from one crystal cell.
+pub const ORE_PER_CELL: i32 = 2;
+pub const CRYSTAL_PER_CELL: i32 = 1;
 /// Stone a tile costs, and what digging one out gives back: nothing is lost
 /// by rebuilding a wall somewhere else.
 pub const TILE_STONE: i32 = 1;
@@ -66,9 +76,22 @@ pub fn build_cost(b: Building) -> (i32, i32) {
         Building::MushroomBed => (0, 2),
         Building::Bed => (0, 3),
         Building::Stockpile => (0, 2),
+        Building::ResearchBench => (0, 4),
+        Building::CokeOven => (0, 6),
+        Building::Smelter => (0, 8),
+        Building::CrystalLamp => (0, 1),
         Building::Tile => (0, TILE_STONE),
         Building::Door => (0, 3),
         Building::None | Building::Cairn => (0, 0),
+    }
+}
+
+/// What a building costs in the rarer goods, as (iron, crystal), on top of
+/// [`build_cost`].
+pub fn rare_cost(b: Building) -> (i32, i32) {
+    match b {
+        Building::CrystalLamp => (0, 2),
+        _ => (0, 0),
     }
 }
 
@@ -91,7 +114,7 @@ pub fn removable(b: Building) -> bool {
 /// so they never draw over each other.
 pub fn reach(b: Building) -> u32 {
     match b {
-        Building::Hearth | Building::MushroomBed | Building::Stockpile => 1,
+        Building::Hearth | Building::MushroomBed | Building::Stockpile | Building::ResearchBench | Building::Smelter => 1,
         _ => 0,
     }
 }
@@ -104,6 +127,9 @@ impl JobKind {
             JobKind::Refuel => Role::Firekeeper,
             JobKind::Deconstruct => Role::Builder,
             JobKind::Haul => Role::Hauler,
+            JobKind::Research => Role::Researcher,
+            JobKind::Refine => Role::Firekeeper,
+            JobKind::Upgrade => Role::Builder,
         }
     }
 
@@ -114,6 +140,9 @@ impl JobKind {
             JobKind::Refuel => 2,
             JobKind::Deconstruct => 3,
             JobKind::Haul => 4,
+            JobKind::Research => 5,
+            JobKind::Refine => 6,
+            JobKind::Upgrade => 7,
         }
     }
 }
@@ -126,12 +155,18 @@ impl Sim {
         }
         let id = self.next_job_id;
         self.next_job_id += 1;
-        let priority = if kind == JobKind::Refuel { self.refuel_priority[self.idx(x, y)] } else { DEFAULT_PRIORITY };
+        let priority = match kind {
+            JobKind::Refuel => self.refuel_priority[self.idx(x, y)],
+            JobKind::Research => RESEARCH_PRIORITY,
+            // Refining is never urgent: the fires come first.
+            JobKind::Refine => DEFAULT_PRIORITY - 1,
+            _ => DEFAULT_PRIORITY,
+        };
         self.jobs.push(Job { id, x, y, kind, progress: 0, created: self.tick, claimed_by: None, priority });
     }
 
     pub(crate) fn cancel_job(&mut self, x: u32, y: u32) {
-        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul)) {
+        if let Some(pos) = self.jobs.iter().position(|j| j.x == x && j.y == y && !matches!(j.kind, JobKind::Refuel | JobKind::Haul | JobKind::Research | JobKind::Refine)) {
             let job = self.jobs.remove(pos);
             if let Some(c) = job.claimed_by {
                 self.colonists[c as usize].drop_job();
@@ -264,10 +299,19 @@ impl Sim {
 
     /// Remove the building at cell `i` and salvage it into the stockpile.
     fn take_down(&mut self, i: usize) {
-        let (coal, stone) = refund(self.buildings[i]);
-        self.coal += coal + self.hearth_fuel[i].max(0);
+        let b = self.buildings[i];
+        let (coal, stone) = refund(b);
+        let (iron, crystal) = rare_cost(b);
+        // Fuel from coke goes back as coke, the rest as coal.
+        let clean = self.hearth_clean[i].clamp(0, self.hearth_fuel[i].max(0));
+        self.coal += coal + self.hearth_fuel[i].max(0) - clean;
+        self.coke += clean / COKE_FUEL;
         self.stone += stone;
+        self.iron += (iron + 1) / 2 + if self.hearth_grate[i] { (GRATE_IRON + 1) / 2 } else { 0 };
+        self.crystal += (crystal + 1) / 2;
         self.hearth_fuel[i] = 0;
+        self.hearth_clean[i] = 0;
+        self.hearth_grate[i] = false;
         self.refuel_priority[i] = DEFAULT_PRIORITY;
         self.buildings[i] = Building::None;
     }
@@ -278,12 +322,17 @@ impl Sim {
             JobKind::Dig => self.elements[i].is_diggable() && !self.holds_up_building(job.x, job.y),
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);
+                let (iron, crystal) = rare_cost(b);
                 // Nobody gets walled in: a tile waits for its cell to be empty.
-                self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && self.coal >= coal && self.stone >= stone && !(b == Building::Tile && self.occupied(i))
+                self.buildings[i] == Building::None && self.fits(job.x, job.y, b) && self.coal >= coal && self.stone >= stone && self.iron >= iron && self.crystal >= crystal
+                    && !(b == Building::Tile && self.occupied(i))
             }
-            JobKind::Refuel => self.buildings[i] == Building::Hearth && self.coal > 0,
+            JobKind::Refuel => self.buildings[i] == Building::Hearth && (self.coal > 0 || self.coke > 0),
             JobKind::Deconstruct => removable(self.buildings[i]),
             JobKind::Haul => self.haul_doable(i),
+            JobKind::Research => self.buildings[i] == Building::ResearchBench && self.researching.is_some(),
+            JobKind::Refine => self.refine_doable(i),
+            JobKind::Upgrade => self.buildings[i] == Building::Hearth && !self.hearth_grate[i] && self.iron >= GRATE_IRON,
         }
     }
 
@@ -292,6 +341,8 @@ impl Sim {
             JobKind::Dig => match self.elements[self.idx(job.x, job.y)] {
                 Element::Dirt => 60,
                 Element::Coal => 90,
+                Element::Iron => 160,
+                Element::Crystal => 180,
                 Element::Tile => 40,
                 _ => 140,
             },
@@ -305,6 +356,9 @@ impl Sim {
             },
             // Scooping up a pile; the walk to the stockpile comes after.
             JobKind::Haul => 15,
+            JobKind::Research => RESEARCH_STINT,
+            JobKind::Refine => 120,
+            JobKind::Upgrade => 100,
         }
     }
 
@@ -317,6 +371,8 @@ impl Sim {
                     Element::Coal => Some((Item::Coal, COAL_PER_CELL)),
                     Element::Rock => Some((Item::Stone, STONE_PER_CELL)),
                     Element::Dirt => Some((Item::Stone, STONE_PER_DIRT)),
+                    Element::Iron => Some((Item::Ore, ORE_PER_CELL)),
+                    Element::Crystal => Some((Item::Crystal, CRYSTAL_PER_CELL)),
                     Element::Tile => Some((Item::Stone, TILE_STONE)),
                     _ => None,
                 };
@@ -327,8 +383,11 @@ impl Sim {
             }
             JobKind::Build(b) => {
                 let (coal, stone) = build_cost(b);
+                let (iron, crystal) = rare_cost(b);
                 self.coal -= coal;
                 self.stone -= stone;
+                self.iron -= iron;
+                self.crystal -= crystal;
                 if b == Building::Hearth {
                     self.hearth_fuel[i] = 10;
                 }
@@ -340,6 +399,11 @@ impl Sim {
                 }
             }
             JobKind::Refuel => {
+                // Coke first: it goes twice as far and smokes half as much.
+                let coke = self.coke.min((HEARTH_CAPACITY - self.hearth_fuel[i]) / COKE_FUEL).max(0);
+                self.coke -= coke;
+                self.hearth_fuel[i] += coke * COKE_FUEL;
+                self.hearth_clean[i] += coke * COKE_FUEL;
                 let amount = self.coal.min(HEARTH_CAPACITY - self.hearth_fuel[i]).max(0);
                 self.coal -= amount;
                 self.hearth_fuel[i] += amount;
@@ -347,6 +411,12 @@ impl Sim {
             JobKind::Deconstruct => self.take_down(i),
             // The colonist picks the pile up; see `Sim::pick_up`.
             JobKind::Haul => {}
+            JobKind::Research => self.finish_research(RESEARCH_STINT),
+            JobKind::Refine => self.finish_refine(i),
+            JobKind::Upgrade => {
+                self.iron -= GRATE_IRON;
+                self.hearth_grate[i] = true;
+            }
         }
     }
 
@@ -354,7 +424,8 @@ impl Sim {
     pub(crate) fn maintain_jobs(&mut self) {
         self.collapse_unsupported();
         self.raise_haul_jobs();
-        if self.coal > 0 {
+        self.raise_research_jobs();
+        if self.coal > 0 || self.coke > 0 {
             for i in 0..self.buildings.len() {
                 if self.buildings[i] == Building::Hearth && self.hearth_fuel[i] < REFUEL_BELOW {
                     let (x, y) = (i as u32 % self.width, i as u32 / self.width);
@@ -372,6 +443,10 @@ impl Sim {
                 JobKind::Refuel => self.buildings[self.idx(job.x, job.y)] != Building::Hearth,
                 JobKind::Deconstruct => !removable(self.buildings[self.idx(job.x, job.y)]),
                 JobKind::Haul => self.pile_amount[self.idx(job.x, job.y)] <= 0,
+                JobKind::Research => self.buildings[self.idx(job.x, job.y)] != Building::ResearchBench || self.researching.is_none(),
+                // Left alone once started, so a batch isn't lost to a stock tick.
+                JobKind::Refine => job.claimed_by.is_none() && !self.refine_doable(self.idx(job.x, job.y)),
+                JobKind::Upgrade => self.buildings[self.idx(job.x, job.y)] != Building::Hearth || self.hearth_grate[self.idx(job.x, job.y)],
             };
             if stale {
                 let job = self.jobs.remove(k);

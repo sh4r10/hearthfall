@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFUEL, JOB_STRIDE, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
+import { Building, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_STRIDE, STAT_MAX, Item, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -137,9 +137,15 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.Bed]: 'bed',
   [Building.Vent]: 'vent',
   [Building.Stockpile]: 'stockpile',
+  [Building.ResearchBench]: 'workbench',
+  [Building.CokeOven]: 'coke-oven',
+  [Building.Smelter]: 'smelter',
+  [Building.CrystalLamp]: 'crystal-lamp',
   [Building.Tile]: 'tile', // only a build order, shown as a ghost block; the finished cell is Element.Tile
   [Building.Door]: 'door',
 };
+/** Model for each loose good. */
+const PILE_MODELS: Record<number, string> = { [Item.Coal]: 'pile-coal', [Item.Stone]: 'pile-stone', [Item.Ore]: 'pile-ore', [Item.Crystal]: 'pile-crystal' };
 
 const TILE = Element.Tile;
 
@@ -147,6 +153,8 @@ const ELEMENT_COLOURS: Record<number, string[]> = {
   [Element.Rock]: ['#5a5b5f', '#4d4e53', '#66655f'],
   [Element.Dirt]: ['#7d5638', '#6e4a30', '#8a6242'],
   [Element.Coal]: ['#2e2c31', '#242327', '#38353a'],
+  [Element.Iron]: ['#6e3a22', '#5a5b5f', '#8a4a2c'],
+  [Element.Crystal]: ['#4d4e53', '#5cc4c8', '#4d4e53'],
   [TILE]: ['#7a7e86', '#72767e', '#80848b'], // cut stone: lighter, cooler grey than rock
 };
 
@@ -214,6 +222,8 @@ export class WorldView {
   private shadeTarget!: Float32Array;
   private lightTex!: THREE.DataTexture;
   private maskTex?: THREE.DataTexture;
+  /** The second material mask: r = iron ore, g = crystal. */
+  private oreTex?: THREE.DataTexture;
   private waterTex?: THREE.DataTexture;
   private terrainShader?: THREE.ShaderMaterial;
   private fieldTex!: THREE.DataTexture;
@@ -222,6 +232,7 @@ export class WorldView {
   private latest?: Frame;
   private lastElements?: Uint8Array;
   private lastBuildings?: Uint8Array;
+  private lastGrates?: Uint8Array;
   private clock = new THREE.Clock();
   private nightAmount = 0;
   private raycaster = new THREE.Raycaster();
@@ -317,9 +328,10 @@ export class WorldView {
     this.lightTex = this.gridTexture();
     if (PAINTED) {
       this.maskTex = this.gridTexture();
+      this.oreTex = this.gridTexture();
       this.waterTex = this.gridTexture();
       this.waterTex.magFilter = this.waterTex.minFilter = THREE.NearestFilter;
-      this.terrainShader = terrainMaterial(this.maskTex, this.lightTex, this.waterTex, this.width, this.height);
+      this.terrainShader = terrainMaterial(this.maskTex, this.oreTex, this.lightTex, this.waterTex, this.width, this.height);
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), this.terrainShader);
       ground.position.z = -0.1; // just behind the sprites standing in the play plane
       this.scene.add(ground);
@@ -358,7 +370,7 @@ export class WorldView {
   // --- Terrain ---------------------------------------------------------------
 
   private isSolid(e: number) {
-    return e === Element.Rock || e === Element.Dirt || e === Element.Coal || e === TILE;
+    return isSolid(e);
   }
 
   private addInstances(geo: THREE.BufferGeometry, material: THREE.Material, placements: { cell: number; matrix: THREE.Matrix4; colour: THREE.Color }[], castShadow: boolean) {
@@ -389,9 +401,13 @@ export class WorldView {
           mask[i + 1] = e === Element.Dirt ? 255 : 0;
           mask[i + 2] = e === Element.Coal ? 255 : 0;
           mask[i + 3] = e === TILE ? 255 : 0; // a = built tile
+          const ores = this.oreTex!.image.data as Uint8Array;
+          ores[i] = e === Element.Iron ? 255 : 0;
+          ores[i + 1] = e === Element.Crystal ? 255 : 0;
         }
       }
       this.maskTex.needsUpdate = true;
+      this.oreTex!.needsUpdate = true;
       this.updateWater(elements);
       return;
     }
@@ -671,7 +687,7 @@ export class WorldView {
 
   // --- Buildings and markers -------------------------------------------------
 
-  private rebuildBuildings(buildings: Uint8Array) {
+  private rebuildBuildings(buildings: Uint8Array, grates: Uint8Array) {
     this.buildings.clear();
     for (const h of this.hearths) this.scene.remove(h.light);
     this.hearths = [];
@@ -679,7 +695,7 @@ export class WorldView {
     this.lamps = [];
     const p = new THREE.Vector3();
     buildings.forEach((b, i) => {
-      const name = BUILDING_MODELS[b];
+      const name = b === Building.Hearth && grates[i] ? 'hearth-grate' : BUILDING_MODELS[b];
       if (!name) return;
       this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
       const model = makeModel(name);
@@ -700,9 +716,10 @@ export class WorldView {
         }
         this.scene.add(light);
         this.hearths.push({ cell: i, model, flame: model.getObjectByName('flame')!, light });
-      } else if (b === Building.Lamp) {
+      } else if (b === Building.Lamp || b === Building.CrystalLamp) {
         model.scale.setScalar(1.3);
-        const light = new THREE.PointLight('#ffd98a', 4, 7, 1.2);
+        const crystal = b === Building.CrystalLamp;
+        const light = new THREE.PointLight(crystal ? '#c8ecff' : '#ffd98a', crystal ? 5 : 4, crystal ? 13 : 7, 1.2);
         light.position.set(p.x + 0.22, p.y + 0.15, 1.2);
         this.scene.add(light);
         this.lamps.push(light);
@@ -721,7 +738,7 @@ export class WorldView {
       o.userData.lit = false;
       o.castShadow = false;
     });
-    if (building === Building.Hearth || building === Building.Lamp) model.scale.setScalar(1.3);
+    if (building === Building.Hearth || building === Building.Lamp || building === Building.CrystalLamp) model.scale.setScalar(1.3);
     return model;
   }
 
@@ -854,12 +871,29 @@ export class WorldView {
       const item = frame.pileItem[i];
       if (!item || this.piles.has(i)) continue;
       const big = frame.pileAmount[i] >= 8;
-      const model = makeModel(item === Item.Coal ? 'pile-coal' : 'pile-stone', i);
+      const model = makeModel(PILE_MODELS[item] ?? 'pile-stone', i);
       model.scale.setScalar(big ? 1.25 : 0.85);
       this.cellToWorld(i % this.width, Math.floor(i / this.width), p);
       model.position.set(p.x + ((i * 37) % 7 - 3) * 0.04, p.y - 0.5, 0.25);
       this.pileGroup.add(model);
       this.piles.set(i, { item, big, model });
+    }
+  }
+
+  /** Benches, ovens and smelters show their working picture while a survivor works at them. */
+  private showWorking(frame: Frame) {
+    const busy = new Set<number>();
+    for (let k = 0; k < frame.jobs.length; k += JOB_STRIDE) {
+      const kind = frame.jobs[k + 2];
+      if ((kind === JOB_RESEARCH || kind === JOB_REFINE) && frame.jobs[k + 4] > 0 && frame.jobs[k + 5]) busy.add(frame.jobs[k + 1] * frame.width + frame.jobs[k]);
+    }
+    for (const b of this.buildings.children) {
+      const on = b.getObjectByName('on');
+      if (!on) continue;
+      const working = busy.has(b.userData.cell);
+      on.visible = working;
+      const off = b.getObjectByName('off');
+      if (off) off.visible = !working;
     }
   }
 
@@ -1050,10 +1084,12 @@ export class WorldView {
       else this.updateWater(frame.elements);
       this.updateStreams(frame.elements);
     }
-    if (!this.lastBuildings || frame.buildings.some((b, i) => b !== this.lastBuildings![i])) {
+    const gratesChanged = !this.lastGrates || frame.hearthGrate.some((g, i) => g !== this.lastGrates![i]);
+    if (!this.lastBuildings || gratesChanged || frame.buildings.some((b, i) => b !== this.lastBuildings![i])) {
       if (this.lastBuildings) this.builtOrRemoved(this.lastBuildings, frame.buildings);
       this.lastBuildings = frame.buildings;
-      this.rebuildBuildings(frame.buildings);
+      this.lastGrates = frame.hearthGrate;
+      this.rebuildBuildings(frame.buildings, frame.hearthGrate);
     }
     this.computeShade(frame);
     if (first) this.shade.set(this.shadeTarget);
@@ -1061,6 +1097,7 @@ export class WorldView {
     this.updateMarkers(frame);
     this.updatePiles(frame);
     this.fillStockpiles(frame);
+    this.showWorking(frame);
     this.swingDoors(frame);
 
     this.survivors.forEach((s, i) => {
@@ -1114,7 +1151,7 @@ export class WorldView {
 
   /** A burst of rock, dirt or coal where a cell was dug out. */
   private dugOut(before: Uint8Array, after: Uint8Array) {
-    const kind: Record<number, string> = { [Element.Rock]: 'debris-rock', [Element.Dirt]: 'debris-dirt', [Element.Coal]: 'debris-coal', [TILE]: 'debris-rock' };
+    const kind: Record<number, string> = { [Element.Rock]: 'debris-rock', [Element.Dirt]: 'debris-dirt', [Element.Coal]: 'debris-coal', [Element.Iron]: 'debris-rock', [Element.Crystal]: 'debris-rock', [TILE]: 'debris-rock' };
     const p = new THREE.Vector3();
     after.forEach((e, i) => {
       if (e !== Element.Floor || !kind[before[i]]) return;

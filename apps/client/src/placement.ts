@@ -1,11 +1,12 @@
 // Where a building can go, mirrored from room_for and fits in
 // crates/sim/src/jobs.rs, so the build preview can say why before the sim
 // quietly refuses the order.
-import { BUILD_COST, Building, Element, JOB_BUILD, JOB_STRIDE, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_NIGHT, REACH, type Frame } from './protocol';
+import { BUILD_COST, Building, CRYSTAL_RADIUS_NIGHT, Element, isSolid, JOB_BUILD, JOB_STRIDE, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_NIGHT, RARE_COST, REACH, type Frame } from './protocol';
 
 export const BUILDING_NAMES: Record<number, string> = {
   [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.Stockpile]: 'stockpile', [Building.MushroomBed]: 'mushroom bed',
   [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Vent]: 'vent', [Building.Cairn]: 'cairn', [Building.Tile]: 'stone tile', [Building.Door]: 'door',
+  [Building.ResearchBench]: 'research bench', [Building.CokeOven]: 'coke oven', [Building.Smelter]: 'smelter', [Building.CrystalLamp]: 'crystal lamp',
 };
 
 /** 'ok' places now, 'wait' places but waits for coal or stone, 'bad' is refused. */
@@ -16,7 +17,6 @@ const reach = (b: number) => REACH[b] ?? 0;
 const open = (f: Frame, x: number, y: number) =>
   x >= 0 && y >= 0 && x < f.width && y < f.height && f.elements[y * f.width + x] === Element.Floor;
 const needsFloor = (b: number) => b !== Building.Ladder && b !== Building.Vent && b !== Building.Tile;
-const solid = (e: number) => e === Element.Dirt || e === Element.Rock || e === Element.Coal || e === Element.Tile;
 
 /**
  * Why `b` can't go at (x, y), or undefined if it can. `planned` holds builds
@@ -36,7 +36,7 @@ export function refusal(f: Frame, x: number, y: number, b: number, planned: { x:
     for (let dx = -r; dx <= r; dx++) {
       const below = y + 1 < f.height ? f.elements[(y + 1) * w + x + dx] : Element.Floor;
       if (below === Element.Water) return `A ${name} can't stand in water.`;
-      if (!solid(below)) return `Needs solid floor under ${r ? 'all of it' : 'it'}.`;
+      if (!isSolid(below)) return `Needs solid floor under ${r ? 'all of it' : 'it'}.`;
     }
   }
   // A door is two cells tall: its frame fills the cell above, and nothing goes into the top of a door.
@@ -69,20 +69,22 @@ export function refusal(f: Frame, x: number, y: number, b: number, planned: { x:
  */
 export function judge(f: Frame, b: number, cells: [number, number][]): Spot[] {
   const [coal, stone] = BUILD_COST[b] ?? [0, 0];
+  const [iron, crystal] = RARE_COST[b] ?? [0, 0];
   const planned: { x: number; y: number; b: number }[] = [];
   return cells.map(([x, y]) => {
     const reason = refusal(f, x, y, b, planned);
     if (reason) return { x, y, fit: 'bad' as Fit, reason };
     planned.push({ x, y, b });
     const n = planned.length;
-    const short = [coal * n > f.coal ? `${coal * n - f.coal} more coal` : '', stone * n > f.stone ? `${stone * n - f.stone} more stone` : ''].filter(Boolean).join(' and ');
+    const short = [coal * n > f.coal ? `${coal * n - f.coal} more coal` : '', stone * n > f.stone ? `${stone * n - f.stone} more stone` : '',
+      iron * n > f.iron ? `${iron * n - f.iron} more iron` : '', crystal * n > f.crystal ? `${crystal * n - f.crystal} more crystal` : ''].filter(Boolean).join(' and ');
     return short ? { x, y, fit: 'wait' as Fit, reason: `Waits for ${short}.` } : { x, y, fit: 'ok' as Fit };
   });
 }
 
 /** How far a light source reaches at night, or 0 if it gives none. */
 export function nightRadius(b: number) {
-  return b === Building.Hearth ? LIGHT_RADIUS_NIGHT : b === Building.Lamp ? LAMP_RADIUS_NIGHT : 0;
+  return b === Building.Hearth ? LIGHT_RADIUS_NIGHT : b === Building.Lamp ? LAMP_RADIUS_NIGHT : b === Building.CrystalLamp ? CRYSTAL_RADIUS_NIGHT : 0;
 }
 
 /**

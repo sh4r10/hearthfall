@@ -26,11 +26,13 @@ pub enum Role {
     Firekeeper = 2,
     /// Carries dug coal and stone to the stockpile.
     Hauler = 3,
+    /// Studies at the research bench.
+    Researcher = 4,
 }
 
 impl Role {
     pub fn from_u8(v: u8) -> Option<Role> {
-        [Role::Digger, Role::Builder, Role::Firekeeper, Role::Hauler].get(v as usize).copied()
+        [Role::Digger, Role::Builder, Role::Firekeeper, Role::Hauler, Role::Researcher].get(v as usize).copied()
     }
 }
 

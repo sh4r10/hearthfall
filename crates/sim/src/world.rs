@@ -10,6 +10,10 @@ pub enum Element {
     Water = 3,
     /// Fuel for hearths. Digging it adds to the colony's fuel stock.
     Coal = 4,
+    /// Iron ore, below the start cave. A smelter turns it into iron.
+    Iron = 6,
+    /// Crystal, deeper still. Focuses light.
+    Crystal = 7,
     /// Cut stone laid by survivors: a platform, a bridge or a wall. Solid
     /// like rock, and dug out again like it (giving its stone back).
     Tile = 5,
@@ -21,12 +25,12 @@ impl Element {
     }
 
     pub fn is_diggable(self) -> bool {
-        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile)
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile | Element::Iron | Element::Crystal)
     }
 
     /// Solid ground or wall: anything that blocks light and smoke.
     pub fn is_wall(self) -> bool {
-        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile)
+        matches!(self, Element::Dirt | Element::Rock | Element::Coal | Element::Tile | Element::Iron | Element::Crystal)
     }
 
     /// Thermal conductivity on a 0..=1024 scale.
@@ -37,6 +41,8 @@ impl Element {
             Element::Rock => 600,
             Element::Water => 800,
             Element::Coal => 400,
+            Element::Iron => 700,
+            Element::Crystal => 500,
             Element::Tile => 600,
         }
     }
@@ -62,6 +68,14 @@ pub enum Building {
     Bed = 7,
     /// Where hauled goods go. Coal and stone only count once they are here.
     Stockpile = 8,
+    /// Where a survivor studies whatever the player picked to research.
+    ResearchBench = 11,
+    /// Bakes coal into coke, which burns twice as long with half the smoke.
+    CokeOven = 12,
+    /// Smelts iron ore into iron with a little coal.
+    Smelter = 13,
+    /// A lamp with a crystal lens: much further light, still no fuel.
+    CrystalLamp = 14,
     /// A build order only: finishing it turns the cell into [`Element::Tile`].
     /// Never found in `Sim::buildings`.
     Tile = 9,
@@ -87,6 +101,10 @@ fn value_noise(seed: u64, x: i32, y: i32, shift: u32) -> i32 {
 /// Coal seams in the start room's shell, as (x0, y0, x1, y1) boxes relative to
 /// the hearth: one in each side wall and one under the floor. About 60 coal.
 const START_SEAMS: [Seam; 3] = [Seam(-10, -3, -9, -1), Seam(9, -3, 10, -1), Seam(2, 1, 5, 2)];
+/// A pocket of iron ore just under the start cave's shell, and one of crystal
+/// a long dig further down, so the first of each is never a blind hunt.
+const START_IRON: Seam = Seam(-6, 4, -4, 5);
+const START_CRYSTAL: Seam = Seam(6, 16, 7, 17);
 struct Seam(i32, i32, i32, i32);
 impl Seam {
     fn contains(&self, &(x, y): &(i32, i32)) -> bool {
@@ -115,12 +133,20 @@ pub fn generate(seed: u64, width: u32, height: u32) -> Vec<Element> {
                 Element::Rock // the first stone, under the floor on the left
             } else if dx.abs() <= 10 && (-7..=2).contains(&dy) {
                 Element::Dirt
+            } else if START_IRON.contains(&(dx, dy)) {
+                Element::Iron
+            } else if START_CRYSTAL.contains(&(dx, dy)) {
+                Element::Crystal
             } else if n < 70 {
                 Element::Floor
             } else if n < 90 {
                 Element::Water
             } else if value_noise(seed ^ 0xC0A1, x, y, 2) > 190 {
                 Element::Coal // veins scattered through the rock
+            } else if dy > 3 && value_noise(seed ^ 0x1205, x, y, 2) > 196 {
+                Element::Iron // ore lies deeper than the first coal
+            } else if dy > 14 && n >= 160 && value_noise(seed ^ 0xC257, x, y, 1) > 212 {
+                Element::Crystal // and crystal deeper still, in hard rock
             } else if n < 160 {
                 Element::Dirt
             } else {

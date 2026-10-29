@@ -31,6 +31,10 @@ function sendFrame(s: WebSim) {
     coal: s.coal(),
     stone: s.stone(),
     food: s.food(),
+    ...(([ore, iron, crystal, coke]) => ({ ore, iron, crystal, coke }))(s.rare_stock()),
+    known: s.known(),
+    researching: s.researching(),
+    researchPoints: s.research_points(),
     night: s.is_night(),
     elements: s.elements(),
     buildings: s.buildings(),
@@ -38,6 +42,8 @@ function sendFrame(s: WebSim) {
     firelight: s.firelight(),
     nightFirelight: s.night_firelight(),
     hearthFuel: s.hearth_fuel(),
+    hearthClean: s.hearth_clean(),
+    hearthGrate: s.hearth_grate(),
     refuelPriority: s.refuel_priority(),
     pileItem: s.pile_item(),
     pileAmount: s.pile_amount(),
@@ -49,7 +55,7 @@ function sendFrame(s: WebSim) {
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades].map(
+  const buffers = [frame.elements, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.hearthClean, frame.hearthGrate, frame.researchPoints, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -87,6 +93,11 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       vent: () => s.build(x, y, Building.Vent),
       bed: () => s.build(x, y, Building.Bed),
       stockpile: () => s.build(x, y, Building.Stockpile),
+      bench: () => s.build(x, y, Building.ResearchBench),
+      coke: () => s.build(x, y, Building.CokeOven),
+      smelter: () => s.build(x, y, Building.Smelter),
+      'crystal-lamp': () => s.build(x, y, Building.CrystalLamp),
+      grate: () => s.upgrade(x, y),
       tile: () => s.build(x, y, Building.Tile),
       door: () => s.build(x, y, Building.Door),
     })[msg.tool]();
@@ -94,6 +105,8 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
     sim.build(msg.x, msg.y, msg.building);
   } else if (msg.type === 'role' && sim) {
     sim.set_role(msg.colonist, msg.role);
+  } else if (msg.type === 'research' && sim) {
+    sim.research(msg.tech);
   } else if (msg.type === 'priority' && sim) {
     sim.set_priority(msg.x, msg.y, msg.priority);
   }
