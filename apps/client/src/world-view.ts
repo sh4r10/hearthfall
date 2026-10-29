@@ -586,14 +586,32 @@ export class WorldView {
     data.fill(0);
     const level = this.surfaceLevels(elements);
     const isWater = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && elements[y * w + x] === Element.Water;
-    // kind: 255 = the pool's surface cell, 128 = falling stream, 0 = body.
-    const set = (x: number, y: number, fill: number, depth: number, kind: number, landing = false) => {
+    // Shading depth is measured from the lowest surface of the whole connected
+    // body, so a tall shaft joined to a lake is the same tone as the lake.
+    const comp = new Float32Array(w * h).fill(-1);
+    for (let i = 0; i < comp.length; i++) {
+      if (!isWater(i % w, Math.floor(i / w)) || comp[i] >= 0) continue;
+      const cells = [i], stack = [i];
+      comp[i] = 0;
+      let low = 0;
+      while (stack.length) {
+        const c = stack.pop()!, x = c % w, y = Math.floor(c / w);
+        low = Math.max(low, level.get(c) ?? y);
+        for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+          if (isWater(nx, ny) && comp[ny * w + nx] < 0) { comp[ny * w + nx] = 0; cells.push(ny * w + nx); stack.push(ny * w + nx); }
+        }
+      }
+      for (const c of cells) comp[c] = low;
+    }
+    // kind: 255 = the pool's surface cell, 200 = surface where a stream lands, 128 = falling stream, 0 = body.
+    // g = depth of the cell's top edge below its pool's surface, plus one cell; a = the same below the body's lowest surface.
+    const set = (x: number, y: number, fill: number, kind: number, lv = y) => {
       if (y < 0) return;
-      const i = this.texIndex(x, y);
+      const i = this.texIndex(x, y), low = Math.max(comp[y * w + x], lv);
       data[i] = Math.max(data[i], Math.round(Math.min(Math.max(fill, 0), 1) * 255));
-      data[i + 1] = Math.round(Math.min(Math.max(depth, 0) / 8, 1) * 255);
+      data[i + 1] = Math.round(Math.min(Math.max(y + 1 - lv, 0) / 8, 1) * 255);
       data[i + 2] = kind;
-      data[i + 3] = landing ? 255 : 0;
+      data[i + 3] = Math.round(Math.min(Math.max(y + 1 - low, 0) / 8, 1) * 255);
     };
     // A column of water one cell wide that runs down into a wider pool is a
     // stream above that pool's surface. Returns the pool's level, or -1.
@@ -616,16 +634,16 @@ export class WorldView {
         if (sl >= 0) {
           lv = sl;
           streamTo = Math.floor(sl);
-          if (y < streamTo) set(x, y, 1, 0, 128);
-          else set(x, y, y + 1 - lv, y + 1 - lv, 255, true);
+          if (y < streamTo) set(x, y, 1, 128);
+          else set(x, y, y + 1 - lv, 200, lv);
         } else if (lv < 0) {
           lv = level.get(c) ?? y;
           // The surface sits at the pool's average level, which may be above this cell.
           const above = lv < y && elements[c - w] === Element.Floor;
-          set(x, y, y + 1 - lv, y + 1 - lv, above ? 0 : 255);
-          if (above) set(x, y - 1, y - lv, y - lv, 255);
-        } else if (y === streamTo) set(x, y, y + 1 - lv, y + 1 - lv, 255, true);
-        else set(x, y, 1, y - lv + 1, 0);
+          set(x, y, y + 1 - lv, above ? 0 : 255, lv);
+          if (above) set(x, y - 1, y - lv, 255, lv);
+        } else if (y === streamTo) set(x, y, y + 1 - lv, 200, lv);
+        else set(x, y, 1, 0, lv);
       }
     }
     // Spill into solid neighbours (sides first, then underneath): the terrain
@@ -638,18 +656,18 @@ export class WorldView {
         const to = this.texIndex(x, y);
         const copy = (nx: number, ny: number) => {
           const from = this.texIndex(nx, ny);
-          if (src[from] === 0 || src[from + 2] === 128 || src[from + 3] !== 0) return false;
+          if (src[from] === 0 || src[from + 2] === 128 || src[from + 2] === 200) return false;
           data[to] = src[from];
           data[to + 1] = src[from + 1];
           data[to + 2] = src[from + 2];
-          data[to + 3] = 0;
+          data[to + 3] = src[from + 3];
           return true;
         };
         if (!(x > 0 && copy(x - 1, y)) && !(x < w - 1 && copy(x + 1, y)) && y > 0 && isWater(x, y - 1) && src[this.texIndex(x, y - 1) + 2] !== 128) {
           data[to] = 255;
           data[to + 1] = Math.min(255, src[this.texIndex(x, y - 1) + 1] + 32);
           data[to + 2] = 0;
-          data[to + 3] = 0;
+          data[to + 3] = Math.min(255, src[this.texIndex(x, y - 1) + 3] + 32);
         }
       }
     }

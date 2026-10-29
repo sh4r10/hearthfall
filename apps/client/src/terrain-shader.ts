@@ -127,10 +127,10 @@ export const terrainFragment = /* glsl */ `
     // cell, so depth is one continuous number down the whole pool: the surface
     // line, band and shading never jump at a cell edge. The ripple lifts it.
     float surfaceDepth = wc.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple;
-    // b = 1 on the surface cell, about half on a falling stream; a = 1 where a stream lands.
+    // b = 1 on the surface cell, about half on a falling stream; b = 0.78 where a stream lands; a = depth below the body's lowest surface, for colour.
     float topCell = step(0.7, wc.b);
     float isStream = step(0.3, wc.b) * (1.0 - topCell);
-    float landing = wc.a * topCell;
+    float landing = step(0.7, wc.b) * (1.0 - step(0.95, wc.b));
     float water = step(0.001, wc.r) * smoothstep(-0.02, 0.02, surfaceDepth);
     // A stream is narrower than its cell and wobbles a little as it falls.
     float sx = fract(cell.x) - 0.5 + sin(cell.y * 3.0 + uTime * 2.0) * 0.03;
@@ -145,17 +145,28 @@ export const terrainFragment = /* glsl */ `
     // pools (or a pool and a deeper shaft) meet in a soft gradient instead of a cut.
     float side = fract(cell.x) < 0.5 ? -1.0 : 1.0;
     vec4 wn = texture2D(uWater, wuv + vec2(side / uSize.x, 0.0));
-    float nbDepth = max(wn.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple, 0.0);
+    float nbDepth = max(wn.a * 8.0 - 1.0 + (1.0 - fillFrac) - ripple, 0.0);
     float nbOk = step(0.001, wn.r) * (1.0 - step(0.3, wn.b) * (1.0 - step(0.7, wn.b))) * (1.0 - isStream);
     float edgeDist = 0.5 - abs(fract(cell.x) - 0.5);
-    float shadeDepth = mix(depth, mix(depth, nbDepth, 0.5), nbOk * (1.0 - smoothstep(0.0, 0.5, edgeDist)));
+    float ownShade = max(wc.a * 8.0 - 1.0 + (1.0 - fillFrac) - ripple, 0.0);
+    // Where water meets open air sideways, the cell edge is pulled in by a wobble so it is
+    // a hand-drawn edge rather than a ruler-straight one (rock sides need none: rock covers them).
+    float nbWet = smoothstep(-0.02, 0.02, wn.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple);
+    // A surface line ends in a fade, not a square cut, where the next column's water stands higher.
+    float nbDeep = step(0.001, wn.r) * smoothstep(0.1, 0.45, wn.g * 8.0 - 1.0 + (1.0 - fillFrac) - ripple) * (1.0 - isStream);
+    float lineFade = 1.0 - nbDeep * (1.0 - smoothstep(0.0, 0.5, edgeDist));
+    float pSelf = step(0.001, wc.r), pNb = step(0.001, wn.r) * nbWet;
+    float pSide = pSelf * (0.5 + edgeDist) + pNb * (0.5 - edgeDist);
+    float sideThr = 0.5 + fbm(cell * vec2(1.1, 2.3) + 3.0) * 0.28;
+    water *= mix(smoothstep(sideThr - 0.03, sideThr + 0.03, pSide), 1.0, isStream);
+    float shadeDepth = mix(ownShade, mix(ownShade, nbDepth, 0.5), nbOk * (1.0 - smoothstep(0.0, 0.5, edgeDist)));
     float bandDepth = shadeDepth + sin(cell.x * 0.9 + uTime * 0.4) * 0.12 + sin(cell.x * 2.3 - uTime * 0.7) * 0.05;
     vec3 shallowColor = vec3(0.045, 0.19, 0.30), midColor = vec3(0.027, 0.12, 0.20), deepColor = vec3(0.013, 0.07, 0.125);
     vec3 waterColor = mix(mix(shallowColor, midColor, smoothstep(1.7, 2.5, bandDepth)), deepColor, smoothstep(4.6, 5.6, bandDepth));
     // Pale surface band under a dark ink line, only on the pool's top cell.
     float lineAA = 0.02;
-    float ink = inTop * (1.0 - landing * 0.6) * (1.0 - smoothstep(0.075 - lineAA, 0.075 + lineAA, depth));
-    float band = inTop * (1.0 - smoothstep(0.24 - lineAA, 0.24 + lineAA, depth));
+    float ink = inTop * lineFade * (1.0 - landing * 0.6) * (1.0 - smoothstep(0.075 - lineAA, 0.075 + lineAA, depth));
+    float band = inTop * lineFade * (1.0 - smoothstep(0.24 - lineAA, 0.24 + lineAA, depth));
     waterColor = mix(waterColor, vec3(0.34, 0.56, 0.78), band * 0.9);
     // Falling water: pale body with darker streaks running down, ink on both sides.
     float streak = smoothstep(0.45, 0.7, noise(vec2(cell.x * 7.0, cell.y * 1.4 + uTime * 4.0)));
