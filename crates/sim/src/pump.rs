@@ -10,8 +10,8 @@ use crate::{Building, Element, Sim, EVENT_PUMPED};
 
 /// Units one stint at the pump moves.
 pub const PUMP_STINT: i32 = 100;
-/// Work one stint takes (a bucket fill is 20); it needs no walk afterwards.
-pub const PUMP_WORK: i32 = 40;
+/// Work one stint takes (the same as filling a bucket, 20), with no walk to the tank afterwards.
+pub const PUMP_WORK: i32 = 20;
 /// A pump feeds tanks this many cells away along the row, and one row up or down.
 pub const PUMP_REACH: i32 = 3;
 /// A pump only runs while the tanks have this much room, so it does not churn on a few units.

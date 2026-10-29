@@ -51,6 +51,8 @@ impl WebSim {
             13 => Building::Smelter,
             14 => Building::CrystalLamp,
             16 => Building::Cistern,
+            17 => Building::DripCatcher,
+            18 => Building::HandPump,
             _ => return,
         };
         self.queued.push(Command::Build { x, y, building });
@@ -156,6 +158,25 @@ impl WebSim {
     /// Drinking water held in each barrel or cistern, by cell (0 elsewhere).
     pub fn water_store(&self) -> Vec<i32> {
         self.sim.water_store.clone()
+    }
+
+    /// Water a drip catcher holds itself while the tanks are full, by cell (0 elsewhere).
+    pub fn drip_held(&self) -> Vec<i32> {
+        self.sim.drip_held.clone()
+    }
+
+    /// Status of each drip catcher (1 dry, 2 dripping, `sim::DRIP_DRY` and `DRIP_WET`) and hand pump
+    /// (1 ready, 2 no water in the pool, 3 no tank in reach, 4 tanks full; the `sim::PUMP_` values),
+    /// by cell; 0 elsewhere.
+    pub fn water_devices(&self) -> Vec<u8> {
+        let s = &self.sim;
+        (0..s.buildings.len())
+            .map(|i| match s.buildings[i] {
+                sim::Building::DripCatcher => s.drip_state(i),
+                sim::Building::HandPump => s.pump_state(i),
+                _ => 0,
+            })
+            .collect()
     }
 
     /// Roast meals cooked at a hearth.
@@ -292,7 +313,7 @@ impl WebSim {
     }
 
     /// Flat, `JOB_STRIDE` values each: x, y, kind (0 dig, 1 build, 2 refuel,
-    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade, 8 cook, 9 water: fill a bucket at the pool (or tank) at x, y for a mushroom bed, 10 fetch: fill a bucket at the pool at x, y for the water stock), building (to build, or to take down), progress percent,
+    /// 3 deconstruct, 4 haul, 5 research, 6 refine, 7 upgrade, 8 cook, 9 water: fill a bucket at the pool (or tank) at x, y for a mushroom bed, 10 fetch: fill a bucket at the pool at x, y for the water stock, 11 pump: work the hand pump at x, y), building (to build, or to take down), progress percent,
     /// claimed (0 or 1), priority (1 to 9), and why it is stuck (a
     /// `sim::BLOCK_` value, 0 if it isn't).
     pub fn jobs(&mut self) -> Vec<i32> {
@@ -309,7 +330,7 @@ impl WebSim {
             .flat_map(|(k, j)| {
                 let building = match j.kind {
                     sim::JobKind::Build(b) => b as i32,
-                    sim::JobKind::Deconstruct | sim::JobKind::Refine | sim::JobKind::Upgrade | sim::JobKind::Research => s.buildings[s.idx(j.x, j.y)] as i32,
+                    sim::JobKind::Deconstruct | sim::JobKind::Refine | sim::JobKind::Upgrade | sim::JobKind::Research | sim::JobKind::Pump => s.buildings[s.idx(j.x, j.y)] as i32,
                     _ => 0,
                 };
                 [j.x as i32, j.y as i32, j.kind.code() as i32, building, j.progress * 100 / (s.work_needed(j) * sim::WORK_UNIT).max(1), j.claimed_by.is_some() as i32, j.priority as i32, blockers[k] as i32]
@@ -320,7 +341,7 @@ impl WebSim {
     /// Flat, `EVENT_STRIDE` values each, oldest first: tick, kind (1 death,
     /// 2 a Shade starts an attack, 3 a building fell, 4 a stranger was taken
     /// in, 5 smoke, 6 a finished study, 7 a stranger is waiting, 8 a stranger
-    /// was turned away or left, 9 the first bed was watered), colonist index (for 3 the building number,
+    /// was turned away or left, 9 the first bed was watered, 10 the first drip was caught, 11 the first stint at a pump), colonist index (for 3 the building number,
     /// for 6 the `sim::Tech` number). Only the last 32 events are kept.
     pub fn events(&self) -> Vec<i32> {
         self.sim.events.iter().flat_map(|e| [e.tick as i32, e.kind as i32, e.colonist as i32]).collect()
