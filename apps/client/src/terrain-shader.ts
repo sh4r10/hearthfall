@@ -118,14 +118,22 @@ export const terrainFragment = /* glsl */ `
 
     // Water: each cell knows how full it is, so the surface is a smooth
     // line at the pool's real level, with a ripple, foam and depth shading.
-    vec2 wuv = vUv;
+    // Sample at the cell's centre so the row and fract(cell.y) always agree (no seam at cell edges).
+    vec2 wuv = (floor(cell) + 0.5) / uSize;
     vec4 wc = texture2D(uWater, wuv);
     float fillFrac = fract(cell.y);                       // 0 at a cell's bottom edge, 1 at its top
     float ripple = sin(cell.x * 2.6 + uTime * 1.7) * 0.03 + sin(cell.x * 5.1 - uTime * 2.6) * 0.015;
     float surfaceAt = wc.r + ripple;
     // b marks the cell holding the pool's surface; every cell below it is full.
-    float topCell = wc.b;
+    // b = 1 on the surface cell, about half on a falling stream; a = 1 where a stream lands.
+    float topCell = step(0.7, wc.b);
+    float isStream = step(0.3, wc.b) * (1.0 - topCell);
+    float landing = wc.a * topCell;
     float water = step(0.001, wc.r) * mix(1.0, 1.0 - smoothstep(surfaceAt - 0.02, surfaceAt + 0.02, fillFrac), topCell);
+    // A stream is narrower than its cell and wobbles a little as it falls.
+    float sx = fract(cell.x) - 0.5 + sin(cell.y * 3.0 + uTime * 2.0) * 0.03;
+    float streamMask = 1.0 - smoothstep(0.17, 0.21, abs(sx));
+    water = mix(water, step(0.001, wc.r) * streamMask, isStream);
     float surface = water * topCell * (1.0 - smoothstep(surfaceAt - 0.14, surfaceAt - 0.02, fillFrac));
     // Flat ink-and-colour water: banded by depth in the art brief's blues, a
     // crisp ink line and a pale band at the surface, soft glints, and the back
@@ -134,12 +142,20 @@ export const terrainFragment = /* glsl */ `
     float depth = mix(wc.g * 8.0 + (1.0 - fillFrac), max(surfaceAt - fillFrac, 0.0), inTop);
     float bandDepth = depth + sin(cell.x * 0.9 + uTime * 0.4) * 0.12 + sin(cell.x * 2.3 - uTime * 0.7) * 0.05;
     vec3 shallowColor = vec3(0.045, 0.19, 0.30), midColor = vec3(0.027, 0.12, 0.20), deepColor = vec3(0.013, 0.07, 0.125);
-    vec3 waterColor = mix(mix(shallowColor, midColor, step(2.0, bandDepth)), deepColor, step(5.0, bandDepth));
+    vec3 waterColor = mix(mix(shallowColor, midColor, smoothstep(1.7, 2.5, bandDepth)), deepColor, smoothstep(4.6, 5.6, bandDepth));
     // Pale surface band under a dark ink line, only on the pool's top cell.
     float lineAA = 0.02;
-    float ink = inTop * (1.0 - smoothstep(0.075 - lineAA, 0.075 + lineAA, depth));
+    float ink = inTop * (1.0 - landing * 0.6) * (1.0 - smoothstep(0.075 - lineAA, 0.075 + lineAA, depth));
     float band = inTop * (1.0 - smoothstep(0.24 - lineAA, 0.24 + lineAA, depth));
     waterColor = mix(waterColor, vec3(0.34, 0.56, 0.78), band * 0.9);
+    // Falling water: pale body with darker streaks running down, ink on both sides.
+    float streak = smoothstep(0.45, 0.7, noise(vec2(cell.x * 7.0, cell.y * 1.4 + uTime * 4.0)));
+    vec3 streamColor = mix(vec3(0.20, 0.42, 0.62), vec3(0.45, 0.68, 0.86), streak);
+    streamColor = mix(streamColor, vec3(0.03, 0.06, 0.09), smoothstep(0.14, 0.2, abs(sx)));
+    waterColor = mix(waterColor, streamColor, isStream);
+    // Foam where a stream lands on the pool.
+    float foam = landing * (1.0 - smoothstep(0.3, 0.5, abs(fract(cell.x) - 0.5) + (depth - 0.1) * 0.8 + sin(uTime * 5.0 + cell.x * 9.0) * 0.04));
+    waterColor = mix(waterColor, vec3(0.62, 0.8, 0.92), foam * 0.85);
     // Soft glints: short pale dashes that fade in and out near the surface.
     vec2 gc = cell * vec2(0.8, 1.6), gi = floor(gc), gf = fract(gc);
     float gh = hash(gi + 3.0);
@@ -156,10 +172,10 @@ export const terrainFragment = /* glsl */ `
     // The sim's light field: dark where the fire doesn't reach, warm where it does.
     float light = pow(texture2D(uLight, vUv).r, 1.35);
     float warm = smoothstep(0.3, 1.0, light);
-    color *= light * mix(vec3(0.8, 0.9, 1.1), vec3(1.3, 1.05, 0.8), warm);
-
-    // Water keeps a faint glow of its own so a pool in the dark still reads as water.
-    color += waterColor * water * (1.0 - inside) * 0.2;
+    // Water never goes fully dark: its surface line and body keep a minimum light.
+    float lightUse = mix(light, max(light, 0.22), water * (1.0 - inside));
+    color *= lightUse * mix(vec3(0.8, 0.9, 1.1), vec3(1.3, 1.05, 0.8), warm);
+    color += waterColor * water * (1.0 - inside) * (0.1 + band * 0.1);
 
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
