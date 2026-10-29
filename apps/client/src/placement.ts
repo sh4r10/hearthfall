@@ -7,6 +7,7 @@ export const BUILDING_NAMES: Record<number, string> = {
   [Building.Ladder]: 'ladder', [Building.Hearth]: 'hearth', [Building.Stockpile]: 'stockpile', [Building.MushroomBed]: 'mushroom bed',
   [Building.Lamp]: 'lamp', [Building.Bed]: 'bed', [Building.Vent]: 'vent', [Building.Cairn]: 'cairn', [Building.Tile]: 'stone tile', [Building.Door]: 'door',
   [Building.ResearchBench]: 'research bench', [Building.CokeOven]: 'coke oven', [Building.Smelter]: 'smelter', [Building.CrystalLamp]: 'crystal lamp',
+  [Building.Cistern]: 'cistern', [Building.WaterBarrel]: 'water barrel',
 };
 
 /** 'ok' places now, 'wait' places but waits for coal or stone, 'bad' is refused. */

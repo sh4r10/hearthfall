@@ -318,6 +318,52 @@ registerModel('stockpile', () => {
   return g;
 });
 
+/** A narrow window onto a tank's water, on its front face: children named empty, half and full, only one shown at a time. */
+function waterGauge(x: number, y: number, z: number, w: number, h: number) {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.BoxGeometry(w, h, 0.02), mat('#14262e'), x, y, z));
+  for (const [name, level] of [['empty', 0.06], ['half', 0.5], ['full', 0.96]] as const) {
+    const fill = new THREE.Group();
+    fill.name = name;
+    const height = h * level;
+    fill.add(mesh(new THREE.BoxGeometry(w * 0.8, height, 0.02), mat('#9cc4e4', { emissive: '#4a7a9a', emissiveIntensity: 0.4 }), x, y - h / 2 + height / 2, z + 0.012));
+    g.add(fill);
+  }
+  return g;
+}
+
+/** The start cave's water barrel: oak staves, two iron hoops, a lid left ajar, and a gauge strip on the front. Children named empty, half and full. */
+registerModel('water-barrel', () => {
+  const g = new THREE.Group();
+  const oak = mat('#8a6440'), iron = mat('#4a4a50');
+  g.add(mesh(new THREE.CylinderGeometry(0.28, 0.25, 0.7, 10), oak, 0, 0.37, 0));
+  for (const y of [0.17, 0.57]) {
+    const hoop = mesh(new THREE.TorusGeometry(0.275 - (0.57 - y) * 0.06, 0.022, 4, 12), iron, 0, y, 0);
+    hoop.rotation.x = Math.PI / 2;
+    g.add(hoop);
+  }
+  const lid = mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.04, 10), mat('#9c744c'), 0.07, 0.74, 0);
+  lid.rotation.z = 0.2;
+  g.add(lid);
+  g.add(waterGauge(0, 0.37, 0.265, 0.1, 0.4));
+  return g;
+});
+
+/** A cistern: a squat tank of fitted stone with timber bands and a plank lid, a ladle on a hook, and a gap in the front boards that shows the water level. Children named empty, half and full. */
+registerModel('cistern', () => {
+  const g = new THREE.Group();
+  const stone = [mat('#6b665f'), mat('#57524c'), mat('#7a746b')];
+  g.add(mesh(new THREE.BoxGeometry(1.8, 0.62, 0.55), stone[0], 0, 0.31, 0));
+  for (let i = 0; i < 6; i++) g.add(mesh(new THREE.BoxGeometry(0.28, 0.17, 0.04), stone[(i + 1) % 3], -0.7 + i * 0.28, 0.12 + (i % 2) * 0.2, 0.28));
+  const timber = mat('#8a6440');
+  for (const x of [-0.62, 0.62]) g.add(mesh(new THREE.BoxGeometry(0.08, 0.64, 0.6), timber, x, 0.32, 0));
+  g.add(mesh(new THREE.BoxGeometry(1.7, 0.05, 0.5), mat('#9c744c'), 0, 0.65, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), mat('#4a4a50'), -0.8, 0.5, 0.3));
+  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.06, 6), mat('#4a4a50'), -0.8, 0.38, 0.3));
+  g.add(waterGauge(0.25, 0.34, 0.285, 0.14, 0.4));
+  return g;
+});
+
 /** A loose heap of goods on the floor, left by digging until someone hauls it. */
 function pile(colours: string[]) {
   return (variant = 0) => {

@@ -4,7 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_RETREATING, SHADE_STRIDE, nightLevel, STAT_MAX, Item, type Frame } from './protocol';
+import { Building, C_WHO, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, MUSHROOM_TICKS, JOB_BUILD, REACH, JOB_DECONSTRUCT, JOB_DIG, JOB_HAUL, JOB_REFINE, JOB_REFUEL, JOB_RESEARCH, JOB_STRIDE, isSolid, SHADE_ATTACKING, SHADE_RETREATING, SHADE_STRIDE, nightLevel, STAT_MAX, Item, TANK_CAPACITY, type Frame } from './protocol';
 import { hasModel, lumpGeometry, makeModel, mat } from './models';
 import { glowTexture } from './textures';
 import { artUrl } from './art';
@@ -145,6 +145,8 @@ const BUILDING_MODELS: Record<number, string> = {
   [Building.CrystalLamp]: 'crystal-lamp',
   [Building.Tile]: 'tile', // only a build order, shown as a ghost block; the finished cell is Element.Tile
   [Building.Door]: 'door',
+  [Building.WaterBarrel]: 'water-barrel',
+  [Building.Cistern]: 'cistern',
 };
 /** Model for each loose good. */
 /** Multiplies the light tint of a mushroom bed with no water in it. */
@@ -1035,6 +1037,20 @@ export class WorldView {
     }
   }
 
+  /** Barrels and cisterns show how full they are: empty, half or full. */
+  private fillTanks(frame: Frame) {
+    for (const b of this.buildings.children) {
+      const cap = TANK_CAPACITY[frame.buildings[b.userData.cell]];
+      if (!cap) continue;
+      const held = frame.waterStore[b.userData.cell] / cap;
+      const level = held >= 0.75 ? 'full' : held >= 0.25 ? 'half' : 'empty';
+      for (const state of ['empty', 'half', 'full']) {
+        const o = b.getObjectByName(state);
+        if (o) o.visible = state === level;
+      }
+    }
+  }
+
   /** A small round badge: a priority number on slate, or an amber "!" for a stuck order. */
   private badgeTexture(label: string) {
     let tex = this.badgeTex.get(label);
@@ -1271,6 +1287,7 @@ export class WorldView {
     this.updateMarkers(frame);
     this.updatePiles(frame);
     this.fillStockpiles(frame);
+    this.fillTanks(frame);
     this.showWorking(frame);
     this.swingDoors(frame);
 
@@ -1590,7 +1607,7 @@ export class WorldView {
       else if (moving && s.climbing) play('climb', s.stride * 4);
       else if (moving) play(s.job === 2 ? 'carry' : 'walk', (s.stride / 1.2) * 6 + i);
       else if (s.activity === 2) play(s.job === 0 ? 'dig' : 'build', t * (s.job === 0 ? 6 : 7) + i);
-      else if (s.activity === 4) play('eat', t * 2.5 + i);
+      else if (s.activity === 4 || s.activity === 6) play('eat', t * 2.5 + i); // drinking looks like eating until it has its own strip
       else if (s.cheer > 0 && s.activity === 0) play('celebrate', t * 5 + i);
       else if (cold > 0.4) play('cold', t * 14 + i);
       else play('idle', t * 2.5 + i * 1.3);
@@ -1620,7 +1637,7 @@ export class WorldView {
       model.scale.set(1 - breathe * 0.5, 1 + breathe, 1);
       const cold = 1 - s.warmth / STAT_MAX;
       if (cold > 0.4) model.position.x += Math.sin(t * 50 + i) * 0.012 * cold;
-      if (s.activity === 4) model.position.y += Math.abs(Math.sin(t * 5 + i)) * 0.03; // munching
+      if (s.activity === 4 || s.activity === 6) model.position.y += Math.abs(Math.sin(t * 5 + i)) * 0.03; // munching
     }
     parts.legL.rotation.z = swing;
     parts.legR.rotation.z = -swing;
@@ -1649,7 +1666,7 @@ export class WorldView {
         armF = 1.6 + swing * 0.9;
         armB = 1.2 + swing * 0.7;
         headTilt = -0.15 + swing * 0.05;
-      } else if (s.activity === 4) {
+      } else if (s.activity === 4 || s.activity === 6) {
         armF = 2.2 + Math.sin(t * 6 + i) * 0.25;
         headTilt = 0.1;
       } else {

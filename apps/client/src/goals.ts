@@ -1,4 +1,4 @@
-import { Building, COLONIST_STRIDE, DAY_TICKS, EVENT_SMOKE, EVENT_STRIDE, ROOM_BEDROOM, type Frame } from './protocol';
+import { Building, CISTERN_GOAL, COLONIST_STRIDE, DAY_TICKS, EVENT_SMOKE, EVENT_STRIDE, ROOM_BEDROOM, type Frame } from './protocol';
 import { icon } from './icons';
 
 type LogLine = (html: string, glyph: string, tone?: 'danger' | 'warn' | 'info') => void;
@@ -43,6 +43,9 @@ const count = (f: Frame, b: number) => { let n = 0; for (let i = 0; i < f.buildi
 const GOALS: Goal[] = [
   { title: 'Store 40 coal', tool: 'dig', text: 'Dig coal seams and haul it to the stockpile. Every fire, and every meal, runs on it.',
     done: (f) => f.coal >= 40, progress: (f) => `${f.coal} / 40 coal` },
+  { title: 'Build a cistern and fill it to 40', tool: 'cistern', text: 'A <b>cistern</b> (in <b>Living</b>) holds drinking water. From day 2 haulers fill it with buckets from a pool they can reach, so dig towards one. Everyone drinks a portion a day.',
+    done: (f) => count(f, Building.Cistern) > 0 && f.waterInCisterns >= CISTERN_GOAL,
+    progress: (f) => count(f, Building.Cistern) > 0 ? `${f.waterInCisterns} / ${CISTERN_GOAL} water` : 'no cistern yet' },
   { title: 'Start a study', tool: 'bench', text: 'Build a <b>research bench</b> (in <b>Industry</b>) in the light, then open Research and pick something to study.',
     done: (f) => count(f, Building.ResearchBench) > 0 && (f.researching >= 0 || f.known !== 0) },
   { title: 'Wall off a bedroom', tool: 'door', text: 'Close a small space off with <b>tiles</b> and a <b>door</b>, then put a bed inside. Bedrooms give the best sleep.',

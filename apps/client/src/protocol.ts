@@ -1,7 +1,7 @@
 // Messages between the main thread and the simulation worker.
 
 export type Tool = 'dig' | 'cancel' | 'deconstruct' | 'priority' | 'ladder' | 'hearth' | 'mushroom' | 'lamp' | 'vent' | 'bed' | 'stockpile' | 'tile' | 'door'
-  | 'bench' | 'coke' | 'smelter' | 'crystal-lamp' | 'grate';
+  | 'bench' | 'coke' | 'smelter' | 'crystal-lamp' | 'grate' | 'cistern';
 
 export type ToWorker =
   | { type: 'init'; seed: number; width: number; height: number; ticksPerSecond: number }
@@ -30,6 +30,15 @@ export interface Frame {
   stone: number;
   /** Raw rations. */
   food: number;
+  /** Drinking water in the barrel and cisterns (units; a drink is DRINK_UNITS), and what they hold at most. */
+  waterStock: number;
+  waterCapacity: number;
+  /** The part of waterStock that sits in cisterns, not the barrel. */
+  waterInCisterns: number;
+  /** What the living drink in a day, in the same units. */
+  waterPerDay: number;
+  /** Water held in each barrel or cistern, by cell (0 elsewhere). */
+  waterStore: Int32Array;
   /** Roast meals, cooked at a hearth and eaten first. */
   meals: number;
   /** The stranger waiting to be taken in, one COLONIST_STRIDE row, or empty. */
@@ -84,7 +93,7 @@ export interface Frame {
 
 export type FromWorker = Frame;
 
-export const COLONIST_STRIDE = 45; // C_EAGER + 1, checked below
+export const COLONIST_STRIDE = 47; // C_THIRST + 1, checked below
 export const JOB_STRIDE = 8;
 export const EVENT_STRIDE = 3;
 export const SHADE_STRIDE = 3;
@@ -114,7 +123,7 @@ export const SHADE_ATTACKING = 1;
 /** Dawn: fleeing the light and dissolving; cannot attack. */
 export const SHADE_RETREATING = 2;
 /** Colonist.cause, the 13th colonist field; must match sim::CAUSE_*. */
-export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'was taken by a Shade' };
+export const CAUSES: Record<number, string> = { 1: 'froze to death', 2: 'was taken by a Shade', 3: 'died of thirst' };
 export const STAT_MAX = 10_000;
 /** Must match DAY_TICKS in crates/sim/src/lib.rs. */
 export const DAY_TICKS = 1200;
@@ -151,7 +160,7 @@ export const isSolid = (e: number) => e === Element.Dirt || e === Element.Rock |
 /** Building.Tile is only ever a build order: the finished cell is Element.Tile. */
 export const Building = {
   None: 0, Vent: 1, Ladder: 2, Hearth: 3, MushroomBed: 4, Cairn: 5, Lamp: 6, Bed: 7, Stockpile: 8, Tile: 9, Door: 10,
-  ResearchBench: 11, CokeOven: 12, Smelter: 13, CrystalLamp: 14,
+  ResearchBench: 11, CokeOven: 12, Smelter: 13, CrystalLamp: 14, WaterBarrel: 15, Cistern: 16,
 } as const;
 /** Room kinds, matching sim::ROOM_* in crates/sim/src/rooms.rs. */
 export const ROOM_NONE = 0, ROOM_PLAIN = 1, ROOM_HEARTH = 2, ROOM_BEDROOM = 3, ROOM_CELLAR = 4;
@@ -165,20 +174,20 @@ export const ROOM_EFFECTS: Record<number, string> = {
   [ROOM_CELLAR]: 'Still, damp air: mushrooms grow twice as fast.',
 };
 /** Loose goods, matching sim::Item; 0 is nothing. The 14th and 15th colonist fields are what they carry and how much. */
-export const Item = { Coal: 1, Stone: 2, Ore: 3, Crystal: 4, Water: 5 } as const;
-export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone', [Item.Ore]: 'iron ore', [Item.Crystal]: 'crystal', [Item.Water]: 'water' };
+export const Item = { Coal: 1, Stone: 2, Ore: 3, Crystal: 4, Water: 5, StockWater: 6 } as const;
+export const ITEM_NAMES: Record<number, string> = { [Item.Coal]: 'coal', [Item.Stone]: 'stone', [Item.Ore]: 'iron ore', [Item.Crystal]: 'crystal', [Item.Water]: 'water', [Item.StockWater]: 'water' };
 /** Most a survivor carries in one trip; must match CARRY_MAX in crates/sim/src/haul.rs. */
 export const CARRY_MAX = 10;
 export const ROLES = ['Digger', 'Builder', 'Firekeeper', 'Hauler', 'Researcher'] as const;
-export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead'] as const;
+export const ACTIVITIES = ['Idle', 'Walking', 'Working', 'Sleeping', 'Eating', 'Dead', 'Drinking'] as const;
 /** Job kinds, the third job field; must match JobKind::code in crates/sim/src/jobs.rs. */
-export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8, JOB_WATER = 9;
+export const JOB_DIG = 0, JOB_BUILD = 1, JOB_REFUEL = 2, JOB_DECONSTRUCT = 3, JOB_HAUL = 4, JOB_RESEARCH = 5, JOB_REFINE = 6, JOB_UPGRADE = 7, JOB_COOK = 8, JOB_WATER = 9, JOB_FETCH = 10;
 export const JOB_NAMES: Record<number, string> = {
   [JOB_DIG]: 'digging', [JOB_BUILD]: 'building', [JOB_REFUEL]: 'refuelling a hearth', [JOB_DECONSTRUCT]: 'taking a building down', [JOB_HAUL]: 'hauling goods',
-  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms', [JOB_WATER]: 'fetching water',
+  [JOB_RESEARCH]: 'researching', [JOB_REFINE]: 'refining', [JOB_UPGRADE]: 'fitting a grate', [JOB_COOK]: 'roasting mushrooms', [JOB_WATER]: 'fetching water for the beds', [JOB_FETCH]: 'fetching water for the cistern',
 };
 /** Orders the colony raises itself, which the player can't cancel. */
-export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK, JOB_WATER];
+export const COLONY_JOBS: number[] = [JOB_REFUEL, JOB_HAUL, JOB_RESEARCH, JOB_REFINE, JOB_COOK, JOB_WATER, JOB_FETCH];
 
 // --- Who survivors are: see crates/sim/src/people.rs --------------------------------
 
@@ -189,7 +198,7 @@ export const SKILLS = [
   { name: 'Digging', icon: 'dig', errands: 'Digging rock, dirt and coal' },
   { name: 'Building', icon: 'ladder', errands: 'Building and taking buildings down' },
   { name: 'Firekeeping', icon: 'hearth', errands: 'Feeding hearths and roasting mushrooms' },
-  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile, and water to the mushroom beds' },
+  { name: 'Hauling', icon: 'stockpile', errands: 'Carrying dug goods to a stockpile, and water to the cisterns and mushroom beds' },
   { name: 'Research', icon: 'research', errands: 'Studying at a research bench' },
 ] as const;
 export const MAX_LEVEL = 10;
@@ -218,8 +227,8 @@ export const TRAITS: { bit: number; name: string; good: boolean; does: string }[
   { bit: 1 << 14, name: 'Thin-blooded', good: false, does: 'Loses warmth a quarter faster in the dark.' },
 ];
 /** Morale parts in people::MORALE_ order. */
-export const MORALE_PARTS = ['Food', 'Sleep', 'By the fire', 'Dark', 'Smoke', 'Hardship', 'Temperament'] as const;
-export const C_MEAL = C_PARTS + MORALE_PARTS.length, C_COLD_AT = C_MEAL + 1, C_EAGER = C_MEAL + 2;
+export const MORALE_PARTS = ['Food', 'Sleep', 'By the fire', 'Dark', 'Smoke', 'Hardship', 'Temperament', 'Thirsty'] as const;
+export const C_MEAL = C_PARTS + MORALE_PARTS.length, C_COLD_AT = C_MEAL + 1, C_EAGER = C_MEAL + 2, C_THIRST = C_MEAL + 3;
 /** Last meal, the C_MEAL field; must match people::MEAL_*. */
 export const MEAL_NAMES = ['nothing yet', 'raw mushrooms', 'roast mushrooms'] as const;
 /** Mood settles here (out of STAT_MAX) when morale meets expectations; must match people::MOOD_AT_PAR. */
@@ -253,13 +262,14 @@ export const BUILD_COST: Record<number, [number, number]> = {
   [Building.CrystalLamp]: [0, 1],
   [Building.Tile]: [0, 1],
   [Building.Door]: [0, 3],
+  [Building.Cistern]: [0, 4],
 };
 /** What a building costs in rarer goods as [iron, crystal]; must match rare_cost in crates/sim/src/jobs.rs. */
 export const RARE_COST: Record<number, [number, number]> = { [Building.CrystalLamp]: [0, 2] };
 export const HEARTH_COST = BUILD_COST[Building.Hearth][0];
 /** Cells either side of its own a building's picture covers; must match reach in crates/sim/src/jobs.rs. */
 export const REACH: Record<number, number> = {
-  [Building.Hearth]: 1, [Building.MushroomBed]: 1, [Building.Stockpile]: 1, [Building.ResearchBench]: 1, [Building.Smelter]: 1,
+  [Building.Hearth]: 1, [Building.MushroomBed]: 1, [Building.Stockpile]: 1, [Building.ResearchBench]: 1, [Building.Smelter]: 1, [Building.Cistern]: 1,
 };
 /**
  * The cell of the building standing on (x, y), if (x, y) is its floor; ladders
@@ -277,6 +287,16 @@ export function heldUpBy(f: { width: number; buildings: Uint8Array }, x: number,
   return undefined;
 }
 export const LAMP_COST = BUILD_COST[Building.Lamp][0];
+/** Drinking water, in units; must match crates/sim/src/water.rs. A drink is DRINK_UNITS of stock and restores DRINK of thirst, which drains THIRST_DRAIN per tick: one drink a day. */
+export const DRINK_UNITS = 10, DRINK = 6000, THIRST_DRAIN = 5;
+/** What the barrel and a cistern hold at most. */
+export const BARREL_CAPACITY = 60, CISTERN_CAPACITY = 60;
+/** Water errands and parched collapses begin on these days. */
+export const WATER_ERRANDS_FROM_DAY = 2, COLLAPSE_FROM_DAY = 4;
+/** What a tank holds at most, by Building number. */
+export const TANK_CAPACITY: Record<number, number> = { [Building.WaterBarrel]: BARREL_CAPACITY, [Building.Cistern]: CISTERN_CAPACITY };
+/** The goals card asks for this much water in cisterns. */
+export const CISTERN_GOAL = 40;
 /** Fuel a full hearth holds, and ticks each unit burns for; must match HEARTH_CAPACITY and HEARTH_BURN_TICKS. */
 export const HEARTH_CAPACITY = 40;
 export const HEARTH_BURN_TICKS = 40;
@@ -303,4 +323,4 @@ export const TECHS: TechInfo[] = [
 ];
 export const knows = (f: { known: number }, tech: number) => (f.known & (1 << tech)) !== 0;
 
-if (C_EAGER + 1 !== COLONIST_STRIDE) throw new Error('COLONIST_STRIDE is out of step with the colonist row layout');
+if (C_THIRST + 1 !== COLONIST_STRIDE) throw new Error('COLONIST_STRIDE is out of step with the colonist row layout');

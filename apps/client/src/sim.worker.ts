@@ -32,6 +32,11 @@ function sendFrame(s: WebSim) {
     stone: s.stone(),
     food: s.food(),
     meals: s.meals(),
+    waterStock: s.water_stock(),
+    waterCapacity: s.water_capacity(),
+    waterInCisterns: s.water_in_cisterns(),
+    waterPerDay: s.water_per_day(),
+    waterStore: s.water_store(),
     stranger: s.stranger(),
     ...(([ore, iron, crystal, coke]) => ({ ore, iron, crystal, coke }))(s.rare_stock()),
     known: s.known(),
@@ -59,7 +64,7 @@ function sendFrame(s: WebSim) {
     events: s.events(),
     shades: s.shades(),
   };
-  const buffers = [frame.elements, frame.water, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.hearthClean, frame.hearthGrate, frame.researchPoints, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.bedWater, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades, frame.stranger].map(
+  const buffers = [frame.elements, frame.water, frame.buildings, frame.light, frame.firelight, frame.nightFirelight, frame.hearthFuel, frame.hearthClean, frame.hearthGrate, frame.researchPoints, frame.refuelPriority, frame.pileItem, frame.pileAmount, frame.temperature, frame.smoke, frame.bedWater, frame.waterStore, frame.rooms, frame.colonists, frame.jobs, frame.events, frame.shades, frame.stranger].map(
     (a) => a.buffer as ArrayBuffer,
   );
   postMessage(frame, { transfer: buffers });
@@ -97,6 +102,7 @@ self.onmessage = async (event: MessageEvent<ToWorker>) => {
       vent: () => s.build(x, y, Building.Vent),
       bed: () => s.build(x, y, Building.Bed),
       stockpile: () => s.build(x, y, Building.Stockpile),
+      cistern: () => s.build(x, y, Building.Cistern),
       bench: () => s.build(x, y, Building.ResearchBench),
       coke: () => s.build(x, y, Building.CokeOven),
       smelter: () => s.build(x, y, Building.Smelter),

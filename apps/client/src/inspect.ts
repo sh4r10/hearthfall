@@ -2,7 +2,7 @@
 // what it is doing and why. It reads every frame, so the numbers stay live.
 
 import {
-  ACTIVITIES, BLOCK_REASONS, Building, C_TRAITS, CAUSES, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
+  ACTIVITIES, BLOCK_REASONS, Building, C_THIRST, C_TRAITS, CAUSES, DRINK_UNITS, JOB_FETCH, TANK_CAPACITY, COLONIST_STRIDE, DARK_BELOW, DEFAULT_PRIORITY, Element, HEARTH_BURN_TICKS, HEARTH_CAPACITY, JOB_NAMES, JOB_COOK, JOB_REFUEL, JOB_STRIDE, SKILLS,
   CARRY_MAX, COAL_RESERVE, COKE_KEEP, CRYSTAL_RADIUS_DAY, CRYSTAL_RADIUS_NIGHT, GRATE_BURN_TICKS, GRATE_IRON, GRATE_RADIUS, IRON_KEEP, ITEM_NAMES, Item, JOB_UPGRADE, JOB_WATER, BED_SELF_WATERING, WATER_LOW, WATER_MAX, knows, LAMP_RADIUS_DAY, LAMP_RADIUS_NIGHT, LIGHT_RADIUS_DAY, LIGHT_RADIUS_NIGHT, MAX_PRIORITY, MUSHROOM_TICKS, ROOM_EFFECTS, ROOM_MAX_CELLS, ROOM_NAMES, ROOM_NONE, ROLES, SMOKY, STAT_MAX, TECHS, type Frame, type ToWorker,
 } from './protocol';
 import { icon } from './icons';
@@ -18,6 +18,8 @@ export function doing(c: ArrayLike<number>, frame?: Frame) {
   const job = c[11] >= 0 ? JOB_NAMES[c[11]] ?? 'working' : '';
   return activity === 'Dead' ? (CAUSES[c[12]] ?? 'Died').replace(/^\w/, (ch) => ch.toUpperCase())
     : c[13] === Item.Water && activity === 'Walking' ? 'Carrying water to a mushroom bed'
+    : c[13] === Item.StockWater && activity === 'Walking' ? 'Carrying water to the cistern'
+    : activity === 'Walking' && !job && !c[13] && c[C_THIRST] < STAT_MAX * 0.4 ? 'Going for a drink'
     : c[13] && activity === 'Walking' ? `Carrying ${ITEM_NAMES[c[13]]} to the stockpile`
     : activity === 'Walking' && job ? `Heading off ${job}`
     : activity === 'Working' && job ? `${job[0].toUpperCase()}${job.slice(1)}`
@@ -34,7 +36,7 @@ export function needBar(label: string, value: number, name: string) {
 }
 
 export const NEEDS: [label: string, offset: number, icon: string][] = [
-  ['Warmth', 4, 'warmth'], ['Energy', 5, 'energy'], ['Food', 6, 'food'], ['Mood', 7, 'mood'], ['Sleep', 8, 'sleep'],
+  ['Warmth', 4, 'warmth'], ['Energy', 5, 'energy'], ['Food', 6, 'food'], ['Thirst', C_THIRST, 'thirst'], ['Mood', 7, 'mood'], ['Sleep', 8, 'sleep'],
 ];
 
 const seconds = (ticks: number, tps: number) => {
@@ -213,6 +215,18 @@ export class Inspector {
       body = row('Coal in stock', String(f.coal)) + row('Stone in stock', String(f.stone)) + row('Food in stock', `${f.food} raw, ${f.meals} roast`) +
         row('Still lying about', Object.keys(loose).length ? Object.entries(loose).map(([k, n]) => `${n} ${ITEM_NAMES[Number(k)]}`).join(', ') : 'nothing') +
         '<p class="note">Dug goods only count once a survivor carries them here. Haulers wait for dawn before fetching from the dark.</p>';
+    } else if (b === Building.WaterBarrel || b === Building.Cistern) {
+      const cap = TANK_CAPACITY[b], held = f.waterStore[i];
+      const barrel = b === Building.WaterBarrel;
+      const pct = Math.round((held / cap) * 100);
+      title = barrel ? 'Water barrel' : 'Cistern'; glyph = barrel ? 'water' : 'cistern';
+      status = held === 0 ? 'Empty' : held >= cap ? 'Full' : `${pct}% full`;
+      const drinks = Math.floor(f.waterStock / DRINK_UNITS);
+      body = `<div class="meter ${pct < 25 ? 'bad' : pct < 50 ? 'low' : ''}"><i><b style="width:${pct}%"></b></i></div>` +
+        row('Stored', `${held} of ${cap}`) +
+        row('Colony stock', `${f.waterStock} of ${f.waterCapacity} (${drinks} drink${drinks === 1 ? '' : 's'})`) +
+        row('Drinking', `${f.waterPerDay} a day for everyone`) +
+        `<p class="note">${barrel ? 'The start cave\'s supply, enough for about three days. It cannot be moved.' : 'From day 2 a hauler fills a bucket at a pool they can reach and carries it here.'} Survivors drink ${DRINK_UNITS} units from the nearest tank.</p>`;
     } else if (f.pileItem[i] && who < 0) {
       const what = ITEM_NAMES[f.pileItem[i]];
       const waiting = f.night && f.light[i] < DARK_BELOW;
@@ -249,7 +263,7 @@ export class Inspector {
         [Element.Dirt]: ['Dirt', 'stone', 'Digging it gives 1 stone.'],
         [Element.Iron]: ['Iron ore', 'ore', 'Digging it gives 2 iron ore, for a smelter.'],
         [Element.Crystal]: ['Crystal', 'crystal', 'Digging it gives 1 crystal, for a crystal lamp.'],
-        [Element.Water]: ['Water', 'depth', 'Flows down and pools. Survivors can\'t walk through it.'],
+        [Element.Water]: ['Water', 'depth', 'Flows down and pools. Survivors can\'t walk through it, but drink at its edge, and buckets draw from it.'],
         [Element.Tile]: ['Stone tile', 'tile', 'Laid by survivors. Dig it to take it down and get the stone back.'],
       };
       const w = what[e];
@@ -263,7 +277,7 @@ export class Inspector {
       body += `<h4>${ROOM_NAMES[room]}</h4><p class="note">${ROOM_EFFECTS[room]}</p>`;
     }
 
-    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_WATER && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
+    if (k >= 0 && who < 0 && f.jobs[k + 2] !== JOB_REFUEL && f.jobs[k + 2] !== JOB_WATER && f.jobs[k + 2] !== JOB_FETCH && f.jobs[k + 2] !== JOB_COOK && !(b === Building.CokeOven || b === Building.Smelter)) {
       const [kind, , progress, claimed, priority, blocked] = [f.jobs[k + 2], f.jobs[k + 3], f.jobs[k + 4], f.jobs[k + 5], f.jobs[k + 6], f.jobs[k + 7]];
       const name = JOB_NAMES[kind];
       body += `<h4>Order: ${name}</h4>` +

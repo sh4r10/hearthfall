@@ -1,7 +1,7 @@
 import { WorldView, type Overlay } from './world-view';
 import {
   heldUpBy, BUILD_COST, Building, CAUSES, COLONIST_STRIDE, COLONY_JOBS, DAWN_TICKS, DAY_TICKS, DUSK_AT, NIGHT_AT, phaseOf, EVENT_ARRIVAL, EVENT_COLLAPSE, EVENT_DEATH, EVENT_RESEARCH, EVENT_SMOKE, EVENT_SHADE_ATTACK, EVENT_STRANGER, EVENT_STRIDE, EVENT_TURNED_AWAY, EVENT_WATERED,
-  COKE_FUEL, Element, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, type Frame, type FromWorker, type Tool, type ToWorker,
+  COKE_FUEL, Element, GRATE_BURN_TICKS, HEARTH_BURN_TICKS, C_WHO, GRATE_IRON, isSolid, JOB_UPGRADE, JOB_STRIDE, HEARTH_COST, knows, RARE_COST, TECHS, CISTERN_CAPACITY, DRINK_UNITS, type Frame, type FromWorker, type Tool, type ToWorker,
 } from './protocol';
 import { artUrl } from './art';
 import { icon } from './icons';
@@ -24,6 +24,7 @@ const TOOLS: ToolInfo[] = [
   { tool: 'dig', key: '1', label: 'Dig', icon: 'dig', tip: 'Mark rock, dirt or coal to be dug out. Coal goes to the stockpile.' },
   { tool: 'ladder', key: '2', label: 'Ladder', icon: 'ladder', tip: 'Lets survivors climb. Build them up walls and shafts.', building: Building.Ladder },
   { tool: 'hearth', key: '3', label: 'Hearth', icon: 'hearth', tip: 'A new fire: light, warmth and safety. Burns coal.', building: Building.Hearth },
+  { tool: 'cistern', key: 'T', label: 'Cistern', icon: 'cistern', tip: `A stone tank for drinking water: holds ${CISTERN_CAPACITY} more. From day 2 a hauler fills buckets at a pool they can reach and carries them here. Survivors drink ${DRINK_UNITS} units each from the nearest tank, one drink a day.`, building: Building.Cistern },
   { tool: 'mushroom', key: '4', label: 'Mushrooms', icon: 'mushroom', tip: 'Grows food away from the fire. Lamp light is fine, so light the farm to keep Shades out.', building: Building.MushroomBed },
   { tool: 'lamp', key: '6', label: 'Lamp', icon: 'lamp', tip: 'A small light that keeps Shades away. No warmth, so survivors still cool down slowly.', building: Building.Lamp },
   { tool: 'vent', key: '5', label: 'Vent', icon: 'vent', tip: 'A bored hole with a bellows. Clears the smoke in its cell; put it where smoke pools, under the ceiling above the fire.', building: Building.Vent },
@@ -50,6 +51,7 @@ const HINTS: Record<Tool, string> = {
   'crystal-lamp': '<b>Crystal lamp:</b> lights a long tunnel or a farm by itself.',
   tile: '<b>Tile:</b> click beside a floor or wall. Costs 1 stone; dig it to get it back.',
   door: '<b>Door:</b> wall a space off with tiles and a door to make a room.',
+  cistern: '<b>Cistern:</b> place it in the light, near where a pool can be reached; haulers fill it from the pool.',
   stockpile: '<b>Stockpile:</b> place near your digging; haulers bring goods here.',
   ladder: '<b>Ladder:</b> click open cells, or shift-drag a line up a shaft.',
   hearth: '<b>Hearth:</b> light up a new part of the caves.',
@@ -186,12 +188,27 @@ function coalStat(f: Frame) {
   return `<div data-tip="${tip.replace(/"/g, '&quot;')}">${stat('coal', 'Coal', f.coal, warn, `≈${nightsText(run.ticks)}`, danger)}</div>`;
 }
 
+/** Days of drinking water left at today's thirst, or null once nobody is alive to drink it. */
+const waterDays = (f: Frame) => (f.waterPerDay > 0 ? f.waterStock / f.waterPerDay : null);
+const daysText = (days: number) => days >= 10 ? '10+ days' : `${days.toFixed(1)} day${Math.abs(days - 1) < 0.05 ? '' : 's'}`;
+/** The water stat: units in the barrel and cisterns, with how many days they last under it, amber under 2 days and red under 1. */
+function waterStat(f: Frame) {
+  const days = waterDays(f);
+  if (days === null) return stat('water', 'Water', f.waterStock);
+  const warn = days < 2, danger = days < 1;
+  const tip = `<b>Water</b>${f.waterStock} of ${f.waterCapacity} units in the barrel and cisterns. The living drink ${f.waterPerDay} a day: about <b>${daysText(days)}</b>.` +
+    (warn ? '<em>Build a cistern and have it filled from a pool.</em>' : ' Haulers fill the tanks from a pool they can reach, from day 2.');
+  return `<div data-tip="${tip.replace(/"/g, '&quot;')}">${stat('water', 'Water', f.waterStock, warn, `≈${daysText(days)}`, danger)}</div>`;
+}
+
 // --- Event log -----------------------------------------------------------------
 
 const log = $('log');
 let lastEventTick = -1;
 /** The first dusk gets one log line. */
 let duskNoted = false;
+/** Whether the log has warned that water is running low. */
+let waterWarned = false;
 /** The day whose dusk already warned about coal, so it warns once. */
 let coalWarnedDay = -1;
 /** The last stranger's name, for the line when they leave. */
@@ -384,6 +401,12 @@ function onFrame(event: MessageEvent<FromWorker>) {
     if (run && run.ticks < untilDawn(frame.tick)) logLine('Not enough coal for tonight: <b>dig a seam</b>.', 'coal', 'warn');
   }
 
+  const days = waterDays(frame);
+  if (!waterWarned && days !== null && days < 2) {
+    waterWarned = true;
+    logLine('Water is running low: build a <b>cistern</b> and have it filled from a pool.', 'water', 'warn');
+  }
+
   (clock.querySelector('.dial i') as HTMLElement).style.transform = `rotate(${(into / DAY_TICKS) * 360 + 180}deg)`;
   clock.querySelector('.clock-text')!.innerHTML =
     `<b>Day ${day}</b><span>${icon(phase === 'dusk' || phase === 'night' ? 'moon' : 'sun', 12)}${phase === 'day' ? '' : `${phase[0].toUpperCase()}${phase.slice(1)} · `}${next[0]} in ${untilChange}s</span>`;
@@ -391,6 +414,7 @@ function onFrame(event: MessageEvent<FromWorker>) {
     coalStat(frame) +
     stat('stone', 'Stone', frame.stone, frame.stone < 2) +
     `<div data-tip="<b>Food</b>${frame.food} raw mushrooms and ${frame.meals} roast meals. Firekeepers roast mushrooms at a hearth when there is coal to spare, and roast meals lift morale.">${stat('food', 'Food', frame.meals ? `${frame.food}+${frame.meals}` : frame.food, frame.food + frame.meals < 5)}</div>` +
+    waterStat(frame) +
     (frame.coke ? stat('coke', 'Coke', frame.coke) : '') +
     (frame.ore || frame.iron ? stat('iron', 'Iron', frame.ore ? `${frame.iron}<small> +${frame.ore} ore</small>` : frame.iron) : '') +
     (frame.crystal ? stat('crystal', 'Crystal', frame.crystal) : '') +
@@ -453,7 +477,7 @@ function showUnlocked(f: Frame) {
 const CATEGORIES: { id: string; label: string; icon: string; tools: Tool[] }[] = [
   { id: 'build', label: 'Build', icon: 'build', tools: ['ladder', 'tile', 'door', 'stockpile'] },
   { id: 'fire', label: 'Fire and light', icon: 'hearth', tools: ['hearth', 'lamp', 'crystal-lamp', 'vent', 'grate'] },
-  { id: 'living', label: 'Living', icon: 'living', tools: ['bed', 'mushroom'] },
+  { id: 'living', label: 'Living', icon: 'living', tools: ['bed', 'mushroom', 'cistern'] },
   { id: 'industry', label: 'Industry', icon: 'industry', tools: ['bench', 'coke', 'smelter'] },
 ];
 const categoryOf = (t: Tool) => CATEGORIES.find((c) => c.tools.includes(t));
@@ -580,7 +604,7 @@ window.addEventListener('keydown', (e) => {
   if (key === 'r') return research.toggle();
   const tools: Record<string, Tool> = {
     '1': 'dig', '2': 'ladder', '3': 'hearth', '4': 'mushroom', '5': 'vent', '6': 'lamp', '7': 'bed', '8': 'stockpile', '9': 'tile', '0': 'door',
-    b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
+    t: 'cistern', b: 'bench', k: 'coke', m: 'smelter', g: 'grate', l: 'crystal-lamp', d: 'deconstruct', x: 'cancel', p: 'priority',
   };
   if (tools[key] && !document.querySelector<HTMLElement>(`[data-tool="${tools[key]}"]`)?.hidden) setTool(tools[key]);
   const overlays: Record<string, Overlay> = { w: 'warmth', escape: 'none' };

@@ -148,6 +148,23 @@ if (has('stockpile', 'stockpile-half', 'stockpile-full')) registerModel('stockpi
   return g;
 });
 
+// The water barrel (1 x 1 cell) and the cistern (2 cells wide) each come in three fill states, shown by name like the stockpile's.
+// The art is requested in art/codex batch 4 as building-water-barrel-* and building-cistern-*.
+for (const [model, base, height] of [['water-barrel', 'water-barrel', 192], ['cistern', 'cistern', 192]] as const) {
+  if (!has(`${base}-empty`, `${base}-half`, `${base}-full`)) continue;
+  registerModel(model, () => {
+    const g = new THREE.Group();
+    for (const state of ['empty', 'half', 'full']) {
+      const m = card(`${base}-${state}`, height * PX);
+      m.name = state;
+      m.position.y = -0.02;
+      m.renderOrder = 3;
+      g.add(m);
+    }
+    return g;
+  });
+}
+
 for (const name of ['pile-coal', 'pile-ore', 'pile-crystal']) {
   if (has(name)) registerModel(name, () => {
     const g = new THREE.Group();
