@@ -1010,14 +1010,35 @@ export class WorldView {
     this.flash.age = 0;
   }
 
-  /** A pulsing glow on one cell (to point the player at something), or none. */
-  private beacon?: THREE.Sprite;
+  /** A crisp pulsing frame round one cell with a bobbing chevron above it (to point the player at something), or none. */
+  private beacon?: THREE.Group;
+  private beaconChevron?: THREE.Mesh;
   private panGoal?: { x: number; y: number };
   highlight(cell?: [number, number]) {
     if (!cell) { if (this.beacon) this.beacon.visible = false; return; }
     if (!this.beacon) {
-      this.beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#7cc4ff', transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false }));
-      this.beacon.renderOrder = 11;
+      const mat = () => new THREE.MeshBasicMaterial({ color: '#7cc4ff', transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+      // Rounded-square ring, 0.08 cells thick, just inside the cell edge.
+      const rr = (h: number, r: number) => {
+        const sh = new THREE.Shape();
+        sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.absarc(h - r, -h + r, r, -Math.PI / 2, 0, false);
+        sh.lineTo(h, h - r); sh.absarc(h - r, h - r, r, 0, Math.PI / 2, false);
+        sh.lineTo(-h + r, h); sh.absarc(-h + r, h - r, r, Math.PI / 2, Math.PI, false);
+        sh.lineTo(-h, -h + r); sh.absarc(-h + r, -h + r, r, Math.PI, Math.PI * 1.5, false);
+        return sh;
+      };
+      const ring = rr(0.5, 0.14);
+      const hole = rr(0.42, 0.08);
+      ring.holes.push(new THREE.Path(hole.getPoints(8).reverse()));
+      const frame = new THREE.Mesh(new THREE.ShapeGeometry(ring, 8), mat());
+      const ch = new THREE.Shape();
+      ch.moveTo(-0.3, 0.12); ch.lineTo(0, -0.14); ch.lineTo(0.3, 0.12); ch.lineTo(0.23, 0.2); ch.lineTo(0, 0); ch.lineTo(-0.23, 0.2); ch.closePath();
+      const chevron = new THREE.Mesh(new THREE.ShapeGeometry(ch), mat());
+      frame.renderOrder = chevron.renderOrder = 11;
+      this.beacon = new THREE.Group();
+      this.beacon.add(frame, chevron);
+      this.beacon.userData.frame = frame;
+      this.beaconChevron = chevron;
       this.scene.add(this.beacon);
     }
     this.cellToWorld(cell[0], cell[1], this.beacon.position);
@@ -1683,8 +1704,13 @@ export class WorldView {
 
     if (this.beacon?.visible) {
       const k = 0.5 + Math.sin(t * 4) * 0.5;
-      this.beacon.scale.setScalar(1.1 + k * 0.5);
-      this.beacon.material.opacity = 0.5 + k * 0.5;
+      const frame = this.beacon.userData.frame as THREE.Mesh;
+      frame.scale.setScalar(1 + k * 0.06);
+      (frame.material as THREE.MeshBasicMaterial).opacity = 0.6 + k * 0.4;
+      if (this.beaconChevron) {
+        this.beaconChevron.position.y = 0.85 + (0.5 + Math.sin(t * 5) * 0.5) * 0.18;
+        (this.beaconChevron.material as THREE.MeshBasicMaterial).opacity = 0.8 + k * 0.2;
+      }
     }
     if (this.panGoal) {
       const k = Math.min(dt * 4, 1);

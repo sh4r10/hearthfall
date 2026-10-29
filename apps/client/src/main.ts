@@ -151,8 +151,12 @@ if (new URLSearchParams(location.search).has('play')) start();
 
 // --- HUD -----------------------------------------------------------------------
 
+// Keep the event log below the whole top bar, even when it wraps.
+const topBar = document.getElementById('top')!;
+new ResizeObserver(() => document.documentElement.style.setProperty('--top-h', `${Math.ceil(topBar.getBoundingClientRect().bottom)}px`)).observe(topBar);
+
 function stat(name: string, label: string, value: string | number, warn = false, sub = '', danger = false) {
-  return `<div class="stat${danger ? ' danger' : warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}${sub ? `<small> ${sub}</small>` : ''}</b></div></div>`;
+  return `<div class="stat${danger ? ' danger' : warn ? ' warn' : ''}">${icon(name, 20)}<div><span>${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
 }
 
 /**
